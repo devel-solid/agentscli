@@ -1,0 +1,4 @@
+conventions: []
+skills:
+  - id: agentscli-build-agents
+    source: local

@@ -1,12 +1,17 @@
 schema: spec-driven
 
 context: |
-  This repository develops agentscli, a small CLI that generates client AGENTS.md
-  and conventions from project-owned templates. The internal agentscli.yml selects
-  distributed skills; this repository is not a client and keeps handwritten English
-  AGENTS.md and docs/conventions. Use agentscli-write-conventions and
-  agentscli-update-agents for direct authorship, and agentscli-release for requested
-  native Git/npm release work.
+  This private npm workspace develops @devel-solid/agentscli and
+  @devel-solid/agentscli-hub, each exposing only apply plus help/version.
+  The tool monorepo is neither a consumer nor a hub and keeps handwritten English
+  AGENTS.md and docs/conventions. There is no source/distribution manifest.
+  Three independent agentscli-adm-* skills maintain internal conventions,
+  root instructions, and authorized native Git/npm package releases. Four consumer
+  and five hub operational skill sources live independently in their owning package
+  assets/templates/skills. Deterministic validation belongs to each responsible
+  skill; conventions are self-contained dependency leaves without inter-resource
+  links. Only skills may declare id/source dependencies through metadata.requires
+  pointing to their own requires.yml. Root checks remain unit/type/format only.
   All OpenSpec artifacts in this repository use en-US for natural-language content,
   artifact names, change names, capability names, spec names, requirements,
   scenarios, designs, and tasks.

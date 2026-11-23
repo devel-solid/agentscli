@@ -1,4 +1,4 @@
-name: Node CLI
+name: Node workspaces
 on: [push, pull_request]
 jobs:
   unit:

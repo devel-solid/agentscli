@@ -1,0 +1,6 @@
+conventions:
+  - id: skill-authoring
+    source: local
+  - id: mechanical-validation
+    source: local
+skills: []

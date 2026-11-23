@@ -1,0 +1,6 @@
+conventions:
+  - id: instruction-safety
+    source: local
+  - id: mechanical-validation
+    source: local
+skills: []

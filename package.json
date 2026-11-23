@@ -1,46 +1,36 @@
 {
-  "name": "@devel-solid/agentscli",
-  "version": "0.3.1",
-  "description": "Generate project AGENTS.md and conventions from editable Markdown templates.",
+  "name": "agentscli-monorepo",
+  "private": true,
+  "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/devel-solid/agentscli.git"
   },
-  "homepage": "https://github.com/devel-solid/agentscli#readme",
-  "bugs": "https://github.com/devel-solid/agentscli/issues",
-  "type": "module",
-  "bin": {
-    "agentscli": "dist/cli.js"
-  },
-  "files": [
-    "dist/**/*.js",
-    "dist/assets/"
+  "workspaces": [
+    "packages/agentscli",
+    "packages/agentscli-hub"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
-    "build": "node scripts/clean-dist.mjs && tsc && node scripts/package-assets.mjs",
-    "typecheck": "tsc --noEmit",
-    "format": "prettier --write src scripts tests/unit package.json tsconfig.json .github/workflows/node.yml agentscli.yml",
-    "format:check": "prettier --check src scripts tests/unit package.json tsconfig.json .github/workflows/node.yml agentscli.yml",
-    "test": "tsc && node scripts/test.mjs",
-    "check": "npm run typecheck && npm run format:check && npm test",
-    "setup": "node scripts/setup.mjs",
-    "prepack": "npm run build"
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "format": "prettier --write package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md openspec/config.yaml .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format --workspaces",
+    "format:check": "prettier --check package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md openspec/config.yaml .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format:check --workspaces",
+    "test": "npm run test --workspaces && node scripts/test-root.mjs",
+    "check:skills": "node scripts/check-admin.mjs",
+    "check": "npm run typecheck && npm run format:check && npm test && npm run check:skills",
+    "setup": "node scripts/setup.mjs"
   },
   "engines": {
     "node": "^22.0.0 || ^24.0.0 || ^26.0.0"
   },
-  "dependencies": {
-    "remark-parse": "11.0.0",
-    "unified": "11.0.5",
-    "yaml": "2.9.1"
-  },
   "devDependencies": {
     "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
     "prettier": "3.9.10",
-    "typescript": "7.0.2"
+    "remark-parse": "11.0.0",
+    "typescript": "7.0.2",
+    "unified": "11.0.5",
+    "yaml": "2.9.1"
   }
 }
