@@ -32,7 +32,7 @@
 
 ## 6. Publish the affected packages
 
-- [ ] 6.1 Prepare the reviewed implementation/delivery source commit and intended branch push, preserving unrelated work and published history; verify the exact commit and candidate inputs are identified and the existing pre-push gate succeeds.
+- [x] 6.1 Prepare the reviewed implementation/delivery source commit and intended branch push, preserving unrelated work and published history; verify the exact commit and candidate inputs are identified and the existing pre-push gate succeeds.
 - [ ] 6.2 Create and push the unused `agentscli-hub-v<version>` tag and publish the exact inspected hub CLI archive through native npm; verify public Git tag/commit and registry name/version/visibility/license/bin/SHA-512, retaining this task as incomplete for unresolved authentication or ambiguous delivery.
 - [ ] 6.3 Create and push the unused `agentscli-v<version>` tag and publish the exact inspected consumer CLI archive through native npm; verify public Git tag/commit and registry name/version/visibility/license/bin/SHA-512, inspecting the same immutable identity before retrying an ambiguous result.
 
@@ -49,3 +49,7 @@
 - The global skill-creator validator accepts the three administrative skills but rejects the nine distributed skills solely because its allowlist omits the existing standard compatibility field. Owned strict validators and distribution checks passed; the global validator was not modified.
 - No new installation, network, subprocess, or integration test suite was added. Native build/pack inspection was performed as delivery preparation.
 - The npm account reports two-factor mode auth-and-writes. Publication and host installation remain pending; stop before requesting publication interaction, as explicitly instructed by the user.
+
+- Reviewed source commit: 621a963332fc3c6ae4efcac7097b982ed29c2ae0, pushed and verified at origin/codex/simplify-skill-configuration; native pre-push gates passed. Release tags and npm publications have not been created.
+- Prepared @devel-solid/agentscli@0.5.0: devel-solid-agentscli-0.5.0.tgz; SHA-512 integrity sha512-N/nBlXFIIz0NGOA9xt+O5a9+0boN9hXAucdBA7vm4rJQdoksPyd0UHEKtHLq1LWR5yauh5YIe8RFTzHKWb17Kw==.
+- Prepared @devel-solid/agentscli-hub@0.2.0: devel-solid-agentscli-hub-0.2.0.tgz; SHA-512 integrity sha512-O6R1LbeZAf49wnj5eoR2T9IzLEy23YrC+ZlU9CabjmEIN3hHkvtn03lxYaxmdqM9JwDvRrAKjQuFvYp3yOkjlg==.
