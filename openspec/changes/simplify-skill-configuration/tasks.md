@@ -33,13 +33,13 @@
 ## 6. Publish the affected packages
 
 - [x] 6.1 Prepare the reviewed implementation/delivery source commit and intended branch push, preserving unrelated work and published history; verify the exact commit and candidate inputs are identified and the existing pre-push gate succeeds.
-- [ ] 6.2 Create and push the unused `agentscli-hub-v<version>` tag and publish the exact inspected hub CLI archive through native npm; verify public Git tag/commit and registry name/version/visibility/license/bin/SHA-512, retaining this task as incomplete for unresolved authentication or ambiguous delivery.
-- [ ] 6.3 Create and push the unused `agentscli-v<version>` tag and publish the exact inspected consumer CLI archive through native npm; verify public Git tag/commit and registry name/version/visibility/license/bin/SHA-512, inspecting the same immutable identity before retrying an ambiguous result.
+- [x] 6.2 Create and push the unused `agentscli-hub-v<version>` tag and publish the exact inspected hub CLI archive through native npm; verify public Git tag/commit and registry name/version/visibility/license/bin/SHA-512, retaining this task as incomplete for unresolved authentication or ambiguous delivery.
+- [x] 6.3 Create and push the unused `agentscli-v<version>` tag and publish the exact inspected consumer CLI archive through native npm; verify public Git tag/commit and registry name/version/visibility/license/bin/SHA-512, inspecting the same immutable identity before retrying an ambiguous result.
 
 ## 7. Update the active host and report completion
 
-- [ ] 7.1 Reinspect the active Node/npm prefix and CLI resolution, then install both exact publicly verified release versions globally, including agentscli-hub if absent; verify native npm installation succeeds while preserving unrelated packages, other Node installations, and project contents.
-- [ ] 7.2 Verify global package records, command resolution paths, and `agentscli --version` / `agentscli-hub --version` match the released identities; report changed files, actual checks, verified releases, installed versions, and any remaining work, leaving failed publication or host-update tasks open and never running project apply as an installation check.
+- [x] 7.1 Reinspect the active Node/npm prefix and CLI resolution, then install both exact publicly verified release versions globally, including agentscli-hub if absent; verify native npm installation succeeds while preserving unrelated packages, other Node installations, and project contents.
+- [x] 7.2 Verify global package records, command resolution paths, and `agentscli --version` / `agentscli-hub --version` match the released identities; report changed files, actual checks, verified releases, installed versions, and any remaining work, leaving failed publication or host-update tasks open and never running project apply as an installation check.
 
 ## Execution evidence
 
@@ -48,8 +48,13 @@
 - Native npm previews and real archives passed the administrative byte/inventory/metadata checker: agentscli 0.5.0 has 59 files; agentscli-hub 0.2.0 has 35 files. Candidate archives and pack/integrity records are in ignored .tmp/releases/simplify-skill-configuration/.
 - The global skill-creator validator accepts the three administrative skills but rejects the nine distributed skills solely because its allowlist omits the existing standard compatibility field. Owned strict validators and distribution checks passed; the global validator was not modified.
 - No new installation, network, subprocess, or integration test suite was added. Native build/pack inspection was performed as delivery preparation.
-- The npm account reports two-factor mode auth-and-writes. Publication and host installation remain pending; stop before requesting publication interaction, as explicitly instructed by the user.
+- The npm account uses two-factor mode auth-and-writes. Work initially paused before publication interaction as requested; after explicit resumption, the user confirmed browser authentication and both native npm publications succeeded. Both released CLI versions are installed and verified in the active host environment.
 
-- Reviewed source commit: 621a963332fc3c6ae4efcac7097b982ed29c2ae0, pushed and verified at origin/codex/simplify-skill-configuration; native pre-push gates passed. Release tags and npm publications have not been created.
+- Reviewed source commit: 621a963332fc3c6ae4efcac7097b982ed29c2ae0, pushed and verified at origin/codex/simplify-skill-configuration; native pre-push gates passed. Both immutable package-specific tags now resolve to this source commit, and both exact public npm artifacts have been verified.
 - Prepared @devel-solid/agentscli@0.5.0: devel-solid-agentscli-0.5.0.tgz; SHA-512 integrity sha512-N/nBlXFIIz0NGOA9xt+O5a9+0boN9hXAucdBA7vm4rJQdoksPyd0UHEKtHLq1LWR5yauh5YIe8RFTzHKWb17Kw==.
 - Prepared @devel-solid/agentscli-hub@0.2.0: devel-solid-agentscli-hub-0.2.0.tgz; SHA-512 integrity sha512-O6R1LbeZAf49wnj5eoR2T9IzLEy23YrC+ZlU9CabjmEIN3hHkvtn03lxYaxmdqM9JwDvRrAKjQuFvYp3yOkjlg==.
+
+- Public verification completed at 2026-11-23T22:26:40Z: both package versions, MIT licenses, dist/cli.js executable mappings, public tarball identities, and SHA-512 integrities match the inspected archives.
+
+- Host verification completed at 2026-11-23T22:27:33Z on Node v24.15.0, global prefix C:/nvm4w/nodejs: agentscli --version returns 0.5.0 and agentscli-hub --version returns 0.2.0. All resolved command shims use that prefix; OpenSpec 2.0.0, corepack 0.34.7, and npm 11.13.0 remain unchanged. No project apply was run.
+- Delivery is complete: both public tags/artifacts and active host CLI versions are verified. Ignored public-verification and host-verification JSON records preserve exact evidence.
