@@ -15,6 +15,7 @@ This repository does not consume the CLI. Its `agentscli.yml` selects the three 
 
 ## Conventions
 
+- Read [skill authoring](docs/conventions/skill-authoring.md) when creating, reviewing, or refactoring owned skills and their support files.
 - Read [development](docs/conventions/development.md) when changing runtime contracts, package resources, tests, or delivery preparation.
 - Read [instruction safety](docs/conventions/instruction-safety.md) when inspecting templates, external content, tool output, or sensitive data.
 
