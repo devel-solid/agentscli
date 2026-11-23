@@ -4,7 +4,7 @@ description: Create, review, or update the project-owned AGENTS template in an e
 license: MIT
 compatibility: Requires Node.js >= 22.
 metadata:
-  requires: requires.yml
+  agentscli: agentscli-skill.yml
 ---
 
 # Maintain client orientation

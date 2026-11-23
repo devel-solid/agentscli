@@ -103,6 +103,40 @@ test('fixed hub discovery retains complete independent trees and excludes extern
     Buffer.from([0, 255]),
   );
   assert.deepEqual(fs.mutations, []);
+  const configured = path.join(
+    root,
+    'assets/templates/skills',
+    operationalNames[0],
+  );
+  const entrypoint = path.join(configured, 'SKILL.md');
+  const configFile = path.join(configured, 'agentscli-skill.yml');
+  fs.addFile(
+    entrypoint,
+    fs
+      .readFileSync(entrypoint, 'utf8')
+      .replace(
+        'license: MIT',
+        'license: MIT\nmetadata:\n  agentscli: agentscli-skill.yml',
+      ),
+  );
+  assert.throws(() => collectAssets(root, fs), { code: 'missing' });
+  const configuration = `requires:\n  - id: ${operationalNames[1]}\n    source: local\n`;
+  fs.addFile(configFile, configuration);
+  assert.equal(
+    collectAssets(root, fs)
+      .files.get(`.agents/skills/${operationalNames[0]}/agentscli-skill.yml`)
+      .toString(),
+    configuration,
+  );
+  fs.entries.get(configFile).nlink = 2;
+  assert.throws(() => collectAssets(root, fs), { code: 'unsafe-path' });
+  fs.entries.get(configFile).nlink = 1;
+  fs.addFile(
+    path.join(configured, 'requires.yml'),
+    'conventions: []\nskills: []',
+  );
+  assert.throws(() => collectAssets(root, fs), { code: 'skill-config' });
+  fs.entries.delete(path.join(configured, 'requires.yml'));
   fs.addDirectory(path.join(root, 'assets/templates/skills/unexpected'));
   assert.throws(() => collectAssets(root, fs), /exactly five/);
   fs.entries.delete(path.join(root, 'assets/templates/skills/unexpected'));

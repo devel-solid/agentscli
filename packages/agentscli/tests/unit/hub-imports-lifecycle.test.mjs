@@ -211,15 +211,13 @@ test('an unrelated same-byte skill cannot be adopted and missing selected depend
           content: bytes(
             skill.replace(
               'description:',
-              'metadata:\n  requires: requires.yml\ndescription:',
+              'metadata:\n  agentscli: agentscli-skill.yml\ndescription:',
             ),
           ),
         },
         {
-          path: 'skills/review/requires.yml',
-          content: bytes(
-            'conventions: []\nskills:\n  - id: absent\n    source: hub\n',
-          ),
+          path: 'skills/review/agentscli-skill.yml',
+          content: bytes('requires:\n  - id: absent\n    source: hub\n'),
         },
       ],
     });
@@ -265,19 +263,16 @@ test('detach blocks local authored dependencies then removes only accepted hub r
   );
   fs.put(
     '.agents/skills/personal/SKILL.md',
-    '---\nname: personal\ndescription: Personal workflow.\nmetadata:\n  requires: requires.yml\n---\n# Personal\n',
+    '---\nname: personal\ndescription: Personal workflow.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n# Personal\n',
   );
   fs.put(
-    '.agents/skills/personal/requires.yml',
-    'conventions: []\nskills:\n  - id: review\n    source: hub\n',
+    '.agents/skills/personal/agentscli-skill.yml',
+    'requires:\n  - id: review\n    source: hub\n',
   );
   const writes = fs.writes.length;
   await assert.rejects(planDetach(ctx), { code: 'DEPENDENCY_MISSING' });
   assert.equal(fs.writes.length, writes);
-  fs.put(
-    '.agents/skills/personal/requires.yml',
-    'conventions: []\nskills: []\n',
-  );
+  fs.put('.agents/skills/personal/agentscli-skill.yml', 'requires: []\n');
   const result = await applyReviewed(await planDetach(ctx), ctx);
   assert.equal(result.exitCode, 0, JSON.stringify(result));
   assert.equal(fs.io.info(join(fs.root, '.agentscli/hub')), undefined);

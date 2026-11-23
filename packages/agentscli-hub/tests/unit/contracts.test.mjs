@@ -100,30 +100,41 @@ test('conventions accept trigger-only YAML and real H1 while preserving examples
     { code: 'convention-requires' },
   );
 });
-test('requirements are one strict sibling YAML document with explicit origins', () => {
-  const text =
-    'conventions:\n  - id: code-review\n    source: hub\nskills:\n  - id: inspect-code\n    source: hub\n';
+test('general configuration has only an optional skill requirement list with explicit origins', () => {
+  const text = 'requires:\n  - id: inspect-code\n    source: hub\n';
   assert.equal(
-    contract.parseRequires(text, 'requires.yml', { shared: true }).skills[0].id,
+    contract.parseSkillConfiguration(text, 'agentscli-skill.yml', {
+      shared: true,
+    }).requires[0].id,
     'inspect-code',
   );
-  assert.deepEqual(
-    contract.parseRequires('conventions: []\nskills: []', 'requires.yml'),
-    { conventions: [], skills: [] },
-  );
+  for (const empty of ['{}', 'requires: []'])
+    assert.deepEqual(
+      contract.parseSkillConfiguration(empty, 'agentscli-skill.yml'),
+      { requires: [] },
+    );
   for (const value of [
-    'conventions: []',
-    'conventions: "[]"\nskills: []',
-    'conventions: []\nskills: [{id: x, source: global}]',
-    'conventions: []\nskills: [{id: ../x, source: hub}]',
-    'conventions: []\nskills: [{id: x, source: hub, path: x}]',
-    'conventions: []\nskills: [{id: x, source: hub}, {id: x, source: hub}]',
+    '',
+    'null',
+    '[]',
+    'requires: null',
+    'requires: "[]"',
+    'conventions: []\nskills: []',
+    'requires: []\nfuture: true',
+    'requires: [{id: x, source: global}]',
+    'requires: [{id: ../x, source: hub}]',
+    'requires: [{id: front_end/x, source: hub}]',
+    'requires: [{id: x, source: hub, path: x}]',
+    'requires: [{id: x}]',
+    'requires: [{id: x, source: hub}, {id: x, source: hub}]',
   ])
-    assert.throws(() => contract.parseRequires(value, 'requires.yml'));
+    assert.throws(() =>
+      contract.parseSkillConfiguration(value, 'agentscli-skill.yml'),
+    );
   assert.throws(() =>
-    contract.parseRequires(
+    contract.parseSkillConfiguration(
       text.replaceAll('source: hub', 'source: local'),
-      'requires.yml',
+      'agentscli-skill.yml',
       { shared: true },
     ),
   );
@@ -131,16 +142,19 @@ test('requirements are one strict sibling YAML document with explicit origins', 
 test('standard skill metadata uses only the string pointer and validates names', () => {
   assert.equal(
     contract.parseSkill(
-      skill('review-code', 'metadata:\n  requires: requires.yml\n'),
+      skill('review-code', 'metadata:\n  agentscli: agentscli-skill.yml\n'),
       'skills/review-code/SKILL.md',
       'review-code',
-    ).data.metadata.requires,
-    'requires.yml',
+    ).data.metadata.agentscli,
+    'agentscli-skill.yml',
   );
   for (const metadata of [
     'requires: []\n',
     'metadata:\n  requires: [one]\n',
     'metadata:\n  requires: ../requires.yml\n',
+    'metadata:\n  requires: requires.yml\n',
+    'metadata:\n  agentscli: [one]\n',
+    'metadata:\n  agentscli: ../agentscli-skill.yml\n',
   ])
     assert.throws(() =>
       contract.parseSkill(skill('review-code', metadata), 'SKILL.md'),
@@ -161,29 +175,29 @@ test('dependency closure respects source, explicit selection, transitivity, and 
     [
       'hub:a',
       {
-        requires: {
-          conventions: [{ id: 'rules', source: 'hub' }],
-          skills: [{ id: 'b', source: 'hub' }],
-        },
+        requires: [{ id: 'b', source: 'hub' }],
       },
     ],
-    ['hub:b', { requires: { skills: [{ id: 'a', source: 'hub' }] } }],
+    ['hub:b', { requires: [{ id: 'a', source: 'hub' }] }],
     ['local:b', {}],
   ]);
   assert.deepEqual(
-    [...contract.resolveDependencies(map, new Set(['hub:rules']), ['hub:a'])],
+    [...contract.resolveDependencies(map, ['hub:a'])],
     ['hub:a', 'hub:b'],
   );
-  assert.throws(
-    () =>
-      contract.resolveDependencies(map, new Set(['local:rules']), ['hub:a']),
-    { code: 'dependency' },
+  map.get('hub:b').requires.push({ id: 'c', source: 'hub' });
+  assert.throws(() => contract.resolveDependencies(map, ['hub:a']), {
+    code: 'dependency',
+  });
+  map.set('hub:c', {});
+  assert.deepEqual(
+    [...contract.resolveDependencies(map, ['hub:a'])],
+    ['hub:a', 'hub:b', 'hub:c'],
   );
   map.delete('hub:b');
-  assert.throws(
-    () => contract.resolveDependencies(map, new Set(['hub:rules']), ['hub:a']),
-    { code: 'dependency' },
-  );
+  assert.throws(() => contract.resolveDependencies(map, ['hub:a']), {
+    code: 'dependency',
+  });
 });
 test('mechanical links reject inline/reference/image/HTML/encoded convention and skill targets', () => {
   const options = {
@@ -231,7 +245,7 @@ test('skills keep own support links and identities but reject foreign workflow p
   };
   for (const value of [
     '[own](scripts/check.mjs)',
-    '[deps](requires.yml)',
+    '[config](agentscli-skill.yml)',
     'Use two, discovered through its description.',
   ])
     assert.doesNotThrow(() =>
@@ -366,16 +380,17 @@ test('hub discovery only accepts shared roots and explicit same-hub dependencies
     [
       'skills/review-code/SKILL.md',
       Buffer.from(
-        skill('review-code', 'metadata:\n  requires: requires.yml\n'),
+        skill('review-code', 'metadata:\n  agentscli: agentscli-skill.yml\n'),
       ),
     ],
     [
-      'skills/review-code/requires.yml',
-      Buffer.from('conventions: [{id: code-review, source: hub}]\nskills: []'),
+      'skills/review-code/agentscli-skill.yml',
+      Buffer.from('requires:\n  - id: inspect-code\n    source: hub\n'),
     ],
+    ['skills/inspect-code/SKILL.md', Buffer.from(skill('inspect-code'))],
     ['skills/review-code/assets/opaque.bin', Buffer.from([0, 255])],
   ]);
-  assert.equal(contract.validateHubFiles(files).skills.size, 1);
+  assert.equal(contract.validateHubFiles(files).skills.size, 2);
   files.set(
     'skills/agentscli-build-agents/SKILL.md',
     Buffer.from(skill('agentscli-build-agents')),
@@ -385,24 +400,15 @@ test('hub discovery only accepts shared roots and explicit same-hub dependencies
   });
   files.delete('skills/agentscli-build-agents/SKILL.md');
   files.delete('conventions/code-review.tpl.md');
+  assert.equal(contract.validateHubFiles(files).skills.size, 2);
+  files.delete('skills/inspect-code/SKILL.md');
   assert.throws(() => contract.validateHubFiles(files), { code: 'dependency' });
 });
 test('nested convention directories are portable identities without imposing slug rules on directories', () => {
   const files = new Map([
     ['agentscli-hub.yml', Buffer.from('schemaVersion: 1\nversion: 1.0.0')],
     ['conventions/front_end/V2/code-review.tpl.md', Buffer.from(convention())],
-    [
-      'skills/review-code/SKILL.md',
-      Buffer.from(
-        skill('review-code', 'metadata:\n  requires: requires.yml\n'),
-      ),
-    ],
-    [
-      'skills/review-code/requires.yml',
-      Buffer.from(
-        'conventions: [{id: front_end/V2/code-review, source: hub}]\nskills: []',
-      ),
-    ],
+    ['skills/review-code/SKILL.md', Buffer.from(skill('review-code'))],
   ]);
   assert.equal(
     contract
@@ -428,6 +434,15 @@ test('each independent hub skill owns the same enforced link and convention boun
     );
     assert.throws(
       () =>
+        independent.parseConvention(
+          '---\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n# Rules\n',
+          'docs/conventions/rules.md',
+          { shared: false },
+        ),
+      { code: 'convention-requires' },
+    );
+    assert.throws(
+      () =>
         independent.validateLinks(
           '[other](https://example.test/repo/.agents/skills/other/requires.yml)',
           'conventions/rules.tpl.md',
@@ -448,6 +463,127 @@ test('each independent hub skill owns the same enforced link and convention boun
         ),
       { code: 'resource-link' },
     );
+  }
+});
+
+test('all five independent checkers enforce general configuration ownership and skill-only closure', async () => {
+  for (const name of contract.operationalNames) {
+    const independent = await import(
+      `../../assets/templates/skills/${name}/scripts/support.mjs`
+    );
+    const configFile = 'skills/review-code/agentscli-skill.yml';
+    const entryFile = 'skills/review-code/SKILL.md';
+    const files = new Map([
+      ['agentscli-hub.yml', Buffer.from('schemaVersion: 1\nversion: 1.0.0')],
+      [entryFile, Buffer.from(skill('review-code'))],
+    ]);
+    assert.equal(independent.validateHubFiles(files).skills.size, 1);
+    files.set(configFile, Buffer.from('requires: []'));
+    assert.throws(() => independent.validateHubFiles(files), {
+      code: 'skill-config',
+    });
+    files.set(
+      entryFile,
+      Buffer.from(
+        skill('review-code', 'metadata:\n  agentscli: agentscli-skill.yml\n'),
+      ),
+    );
+    assert.equal(independent.validateHubFiles(files).skills.size, 1);
+    files.delete(configFile);
+    assert.throws(() => independent.validateHubFiles(files), {
+      code: 'missing',
+    });
+    for (const empty of ['{}', 'requires: []']) {
+      files.set(configFile, Buffer.from(empty));
+      assert.equal(independent.validateHubFiles(files).skills.size, 1);
+    }
+    for (const invalid of [
+      '',
+      'null',
+      'requires: null',
+      'requires: []\nfuture: {}',
+      'requires: []\nrequires: []',
+      'requires: &items []\nfuture: *items',
+      'requires: !!seq []',
+      'conventions: []\nskills: []',
+      'requires:\n  - id: inspect-code\n    source: local\n',
+    ]) {
+      files.set(configFile, Buffer.from(invalid));
+      assert.throws(() => independent.validateHubFiles(files));
+    }
+    files.set(configFile, Buffer.from([255]));
+    assert.throws(() => independent.validateHubFiles(files), {
+      code: 'encoding',
+    });
+    files.set(
+      configFile,
+      Buffer.from('requires:\n  - id: inspect-code\n    source: hub\n'),
+    );
+    files.set(
+      'conventions/inspect-code.tpl.md',
+      Buffer.from(convention('# Inspect code\n\nKeep rules local.\n')),
+    );
+    assert.throws(() => independent.validateHubFiles(files), {
+      code: 'dependency',
+    });
+    files.set(
+      'skills/inspect-code/SKILL.md',
+      Buffer.from(skill('inspect-code')),
+    );
+    assert.equal(independent.validateHubFiles(files).skills.size, 2);
+    files.delete(configFile);
+    files.set(entryFile, Buffer.from(skill('review-code')));
+    for (const variant of ['Agentscli-skill.yml', 'Requires.yml']) {
+      files.set(`skills/review-code/${variant}`, Buffer.from('requires: []'));
+      assert.throws(() => independent.validateHubFiles(files), {
+        code: 'skill-config',
+      });
+      files.delete(`skills/review-code/${variant}`);
+    }
+    files.set(
+      entryFile,
+      Buffer.from(
+        skill('review-code', 'metadata:\n  agentscli: agentscli-skill.yml\n'),
+      ),
+    );
+    files.set(
+      configFile,
+      Buffer.from('requires:\n  - id: inspect-code\n    source: hub\n'),
+    );
+    const supportFile = 'skills/review-code/references/details.md';
+    files.set(
+      supportFile,
+      Buffer.from(
+        '```markdown\n<!-- agentscli:requires {"skills": []} -->\n```\n',
+      ),
+    );
+    assert.equal(independent.validateHubFiles(files).skills.size, 2);
+    files.set(
+      supportFile,
+      Buffer.from('<!-- agentscli:requires {"skills": []} -->\n'),
+    );
+    assert.throws(() => independent.validateHubFiles(files), {
+      code: 'requires-pointer',
+      file: supportFile,
+    });
+    files.delete(supportFile);
+    files.set(
+      'skills/review-code/requires.yml',
+      Buffer.from('conventions: []\nskills: []'),
+    );
+    assert.throws(() => independent.validateHubFiles(files), {
+      code: 'skill-config',
+    });
+    files.delete('skills/review-code/requires.yml');
+    files.set(
+      entryFile,
+      Buffer.from(
+        skill('review-code', 'metadata:\n  requires: requires.yml\n'),
+      ),
+    );
+    assert.throws(() => independent.validateHubFiles(files), {
+      code: 'skill-config',
+    });
   }
 });
 test('all five independent authoring environments reject legacy consumers and nested hubs', async () => {

@@ -157,6 +157,53 @@ test('entrypoint metadata must match the directory and include a description', (
   }
 });
 
+test('assembly includes declared general files and rejects undeclared or former configuration', () => {
+  const create = (extra, configName, config) => {
+    const fixture = resourceIO();
+    const dir = 'assets/templates/skills/agentscli-edit-agents';
+    fixture.add(
+      `${dir}/SKILL.md`,
+      `---\nname: agentscli-edit-agents\ndescription: Edit project orientation.\n${extra}---\n# Edit\n`,
+    );
+    if (configName) fixture.add(`${dir}/${configName}`, config);
+    return fixture;
+  };
+  const valid = create(
+    'metadata:\n  agentscli: agentscli-skill.yml\n',
+    'agentscli-skill.yml',
+    'requires:\n  - id: agentscli-build-agents\n    source: local\n',
+  );
+  assert.ok(
+    collectResources(valid.root, valid.io).some(
+      (item) =>
+        item.destination === 'skills/agentscli-edit-agents/agentscli-skill.yml',
+    ),
+  );
+  for (const fixture of [
+    create('metadata:\n  agentscli: agentscli-skill.yml\n'),
+    create('', 'agentscli-skill.yml', '{}\n'),
+    create(
+      'metadata:\n  requires: requires.yml\n',
+      'requires.yml',
+      'conventions: []\nskills: []\n',
+    ),
+    create(
+      'metadata:\n  agentscli: agentscli-skill.yml\n',
+      'agentscli-skill.yml',
+      'requires:\n  - id: absent\n    source: local\n',
+    ),
+  ])
+    assert.throws(() => collectResources(fixture.root, fixture.io));
+  const original = valid.io.lstatSync;
+  valid.io.lstatSync = (path) => ({
+    ...original(path),
+    ...(path.endsWith('agentscli-skill.yml')
+      ? { isSymbolicLink: () => true }
+      : {}),
+  });
+  assert.throws(() => collectResources(valid.root, valid.io), /Unsafe/);
+});
+
 test('packaging rejects linked sources, hardlinks, unsafe aliases and missing skill trees', () => {
   const { root, io, add } = resourceIO();
   const original = io.lstatSync;
@@ -180,7 +227,7 @@ test('packaging rejects linked sources, hardlinks, unsafe aliases and missing sk
 });
 test('derived metadata uses actual CLI identity/version without mutating source', () => {
   const input = Buffer.from(
-    '---\nname: agentscli-build-agents\ndescription: Build useful outputs.\nmetadata:\n  requires: requires.yml\n---\n# Build\n',
+    '---\nname: agentscli-build-agents\ndescription: Build useful outputs.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n# Build\n',
   );
   const output = stampSkill(
       input,
@@ -192,7 +239,7 @@ test('derived metadata uses actual CLI identity/version without mutating source'
   assert.equal(fields.compatibility, 'Requires Node.js >= 22.');
   assert.equal(fields.metadata.generatedBy, '@devel-solid/agentscli');
   assert.equal(fields.metadata.generatorVersion, '0.9.7');
-  assert.equal(fields.metadata.requires, 'requires.yml');
+  assert.equal(fields.metadata.agentscli, 'agentscli-skill.yml');
   assert.doesNotMatch(input.toString(), /generatorVersion/);
 });
 
@@ -203,6 +250,9 @@ test('stamping rejects stale, malformed or placeholder provenance instead of sil
       `---\nname: agentscli-build-agents\ndescription: Build useful outputs.\n${extra}---\n# Build\n`,
     );
   for (const extra of [
+    'metadata:\n  requires: requires.yml\n',
+    'metadata:\n  agentscli: ../agentscli-skill.yml\n',
+    'requires: []\n',
     'license: Other\n',
     'compatibility: Requires Node.js.\n',
     'metadata:\n  generatedBy: old-package\n',

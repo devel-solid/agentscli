@@ -4,7 +4,7 @@ description: Explicitly select, preview, import, update, switch, detach, or loca
 license: MIT
 compatibility: Requires Node.js >= 22.
 metadata:
-  requires: requires.yml
+  agentscli: agentscli-skill.yml
 ---
 
 # Manage this project's hub imports
@@ -23,7 +23,7 @@ node scripts/hub-imports.mjs plan --repo-root <project> --repository git@example
 
 Use `--commit <full-object-id>` instead of `--tag` to pin a commit directly. Use `--conventions ""` or `--skills ""` for an explicitly empty selection. Resource IDs are relative convention names without `.tpl.md`, or skill directory names.
 
-Planning inspects committed trees in disposable Git storage, performs the complete prospective source/dependency/destination validation, and returns JSON without writing into the project. Review the exact resolved commit and all proposed changes. Selected skills must explicitly include their hub dependencies; missing dependencies stop the operation. No dependency is fetched automatically.
+Planning inspects committed trees in disposable Git storage, performs the complete prospective source/dependency/destination validation, and returns JSON without writing into the project. Review the exact resolved commit and all proposed changes. Selected skills declare only other skills through optional `metadata.agentscli: agentscli-skill.yml` and its `requires` list of `id`/`source` references. Every transitive hub skill must be explicitly selected from the same revision; missing dependencies stop the operation. Convention selection is independent, and conventions cannot satisfy skill dependencies. No dependency is fetched automatically. Former dependency declarations are unsupported and are not converted or rewritten in accepted snapshots.
 
 Preserve the complete returned JSON as the reviewed intent outside the project inputs. The script does not write a plan file. If saving a plan is not requested, retain its exact commit and selections and use an explicit apply preview before applying.
 
@@ -52,7 +52,7 @@ node scripts/hub-imports.mjs detach --repo-root <project>
 
 Check is entirely local, makes no temporary files, and never invokes Git or the network. It validates accepted integrity and reports generated/installed drift. Ask agentscli-build-agents to repair ordinary materialization drift; discover its project entrypoint rather than linking directly to it.
 
-Detach validates the prospective project without hub resources first. Local authored dependencies on removed resources block removal. Review the exact cleanup and preserve unrelated content. Detach removes the accepted hub snapshot, imported outputs and installed trees, and the optional hub configuration only after verification.
+Detach validates the prospective project without hub resources first. Local authored dependencies on removed skills block removal. Review the exact cleanup and preserve unrelated content. Detach removes the accepted hub snapshot, imported outputs and installed trees, and the optional hub configuration only after verification.
 
 ## Handle failure accurately
 

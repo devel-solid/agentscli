@@ -7,7 +7,7 @@ import {
   resolve,
   sep,
 } from 'node:path';
-import { parseDocument, visit as visitYaml } from 'yaml';
+import { parseDocument, visit as visitYaml, isAlias } from 'yaml';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 
@@ -16,10 +16,11 @@ export function yaml(text) {
   const doc = parseDocument(text, { uniqueKeys: true, prettyErrors: false });
   if (doc.errors.length)
     throw new Error(`Invalid YAML (${doc.errors[0].code}).`);
-  visitYaml(doc, {
-    Alias() {
+  visitYaml(doc, (_key, node) => {
+    if (node?.tag) throw new Error('Explicit YAML tags are not supported.');
+    if (isAlias(node)) {
       throw new Error('YAML aliases are not supported.');
-    },
+    }
   });
   const value = doc.toJS({ maxAliasCount: 0 });
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -328,6 +329,21 @@ export function checkOwnSkill(source, file, context) {
   )
     throw new Error(`${file}: metadata values must be strings.`);
   const own = dirname(file);
+  if (Object.hasOwn(value.metadata ?? {}, 'requires'))
+    throw new Error(
+      `${file}: metadata.requires is unsupported; use metadata.agentscli.`,
+    );
+  if (
+    value.metadata?.agentscli !== undefined &&
+    value.metadata.agentscli !== 'agentscli-skill.yml'
+  )
+    throw new Error(
+      `${file}: metadata.agentscli must point to agentscli-skill.yml.`,
+    );
+  walk(tree(body), (node) => {
+    if (node.type === 'html' && /agentscli:requires/u.test(node.value))
+      throw new Error(`${file}: obsolete skill dependency comment.`);
+  });
   for (const link of links(body)) {
     let decoded;
     try {
@@ -399,57 +415,87 @@ export function context(root, io = fs) {
     ),
   };
 }
+export function skillConfiguration(input, file) {
+  let source;
+  try {
+    source =
+      typeof input === 'string'
+        ? input
+        : new TextDecoder('utf-8', { fatal: true }).decode(input);
+  } catch {
+    throw new Error(`${file}: configuration must be valid UTF-8.`);
+  }
+  const value = yaml(source);
+  if (Object.keys(value).some((name) => name !== 'requires'))
+    throw new Error(
+      `${file}: only the optional requires section is supported.`,
+    );
+  if (!Object.hasOwn(value, 'requires')) return [];
+  if (!Array.isArray(value.requires))
+    throw new Error(`${file}: requires must be a YAML array of skills.`);
+  const seen = new Set();
+  for (const ref of value.requires) {
+    if (
+      !ref ||
+      typeof ref !== 'object' ||
+      Array.isArray(ref) ||
+      Object.keys(ref).sort().join(',') !== 'id,source' ||
+      typeof ref.id !== 'string' ||
+      ref.id.length > 64 ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(ref.id) ||
+      !['local', 'hub'].includes(ref.source)
+    )
+      throw new Error(
+        `${file}: skill requirements need a safe id and local/hub source.`,
+      );
+    const identity = `${ref.source}:${key(ref.id)}`;
+    if (seen.has(identity))
+      throw new Error(`${file}: duplicate skill dependency ${identity}.`);
+    seen.add(identity);
+  }
+  return value.requires;
+}
 export function requirements(skill, info, ctx, io = fs, visited = new Set()) {
   if (visited.has(key(skill))) return;
   visited.add(key(skill));
-  if (info.metadata?.requires === undefined) return;
-  if (info.metadata.requires !== 'requires.yml')
-    throw new Error('metadata.requires must point to requires.yml.');
-  const file = resolve(skill, 'requires.yml');
+  const file = resolve(skill, 'agentscli-skill.yml');
+  if (
+    Object.hasOwn(info.metadata ?? {}, 'requires') ||
+    io.existsSync(resolve(skill, 'requires.yml'))
+  )
+    throw new Error(
+      `${skill}: metadata.requires and requires.yml are unsupported.`,
+    );
+  const pointer = info.metadata?.agentscli;
+  if (pointer === undefined) {
+    if (io.existsSync(file))
+      throw new Error(
+        `${file}: declare metadata.agentscli: agentscli-skill.yml.`,
+      );
+    return;
+  }
+  if (pointer !== 'agentscli-skill.yml')
+    throw new Error(
+      `${skill}: metadata.agentscli must point to agentscli-skill.yml.`,
+    );
+  if (!io.existsSync(file))
+    throw new Error(`${file}: missing declared skill configuration.`);
   checkPath(ctx.root, file, io);
   regular(file, io);
-  const value = yaml(io.readFileSync(file, 'utf8'));
-  if (
-    Object.keys(value).sort().join(',') !== 'conventions,skills' ||
-    !Array.isArray(value.conventions) ||
-    !Array.isArray(value.skills)
-  )
-    throw new Error(`${file}: expected conventions and skills arrays.`);
-  for (const type of ['conventions', 'skills']) {
-    const seen = new Set();
-    for (const ref of value[type]) {
-      if (
-        !ref ||
-        typeof ref !== 'object' ||
-        Object.keys(ref).sort().join(',') !== 'id,source' ||
-        typeof ref.id !== 'string' ||
-        !ref.id ||
-        ref.id.startsWith('/') ||
-        ref.source !== 'local' ||
-        /(?:^|\/)\.\.?($|\/)|[\\<>:"|?*\x00-\x1f]/u.test(ref.id)
-      )
-        throw new Error(`${file}: invalid or unavailable dependency origin.`);
-      if (seen.has(key(ref.id)))
-        throw new Error(`${file}: duplicate dependency.`);
-      seen.add(key(ref.id));
-      const found =
-        type === 'conventions'
-          ? ctx.conventions.some((path) => basename(path, '.md') === ref.id)
-          : ctx.localSkills.some((path) => basename(path) === ref.id);
-      if (!found)
-        throw new Error(
-          `${file}: missing ${type} dependency ${ref.id} from ${ref.source}.`,
-        );
-      if (type === 'skills') {
-        const target = ctx.localSkills.find(
-            (path) => basename(path) === ref.id,
-          ),
-          entry = resolve(target, 'SKILL.md');
-        checkPath(ctx.root, entry, io);
-        regular(entry, io);
-        const data = checkOwnSkill(io.readFileSync(entry, 'utf8'), entry, ctx);
-        requirements(target, data, ctx, io, visited);
-      }
-    }
+  const dependencies = skillConfiguration(io.readFileSync(file), file);
+  for (const ref of dependencies) {
+    const target =
+      ref.source === 'local'
+        ? ctx.localSkills.find((path) => key(basename(path)) === key(ref.id))
+        : undefined;
+    if (!target)
+      throw new Error(
+        `${file}: missing skills dependency ${ref.id} from ${ref.source}.`,
+      );
+    const entry = resolve(target, 'SKILL.md');
+    checkPath(ctx.root, entry, io);
+    regular(entry, io);
+    const data = checkOwnSkill(io.readFileSync(entry, 'utf8'), entry, ctx);
+    requirements(target, data, ctx, io, visited);
   }
 }

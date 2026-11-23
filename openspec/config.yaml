@@ -10,8 +10,14 @@ context: |
   and five hub operational skill sources live independently in their owning package
   assets/templates/skills. Deterministic validation belongs to each responsible
   skill; conventions are self-contained dependency leaves without inter-resource
-  links. Only skills may declare id/source dependencies through metadata.requires
-  pointing to their own requires.yml. Root checks remain unit/type/format only.
+  links. Only skills may depend on other skills, through optional string
+  metadata.agentscli pointing to agentscli-skill.yml with a requires list of
+  id/source references. Required operation instructions stay in each skill's
+  own entrypoint/support; project files remain legitimate work inputs.
+  Major zero means beta, production begins at 1.0.0, and beta contract changes
+  add no transition, migration, backward compatibility, or old-client protection.
+  CLI versions, hub content versions, and manifest formats are independent.
+  Root checks remain unit/type/format only.
   All OpenSpec artifacts in this repository use en-US for natural-language content,
   artifact names, change names, capability names, spec names, requirements,
   scenarios, designs, and tasks.

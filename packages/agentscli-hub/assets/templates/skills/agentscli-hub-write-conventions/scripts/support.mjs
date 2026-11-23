@@ -156,7 +156,11 @@ function plain(node) {
 }
 export function parseConvention(text, file, { shared = true } = {}) {
   const parsed = frontmatter(text, file, shared);
-  if ('requires' in parsed.data || parsed.data.metadata?.requires !== undefined)
+  if (
+    'requires' in parsed.data ||
+    parsed.data.metadata?.requires !== undefined ||
+    parsed.data.metadata?.agentscli !== undefined
+  )
     fail(
       'convention-requires',
       'Conventions are self-contained and cannot declare requires.',
@@ -243,13 +247,19 @@ export function parseSkill(text, file, expectedName) {
     for (const [key, value] of Object.entries(parsed.data.metadata))
       if (typeof value !== 'string')
         fail('skill-metadata', `metadata.${key} must be a string.`, file);
+    if ('requires' in parsed.data.metadata)
+      fail(
+        'skill-config',
+        'metadata.requires is unsupported; use metadata.agentscli: agentscli-skill.yml.',
+        file,
+      );
     if (
-      'requires' in parsed.data.metadata &&
-      parsed.data.metadata.requires !== 'requires.yml'
+      'agentscli' in parsed.data.metadata &&
+      parsed.data.metadata.agentscli !== 'agentscli-skill.yml'
     )
       fail(
-        'requires-pointer',
-        'metadata.requires must be the sibling filename requires.yml.',
+        'skill-config',
+        'metadata.agentscli must be the sibling filename agentscli-skill.yml.',
         file,
       );
   }
@@ -257,65 +267,46 @@ export function parseSkill(text, file, expectedName) {
     if (node.type === 'html' && /agentscli:requires/.test(node.value))
       fail(
         'requires-pointer',
-        'Legacy dependency comments must be converted explicitly to metadata.requires and requires.yml.',
+        'Obsolete dependency comments are unsupported.',
         file,
       );
   });
   return parsed;
 }
-export function parseRequires(text, file, { shared = false } = {}) {
+export function parseSkillConfiguration(text, file, { shared = false } = {}) {
   const data = parseYaml(text, file);
-  exactKeys(data, ['conventions', 'skills'], 'Skill requirements', file);
-  const result = {};
-  for (const kind of ['conventions', 'skills']) {
-    if (!Array.isArray(data[kind]))
-      fail('requires', `${kind} must be an explicit YAML sequence.`, file);
-    const seen = new Set();
-    result[kind] = data[kind].map((item) => {
-      exactKeys(item, ['id', 'source'], 'Requirement', file);
-      if (
-        !validId(item.id, kind === 'skills' ? 'skill' : 'convention') ||
-        !['local', 'hub'].includes(item.source) ||
-        (shared && item.source !== 'hub')
-      )
-        fail(
-          'requires',
-          'Requirements need a safe id and the correct local/hub source.',
-          file,
-        );
-      const key = `${item.source}:${item.id.toLowerCase()}`;
-      if (seen.has(key)) fail('requires', 'Duplicate requirement.', file);
-      seen.add(key);
-      return { id: item.id, source: item.source };
-    });
-  }
-  return result;
+  exactKeys(data, ['requires'], 'Skill configuration', file);
+  if (Object.hasOwn(data, 'requires') && !Array.isArray(data.requires))
+    fail('skill-config', 'requires must be an explicit YAML sequence.', file);
+  const seen = new Set();
+  const requires = (data.requires ?? []).map((item) => {
+    exactKeys(item, ['id', 'source'], 'Required skill', file);
+    if (
+      !validId(item.id, 'skill') ||
+      !['local', 'hub'].includes(item.source) ||
+      (shared && item.source !== 'hub')
+    )
+      fail(
+        'skill-config',
+        'Required skills need a safe id and the correct local/hub source.',
+        file,
+      );
+    const key = `${item.source}:${item.id.toLowerCase()}`;
+    if (seen.has(key)) fail('skill-config', 'Duplicate required skill.', file);
+    seen.add(key);
+    return { id: item.id, source: item.source };
+  });
+  return { requires };
 }
-export function resolveDependencies(
-  skills,
-  conventions,
-  roots = [...skills.keys()],
-) {
+export function resolveDependencies(skills, roots = [...skills.keys()]) {
   const visited = new Set();
-  const conventionKeys = new Set(
-    [...conventions].map((key) => key.toLowerCase()),
-  );
   const visit = (identity) => {
     if (visited.has(identity)) return;
     const skill = skills.get(identity);
     if (!skill)
       fail('dependency', `Missing explicitly selected skill ${identity}.`);
     visited.add(identity);
-    for (const dependency of skill.requires?.conventions ?? []) {
-      const key = `${dependency.source}:${dependency.id.toLowerCase()}`;
-      if (!conventionKeys.has(key))
-        fail(
-          'dependency',
-          `Missing explicitly selected convention ${key}.`,
-          skill.file,
-        );
-    }
-    for (const dependency of skill.requires?.skills ?? [])
+    for (const dependency of skill.requires ?? [])
       visit(`${dependency.source}:${dependency.id}`);
   };
   roots.forEach(visit);
@@ -473,6 +464,12 @@ export function validateLinks(
         if (target) check(target, currentBases);
       }
       if (node.type === 'html') {
+        if (kind === 'skill' && /agentscli:requires/.test(node.value))
+          fail(
+            'requires-pointer',
+            'Obsolete dependency comments are unsupported.',
+            file,
+          );
         const html = node.value.replace(/<!--[\s\S]*?-->/g, '');
         for (const tag of html.matchAll(
           /<[a-z][\w:-]*(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi,
@@ -653,13 +650,35 @@ export function validateHubFiles(
         );
       const parsed = parseSkill(read(file), file, id);
       const root = file.slice(0, -9);
-      let requires;
-      if (parsed.data.metadata?.requires)
-        requires = parseRequires(
-          read(`${root}/requires.yml`),
-          `${root}/requires.yml`,
-          { shared },
+      const configurationFile = `${root}/agentscli-skill.yml`;
+      for (const candidate of files.keys()) {
+        if (!candidate.startsWith(`${root}/`)) continue;
+        const relative = candidate.slice(root.length + 1);
+        if (relative.includes('/')) continue;
+        const reserved = relative.toLowerCase();
+        if (
+          reserved === 'requires.yml' ||
+          (reserved === 'agentscli-skill.yml' && relative !== reserved)
+        )
+          fail(
+            'skill-config',
+            'Reserved skill configuration filenames must use the current exact agentscli-skill.yml name.',
+            candidate,
+          );
+      }
+      const declaresConfiguration =
+        parsed.data.metadata?.agentscli !== undefined;
+      if (!declaresConfiguration && files.has(configurationFile))
+        fail(
+          'skill-config',
+          'agentscli-skill.yml needs metadata.agentscli in SKILL.md.',
+          configurationFile,
         );
+      const { requires } = declaresConfiguration
+        ? parseSkillConfiguration(read(configurationFile), configurationFile, {
+            shared,
+          })
+        : { requires: [] };
       const identity = `${shared ? 'hub' : 'local'}:${id}`;
       skills.set(identity, { file, requires });
       for (const instruction of files.keys()) {
@@ -676,8 +695,7 @@ export function validateHubFiles(
       }
     }
   }
-  if (['shared-skills', 'publish'].includes(scope))
-    resolveDependencies(skills, conventions);
+  if (['shared-skills', 'publish'].includes(scope)) resolveDependencies(skills);
   if (scope === 'agents') {
     const agents = read('AGENTS.md');
     if (!/^#\s+AGENTS\.md\s*$/m.test(agents))

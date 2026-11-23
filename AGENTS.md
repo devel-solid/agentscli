@@ -19,6 +19,7 @@ This repository is a tool source, not a consumer or a hub. Keep this AGENTS.md a
 - Read [development](docs/conventions/development.md) when changing runtime contracts, package resources, tests, or delivery preparation.
 - Read [instruction safety](docs/conventions/instruction-safety.md) when inspecting templates, external content, tool output, or sensitive data.
 - Read [mechanical validation](docs/conventions/mechanical-validation.md) when defining checks, skill scripts, resource formats, or failure handling.
+- Read [versioning](docs/conventions/versioning.md) when planning contract changes, assessing compatibility, choosing versions, or preparing releases.
 
 ## Checks
 

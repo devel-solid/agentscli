@@ -4,7 +4,7 @@ description: Create, review, or update local convention templates in an existing
 license: MIT
 compatibility: Requires Node.js >= 22.
 metadata:
-  requires: requires.yml
+  agentscli: agentscli-skill.yml
 ---
 
 # Maintain client conventions

@@ -52,43 +52,44 @@ Keep each unit focused on one observable behavior. Use injected boundaries for f
 
 Its name is `testing.tpl.md`, derived from its H1 in ASCII lowercase kebab case. Nested paths preserve their structure. Conventions are self-contained: no requires, no links to other conventions, and no links to skills or their support. Main orientation can link discovery resources. Generated convention frontmatter is stripped; trigger links use root AGENTS as their base, and body links use the generated convention location. Literal code examples stay literal.
 
-Skills have their own standard description trigger. They may mention other skill identities, but must discover their actual project location rather than link or hardcode another resource's path. Own support links are allowed. A skill may declare dependencies with native YAML in a contained sibling file:
+Skills have their own standard description trigger and carry their operation's instructions in their own entrypoint or bundled support. They may mention other skill identities, but must discover their actual project location rather than link or hardcode another resource's path. Own support links are allowed; project files remain legitimate work inputs. Optional `metadata.agentscli: agentscli-skill.yml` points to one contained sibling general configuration file. Its initially supported section is `requires`, containing only skill dependencies. This complete shared-skill example assumes `inspect-tests` exists in the same hub:
 
 `skills/review-tests/SKILL.md`:
 
 ```markdown
 ---
 name: review-tests
-description: Review requested test changes using the selected testing rules. Use when reviewing tests or their coverage.
+description: Review requested test changes for meaningful assertions and coverage. Use when reviewing tests.
 license: MIT
 compatibility: Requires Node.js >= 22.
 metadata:
-  requires: requires.yml
+  agentscli: agentscli-skill.yml
 ---
 
 # Review tests
 
-Read the [declared requirements](requires.yml). Find the convention identified as
-`testing` with source `hub` through the project's current instruction discovery.
-Read that actual project resource before reviewing the requested test changes.
+Read the [skill configuration](agentscli-skill.yml). Discover the required
+`inspect-tests` skill with source `hub` among the project's available skills.
+Use its instructions to inspect the requested tests and relevant callers.
 
 Check observable behavior, meaningful assertions, and requested scope. Report
 confirmed findings and the checks actually performed. A review request does not
 authorize edits, generation, imports, or publication.
 ```
 
-`skills/review-tests/requires.yml`:
+`skills/review-tests/agentscli-skill.yml`:
 
 ```yaml
-conventions:
-  - id: testing
+requires:
+  - id: inspect-tests
     source: hub
-skills: []
 ```
 
 This is a complete authored shared skill; its source has no invented generator stamp. Assembly stamps only the nine distributed operational skills across the two CLI packages, using each owning package's actual name and version. Imported authored skills keep their own metadata.
 
-Only skills have requirements. Each dependency is typed by its list and `id`/`source`. Local skills may require local or selected hub resources; shared skills may require only hub resources selected from their same revision. Missing or transitive dependencies block the operation without expanding selection or installing anything.
+Only skills have requirements, and every dependency is another skill identified by exactly `id` and `source: local|hub`. Local skills may require local or explicitly selected hub skills; shared skills may require only hub skills selected from their same revision. Missing or transitive dependencies block the operation without expanding selection or installing anything. A convention with the same ID cannot satisfy a skill dependency. Dependencies never define an invocation schedule or execute downloaded code.
+
+When no additional information is needed, omit both the pointer and file. An explicitly referenced empty mapping or `requires: []` declares no dependencies; blank/null documents, unknown sections, pointer/file disagreement, and unsafe files fail validation. Future supported sections belong in this same file. Beta major-zero releases adopt this contract directly: `metadata.requires`, the former `requires.yml`, and conventions/skills dependency mappings are unsupported, with no compatibility reader or conversion. Accepted sources remain pinned and are never rewritten to make old input valid; managed operational copies are replaced normally by apply.
 
 ## Offline agent workflow
 
@@ -120,6 +121,7 @@ hub:
     - testing
   skills:
     - review-tests
+    - inspect-tests
 ```
 
 Selections are explicit; empty arrays mean nothing selected. Every resource uses the same exact full commit. A requested tag is resolved during explicit remote planning and pinned; ordinary commands never follow a moved tag or access a remote. Hub `agentscli-hub.yml` has `schemaVersion: 1` and the hub content `version`, such as `1.0.0`, independent of its authoring CLI version.

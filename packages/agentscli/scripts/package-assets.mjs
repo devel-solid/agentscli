@@ -100,6 +100,15 @@ export function stampSkill(content, pkg, path) {
   )
     throw new Error('Skill metadata must contain string values.');
   if (
+    Object.hasOwn(header.fields, 'requires') ||
+    Object.hasOwn(header.fields.metadata ?? {}, 'requires') ||
+    (header.fields.metadata?.agentscli !== undefined &&
+      header.fields.metadata.agentscli !== 'agentscli-skill.yml')
+  )
+    throw new Error(
+      'Use metadata.agentscli: agentscli-skill.yml for skill configuration.',
+    );
+  if (
     Object.hasOwn(header.fields.metadata ?? {}, 'generatedBy') ||
     Object.hasOwn(header.fields.metadata ?? {}, 'generatorVersion')
   )

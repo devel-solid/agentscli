@@ -689,9 +689,9 @@ test('legacy migration validates prospective local skill requirements before the
   const fs = legacy({
     extras: {
       '.agents/skills/local-review/SKILL.md':
-        '---\nname: local-review\ndescription: Review requested content.\nmetadata:\n  requires: requires.yml\n---\n# Review\n',
-      '.agents/skills/local-review/requires.yml':
-        'conventions: []\nskills:\n  - id: missing\n    source: local\n',
+        '---\nname: local-review\ndescription: Review requested content.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n# Review\n',
+      '.agents/skills/local-review/agentscli-skill.yml':
+        'requires:\n  - id: missing\n    source: local\n',
     },
   });
   for (const dryRun of [true, false]) {

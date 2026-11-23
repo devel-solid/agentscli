@@ -2,7 +2,9 @@
 
 Use English for this hub's internal instructions. Keep every convention self-contained. A convention cannot declare requires or link to other conventions, skills, skill directories, or skill support files. A convention's filename matches its single H1's ASCII kebab-case slug. Shared convention templates have leading YAML containing only a nonempty string trigger and use the `.tpl.md` suffix.
 
-Shared skills use standard SKILL.md frontmatter with a name matching their direct-child directory and a useful activation description. Optional dependency metadata contains the string requires.yml; the sibling native YAML document contains conventions and skills lists of id/source mappings. Shared dependencies use source hub and must all exist in this same revision. Each selection is explicit; dependencies never install implicitly.
+Shared skills use standard SKILL.md frontmatter with a name matching their direct-child directory and a useful activation description. Optional general configuration uses `metadata.agentscli: agentscli-skill.yml` and a sibling YAML mapping. Its optional `requires` section is a list containing only skill id/source mappings. Shared dependencies use source hub and must all exist in this same revision. Each selection is explicit; dependencies never install implicitly. A skill without additional configuration needs no file. Unsupported sections, obsolete dependency declarations, and orphan configuration files are invalid.
+
+Every skill carries the instructions needed for its own operation in its entrypoint or bundled support. It never depends on a convention or external instruction file; another declared skill may own a distinct operation. Configuration, source files, and conventions being maintained remain valid work inputs. The absence of an unrelated convention must not make a skill unavailable through dependency resolution.
 
 Skills mention other resources by identity. They do not link to conventions, other skills, or foreign support paths. An agent discovers actual targets through project instructions and available skills. Links to a skill's own supporting files remain valid.
 

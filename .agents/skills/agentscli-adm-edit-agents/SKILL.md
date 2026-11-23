@@ -1,8 +1,6 @@
 ---
 name: agentscli-adm-edit-agents
 description: Maintain this tool monorepo's handwritten root AGENTS.md and convention discovery. Use for repository orientation and discovery changes, not detailed convention or skill authorship.
-metadata:
-  requires: requires.yml
 ---
 
 # Maintain the monorepo entrypoint

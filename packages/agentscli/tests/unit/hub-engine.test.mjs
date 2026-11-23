@@ -36,11 +36,9 @@ function fixture({
     'agentscli-hub.yml': bytes('schemaVersion: 1\nversion: 1.4.0\n'),
     'conventions/testing.tpl.md': bytes(conv('Testing')),
     'skills/review/SKILL.md': bytes(
-      '---\nname: review\ndescription: Review test changes.\nmetadata:\n  requires: requires.yml\n---\n\n# Review\n\nFollow the selected testing convention discovered from project instructions.\n',
+      '---\nname: review\ndescription: Review test changes.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n\n# Review\n\nCheck changed behavior and report concrete failures.\n',
     ),
-    'skills/review/requires.yml': bytes(
-      'conventions:\n  - id: testing\n    source: hub\nskills: []\n',
-    ),
+    'skills/review/agentscli-skill.yml': bytes('requires: []\n'),
     'skills/review/scripts/run.sh': bytes('#!/bin/sh\necho ok\n'),
     'skills/review/assets/raw.dat': opaque,
   };
@@ -141,9 +139,19 @@ test('installed edits, extras, missing files and CRLF are drift, while accepted 
   fs.put('.agents/skills/review/SKILL.md', 'edited output');
   fs.put('.agents/skills/review/extra.bin', 'extra');
   fs.put('.agents/skills/review/scripts/run.sh', '#!/bin/sh\r\necho ok\r\n');
+  fs.put('.agents/skills/review/agentscli-skill.yml', 'damaged managed output');
+  fs.put('.agents/skills/review/requires.yml', 'obsolete managed output');
   assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 1);
   success(await invoke(fs));
   assert.match(fs.text('.agents/skills/review/SKILL.md'), /name: review/);
+  assert.equal(
+    fs.text('.agents/skills/review/agentscli-skill.yml'),
+    'requires: []\n',
+  );
+  assert.equal(
+    fs.io.info(join(fs.root, '.agents/skills/review/requires.yml')),
+    undefined,
+  );
   assert.equal(
     fs.nodes.has(join(fs.root, '.agents/skills/review/extra.bin')),
     false,
@@ -151,6 +159,7 @@ test('installed edits, extras, missing files and CRLF are drift, while accepted 
   for (const path of [
     '.agentscli/hub/skills/review/assets/raw.dat',
     '.agentscli/hub/conventions/testing.tpl.md',
+    '.agentscli/hub/skills/review/agentscli-skill.yml',
   ]) {
     const original = fs.io.read(join(fs.root, path));
     fs.put(path, bytes('tampered'));
@@ -161,6 +170,42 @@ test('installed edits, extras, missing files and CRLF are drift, while accepted 
   }
   fs.put('.agentscli/hub/unexpected.txt', 'extra');
   assert.equal((await invoke(fs)).exitCode, 2);
+});
+
+test('accepted old-format sources fail current checks without conversion or source writes', async () => {
+  const fs = fixture();
+  const old = {
+    'skills/review/SKILL.md': bytes(
+      '---\nname: review\ndescription: Review.\nmetadata:\n  requires: requires.yml\n---\n# Review\n',
+    ),
+    'skills/review/requires.yml': bytes('conventions: []\nskills: []\n'),
+  };
+  delete fs.lock.files['skills/review/agentscli-skill.yml'];
+  delete fs.files['skills/review/agentscli-skill.yml'];
+  fs.nodes.delete(
+    join(fs.root, '.agentscli/hub/skills/review/agentscli-skill.yml'),
+  );
+  for (const [path, content] of Object.entries(old)) {
+    fs.files[path] = content;
+    fs.lock.files[path] = {
+      representation: 'utf8-lf',
+      sha256: sha256(content),
+      gitMode: '100644',
+    };
+    fs.put(`.agentscli/hub/${path}`, content);
+  }
+  fs.put('.agentscli/hub/lock.yml', stringifyYaml(fs.lock));
+  for (const command of ['validate', 'sync']) {
+    const before = fs.writes.length;
+    const response = await invoke(fs, command);
+    assert.equal(response.exitCode, 2, JSON.stringify(response.result));
+    assert.equal(response.result.diagnostics[0].code, 'SKILL_REQUIRES');
+    assert.equal(fs.writes.length, before);
+    assert.equal(
+      fs.text('.agentscli/hub/skills/review/requires.yml'),
+      'conventions: []\nskills: []\n',
+    );
+  }
 });
 test('recorded representation never reclassifies opaque or invalid text and keeps BOM/final newline', () => {
   const original = bytes('\uFEFFalpha  \r\nbeta');
@@ -192,11 +237,11 @@ test('candidate output collisions, malformed declarations and wrong-origin deps 
   const fresh = fixture();
   fresh.put(
     '.agents/skills/local-review/SKILL.md',
-    '---\nname: local-review\ndescription: Review locally.\nmetadata:\n  requires: requires.yml\n---\n# Review\n',
+    '---\nname: local-review\ndescription: Review locally.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n# Review\n',
   );
   fresh.put(
-    '.agents/skills/local-review/requires.yml',
-    'conventions:\n  - id: testing\n    source: local\nskills: []\n',
+    '.agents/skills/local-review/agentscli-skill.yml',
+    'requires:\n  - id: review\n    source: local\n',
   );
   assert.equal((await invoke(fresh)).exitCode, 2);
   assert.equal(fresh.writes.length, 0);

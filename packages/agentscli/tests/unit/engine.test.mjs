@@ -57,7 +57,22 @@ export const resources = {
   skills: Object.fromEntries(
     PRODUCT_SKILLS.map((id) => [
       id,
-      { 'SKILL.md': skill(id), 'references/note.md': bytes('Own support.\n') },
+      {
+        'SKILL.md': skill(
+          id,
+          id === 'agentscli-build-agents'
+            ? ''
+            : 'metadata:\n  agentscli: agentscli-skill.yml\n',
+        ),
+        'references/note.md': bytes('Own support.\n'),
+        ...(id === 'agentscli-build-agents'
+          ? {}
+          : {
+              'agentscli-skill.yml': bytes(
+                'requires:\n  - id: agentscli-build-agents\n    source: local\n',
+              ),
+            }),
+      },
     ]),
   ),
 };
@@ -167,16 +182,18 @@ test('conventions require only trigger and exactly one live H1; examples remain 
     'Read testing.',
   );
 });
-test('dependency files are native exact typed YAML with same-origin graph traversal', () => {
+test('general skill configuration resolves only explicitly available skills by origin', () => {
   const files = {
-    'SKILL.md': skill('review', 'metadata:\n  requires: requires.yml\n'),
-    'requires.yml': bytes(
-      'conventions:\n  - id: testing\n    source: hub\nskills: []\n',
+    'SKILL.md': skill(
+      'review',
+      'metadata:\n  agentscli: agentscli-skill.yml\n',
+    ),
+    'agentscli-skill.yml': bytes(
+      'requires:\n  - id: testing\n    source: hub\n',
     ),
   };
   assert.equal(
-    skillRequirements(files, 'skills/review', 'hub').requirements.conventions[0]
-      .id,
+    skillRequirements(files, 'skills/review', 'hub').requirements[0].id,
     'testing',
   );
   assert.throws(
@@ -193,34 +210,135 @@ test('dependency files are native exact typed YAML with same-origin graph traver
     output: '.agentscli/conventions/testing.md',
     text: convention(),
   };
-  validateResources({
-    conventions: [conv],
-    skills: [{ id: 'review', source: 'hub', path: 'skills/review', files }],
-  });
-  for (const requires of [
-    'conventions: []\nskills: []\nunknown: true',
-    'conventions: []\nskills:\n  - id: local\n    source: local',
-  ])
-    assert.throws(() =>
-      skillRequirements(
-        { ...files, 'requires.yml': bytes(requires) },
-        'skills/review',
-        'hub',
+  const review = { id: 'review', source: 'hub', path: 'skills/review', files };
+  const testing = {
+    id: 'testing',
+    source: 'hub',
+    path: 'skills/testing',
+    files: {
+      'SKILL.md': skill(
+        'testing',
+        'metadata:\n  agentscli: agentscli-skill.yml\n',
       ),
-    );
-  assert.throws(() =>
-    skillRequirements(
-      { 'SKILL.md': skill('review', 'requires: []\n') },
-      'skills/review',
-    ),
+      'agentscli-skill.yml': bytes(
+        'requires:\n  - id: review\n    source: hub\n',
+      ),
+    },
+  };
+  assert.throws(
+    () => validateResources({ conventions: [conv], skills: [review] }),
+    /explicitly available skill/,
   );
-  assert.throws(() =>
+  assert.throws(
+    () =>
+      validateResources({ skills: [review, { ...testing, source: 'local' }] }),
+    /explicitly available skill/,
+  );
+  validateResources({ conventions: [conv], skills: [review, testing] });
+  assert.throws(
+    () =>
+      validateResources({
+        skills: [
+          review,
+          {
+            ...testing,
+            files: {
+              ...testing.files,
+              'agentscli-skill.yml': bytes(
+                'requires:\n  - id: absent\n    source: hub\n',
+              ),
+            },
+          },
+        ],
+      }),
+    /absent/,
+  );
+});
+
+test('optional skill configuration is strict native YAML and rejects obsolete declarations', () => {
+  const entry = skill(
+    'review',
+    'metadata:\n  agentscli: agentscli-skill.yml\n',
+  );
+  const parse = (config, source = 'local') =>
     skillRequirements(
       {
-        'SKILL.md': skill('review', 'metadata:\n  requires: "{skills: []}"\n'),
+        'SKILL.md': entry,
+        'agentscli-skill.yml':
+          typeof config === 'string' ? bytes(config) : config,
       },
       'skills/review',
-    ),
+      source,
+    );
+  for (const valid of ['{}\n', 'requires: []\n'])
+    assert.deepEqual(parse(valid).requirements, []);
+  assert.deepEqual(
+    skillRequirements({ 'SKILL.md': skill('review') }, 'skills/review')
+      .requirements,
+    [],
+  );
+  const local = 'requires:\n  - id: testing\n    source: local\n';
+  assert.equal(parse(local).requirements[0].id, 'testing');
+  assert.throws(() => parse(local, 'hub'), /source/);
+  for (const invalid of [
+    '',
+    'null',
+    '[]',
+    '"requires: []"',
+    'requires: null',
+    'requires: "[]"',
+    'requires: []\nunknown: true',
+    'requires: []\nrequires: []',
+    'conventions: []\nskills: []',
+    'requires: {skills: []}',
+    'requires: &list []\nother: *list',
+    'requires: !!seq []',
+    'requires:\n  - id: x\n    source: global',
+    'requires:\n  - id: ../x\n    source: local',
+    'requires:\n  - id: x\n    source: local\n    type: convention',
+    'requires:\n  - id: x\n    source: local\n  - id: x\n    source: local',
+  ])
+    assert.throws(() => parse(invalid), invalid);
+  assert.throws(() => parse(new Uint8Array([0xff])));
+  for (const files of [
+    { 'SKILL.md': entry },
+    {
+      'SKILL.md': skill('review'),
+      'agentscli-skill.yml': bytes('requires: []'),
+    },
+    {
+      'SKILL.md': skill(
+        'review',
+        'metadata:\n  agentscli: ../agentscli-skill.yml\n',
+      ),
+      'agentscli-skill.yml': bytes('{}'),
+    },
+    {
+      'SKILL.md': skill(
+        'review',
+        'metadata:\n  agentscli: [agentscli-skill.yml]\n',
+      ),
+    },
+    { 'SKILL.md': skill('review', 'requires: []\n') },
+    { 'SKILL.md': skill('review', 'metadata:\n  requires: requires.yml\n') },
+    {
+      'SKILL.md': skill('review'),
+      'requires.yml': bytes('conventions: []\nskills: []'),
+    },
+    {
+      'SKILL.md': bytes(
+        '---\nname: review\ndescription: Review.\n---\n<!-- agentscli:requires {} -->\n',
+      ),
+    },
+  ])
+    assert.throws(() => skillRequirements(files, 'skills/review'));
+  skillRequirements(
+    {
+      'SKILL.md': bytes(
+        '---\nname: review\ndescription: Review.\n---\n```markdown\n<!-- agentscli:requires {} -->\n```\n',
+      ),
+    },
+    'skills/review',
   );
 });
 test('standard skill frontmatter rejects extension keys and non-string optional fields', () => {
@@ -334,6 +452,13 @@ test('apply previews without writes then replaces managed drift while preserving
     '.agents/skills/agentscli-edit-agents/SKILL.md',
     'broken output metadata',
   );
+  fs.put(
+    '.agents/skills/agentscli-edit-agents/requires.yml',
+    'obsolete declaration',
+  );
+  fs.nodes.delete(
+    join(fs.root, '.agents/skills/agentscli-edit-agents/agentscli-skill.yml'),
+  );
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.match(fs.text('AGENTS.md'), /Custom/);
   assert.match(
@@ -351,6 +476,16 @@ test('apply previews without writes then replaces managed drift while preserving
     false,
   );
   assert.match(fs.text('.agents/skills/unrelated/SKILL.md'), /unrelated/);
+  assert.equal(
+    fs.io.info(
+      join(fs.root, '.agents/skills/agentscli-edit-agents/requires.yml'),
+    ),
+    undefined,
+  );
+  assert.equal(
+    fs.text('.agents/skills/agentscli-edit-agents/agentscli-skill.yml'),
+    'requires:\n  - id: agentscli-build-agents\n    source: local\n',
+  );
 });
 test('apply preserves existing language and templates; explicit language changes notices without translation', async () => {
   const fs = client({
