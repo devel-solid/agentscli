@@ -1,5 +1,5 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path';
-import { EngineError } from './manifest.mjs';
+import { EngineError } from './contracts.mjs';
 export function portableKey(path) {
   return path.replaceAll('\\', '/').normalize('NFC').toLowerCase();
 }

@@ -234,7 +234,6 @@ export function inspectArchive(bytes, expected, prepared) {
             'name',
             'description',
             'license',
-            'compatibility',
             'metadata',
             'allowed-tools',
           ].includes(field),
@@ -242,7 +241,6 @@ export function inspectArchive(bytes, expected, prepared) {
       data.name !== skill ||
       !data.description?.trim() ||
       data.license !== 'MIT' ||
-      data.compatibility !== 'Requires Node.js >= 22.' ||
       data.metadata?.generatedBy !== pkg.name ||
       data.metadata?.generatorVersion !== pkg.version ||
       Object.values(data.metadata).some((value) => typeof value !== 'string')
@@ -283,7 +281,6 @@ export function inspectArchive(bytes, expected, prepared) {
       );
     if (
       /^package\/(?:tests|openspec|\.agents|src)\//u.test(path) ||
-      path === 'package/agentscli.yml' ||
       /agentscli-adm-/u.test(path)
     )
       throw new Error(`Repository-only material in archive: ${path}`);

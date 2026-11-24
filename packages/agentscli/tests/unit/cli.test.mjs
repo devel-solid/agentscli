@@ -71,6 +71,11 @@ test('removed, misplaced, duplicate, and incompatible options never dispatch', a
     ['sync', '--lang', 'en'],
     ['validate', '--dry-run'],
     ['apply', '--check'],
+    ['apply', '--migrate'],
+    ['--migrate', 'apply'],
+    ['apply', '--migrate=true'],
+    ['apply', '--migrate', '--json'],
+    ['apply', '--help', '--migrate'],
     ['apply', '--migrate', '--check'],
     ['sync', '--migrate'],
     ['validate', '--migrate'],
@@ -130,46 +135,11 @@ test('help and standalone version use no runtime or project writes', async () =>
   const help = await runCli(['--help', '--json'], dependencies);
   assert.equal(JSON.parse(help.stdout).command, 'help');
   assert.match(JSON.parse(help.stdout).text, /Git state/);
-  assert.match(JSON.parse(help.stdout).text, /apply --migrate/);
-  assert.doesNotMatch(JSON.parse(help.stdout).text, /--lang/);
+  assert.doesNotMatch(JSON.parse(help.stdout).text, /--lang|--migrate/);
   assert.doesNotMatch(
     helpText('0.1.0'),
     /agentscli release|--base|--frozen|--offline/,
   );
-});
-
-test('migration remains apply and forwards preview, and common options', async () => {
-  const root = resolve('migration-client');
-  for (const args of [
-    ['apply', '--migrate', '--dry-run', '--json'],
-    ['--migrate', '--dry-run', '--json', 'apply'],
-  ]) {
-    const calls = [];
-    const response = await runCli(args, {
-      cwd: root,
-      execute: async (...values) => {
-        calls.push(values);
-        return engineResult('apply', 0, [
-          {
-            action: 'delete',
-            path: 'agentscli-compose.yml',
-            status: 'pending',
-          },
-        ]);
-      },
-    });
-    assert.deepEqual(calls, [
-      ['apply', { repoRoot: root, dryRun: true, migrate: true }],
-    ]);
-    assert.equal(response.exitCode, 0);
-    assert.equal(response.stderr, '');
-    assert.equal(JSON.parse(response.stdout).command, 'apply');
-    assert.equal(JSON.parse(response.stdout).changes[0].status, 'pending');
-  }
-  assert.deepEqual(parseArguments(['apply', '--migrate'], root).options, {
-    repoRoot: root,
-    migrate: true,
-  });
 });
 
 test('JSON preserves drift, validation, and operational exit codes in one document', async () => {
@@ -207,13 +177,13 @@ test('partial failures retain completed and pending effects without claiming suc
   ]);
   failed.result.diagnostics.push({
     code: 'OPERATION_FAILED',
-    message: 'Repeat sync to finish.',
+    message: 'Repeat apply to finish.',
   });
   const response = await runCli(['apply'], { execute: async () => failed });
   assert.equal(response.exitCode, 3);
   assert.match(response.stdout, /completed update: AGENTS\.md/);
   assert.match(response.stdout, /pending update: \.agents\/skills/);
-  assert.match(response.stderr, /Repeat sync/);
+  assert.match(response.stderr, /Repeat apply/);
   assert.doesNotMatch(response.stdout, /Everything is up to date/);
 });
 

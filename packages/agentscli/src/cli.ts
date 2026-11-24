@@ -8,8 +8,6 @@ type Command = 'apply';
 interface ExecuteOptions {
   repoRoot: string;
   dryRun?: boolean;
-  check?: boolean;
-  migrate?: boolean;
 }
 interface RuntimeResult {
   schemaVersion: number;
@@ -31,7 +29,7 @@ export function helpText(packageVersion = version): string {
   return `agentscli ${packageVersion} — project instructions from editable templates
 
 Usage:
-  agentscli apply [--migrate] [--dry-run]
+  agentscli apply [--dry-run]
   agentscli --help
   agentscli --version
 
@@ -40,12 +38,10 @@ Common options: --repo-root <directory>, --json.
 apply creates missing setup and replaces managed documents and the two operational
 skill trees, removing obsolete managed files. Authored templates, Git state and unrelated
 files stay preserved. --dry-run previews without writes. Create convention templates
-in .agentscli/templates with agentscli-write-conventions; generated
+in .agentscli/templates/conventions with agentscli-write-conventions; generated
 root AGENTS.md and .agentscli/conventions are replaceable. Version .agentscli and
 operational skills. Validation and offline synchronization belong to the private
 scripts of agentscli-build-agents, discoverable through project skills.
-apply --migrate explicitly transfers a supported legacy client or converts old
-AGENT-CARD templates. Preview it with --dry-run. A completed migration is a no-op.
 After partial failure repeat the same authorized operation; there is no rollback.
 Exit codes: 0 success; 2 usage/validation/conflict; 3 operational failure.
 `;
@@ -74,7 +70,6 @@ export function parseArguments(
       json: { type: 'boolean' },
       help: { type: 'boolean' },
       version: { type: 'boolean' },
-      migrate: { type: 'boolean' },
       'dry-run': { type: 'boolean' },
     },
   });
@@ -98,7 +93,7 @@ export function parseArguments(
   if (!command && !values.help)
     throw new Error('Choose apply. Use agentscli --help.');
   const allowed: Record<string, string[]> = {
-    apply: ['dry-run', 'migrate'],
+    apply: ['dry-run'],
   };
   for (const name of seen) {
     if (['repo-root', 'json', 'help'].includes(name)) continue;
@@ -117,7 +112,6 @@ export function parseArguments(
     options: {
       repoRoot: resolve(cwd, values['repo-root'] ?? '.'),
       ...(values['dry-run'] ? { dryRun: true } : {}),
-      ...(values.migrate ? { migrate: true } : {}),
     },
   };
 }
@@ -218,10 +212,7 @@ export async function runCli(
       ? { exitCode, stdout: JSON.stringify(result) + '\n', stderr: '' }
       : {
           exitCode,
-          ...describeResult(
-            result,
-            parsed.options.dryRun === true || parsed.options.check === true,
-          ),
+          ...describeResult(result, parsed.options.dryRun === true),
         };
   } catch (error) {
     return failure(

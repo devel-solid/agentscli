@@ -5,10 +5,9 @@ import {
   TEMPLATE_ROOT,
   CONVENTION_ROOT,
   OUTPUT_ROOT,
-  MANIFEST,
   PRODUCT_SKILLS,
-} from './manifest.mjs';
-import { decode, frontmatter, GENERATED } from './markdown.mjs';
+} from './contracts.mjs';
+import { decode, frontmatter } from './markdown.mjs';
 import { containedPath, portableKey, uniquePaths } from './paths.mjs';
 import { assertClientContext, disk, inspect, walk } from './io.mjs';
 import { render } from './render.mjs';
@@ -17,8 +16,6 @@ const compareKeys = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const bytes = (text) => new TextEncoder().encode(text);
 export const equalBytes = (a, b) =>
   a.length === b.length && a.every((value, index) => value === b[index]);
-export const isGeneratedConvention = (content) =>
-  Buffer.from(content).toString('utf8').split(/\r?\n/u, 1)[0] === GENERATED;
 export function isGenerated(content) {
   try {
     const header = frontmatter(decode(content, 'AGENTS.md'), 'AGENTS.md');
@@ -151,13 +148,6 @@ function effectBuilder(io, root) {
 }
 export function plan(io, root, command, resources) {
   assertClientContext(io, root);
-  if (inspect(io, root, MANIFEST, 'file'))
-    throw new EngineError(
-      'MIGRATION_REQUIRED',
-      'Preview agentscli apply --migrate --dry-run, then repeat agentscli apply --migrate.',
-      2,
-      MANIFEST,
-    );
   const applying = command === 'apply';
   inspect(io, root, TEMPLATE_ROOT, 'directory');
   inspect(io, root, OUTPUT_ROOT, 'directory');
@@ -201,9 +191,7 @@ export function plan(io, root, command, resources) {
   if (inspect(io, root, '.agents/skills', 'directory'))
     for (const id of io.names(containedPath(root, '.agents/skills')).sort()) {
       const directory = `.agents/skills/${id}`;
-      const managed =
-        PRODUCT_SKILLS.includes(id) ||
-        ['agentscli-update-agents', 'agentscli-edit-agents'].includes(id);
+      const managed = PRODUCT_SKILLS.includes(id);
       const entry = inspect(
         io,
         root,
@@ -269,8 +257,6 @@ export function plan(io, root, command, resources) {
   if (applying) {
     for (const id of PRODUCT_SKILLS)
       tree(`.agents/skills/${id}`, resources.skills[id]);
-    tree('.agents/skills/agentscli-update-agents', {});
-    tree('.agents/skills/agentscli-edit-agents', {});
   }
   uniquePaths(
     effects

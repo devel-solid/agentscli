@@ -31,7 +31,6 @@ export function isBuildIdentity(text) {
     typeof fields.description === 'string' &&
     !!fields.description.trim() &&
     fields.license === 'MIT' &&
-    fields.compatibility === 'Requires Node.js >= 22.' &&
     fields.metadata?.generatedBy === '@devel-solid/agentscli' &&
     typeof fields.metadata?.generatorVersion === 'string' &&
     /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/u.test(
@@ -111,20 +110,6 @@ export async function check(
     )
       throw new Error('Use --repo-root <directory> and optional --json.');
     const root = safe(resolve(values['repo-root'] ?? '.'), fs, 'directory');
-    for (let current = root; ; current = dirname(current)) {
-      for (const marker of ['agentscli-compose.yml']) {
-        try {
-          fs.lstatSync(join(current, marker));
-          throw new Error(
-            'Legacy context is incompatible with consumer authoring.',
-          );
-        } catch (error) {
-          if (error.code !== 'ENOENT') throw error;
-        }
-      }
-      const parent = dirname(current);
-      if (parent === current) break;
-    }
     const engine = await load(discoverEngine(root, { fs }));
     return await engine.execute('validate', { repoRoot: root });
   } catch (error) {

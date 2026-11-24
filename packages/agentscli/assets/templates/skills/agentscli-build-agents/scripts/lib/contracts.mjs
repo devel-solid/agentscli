@@ -10,8 +10,7 @@ export class EngineError extends Error {
 }
 export const TEMPLATE_ROOT = '.agentscli/templates',
   CONVENTION_ROOT = `${TEMPLATE_ROOT}/conventions`,
-  OUTPUT_ROOT = '.agentscli/conventions',
-  MANIFEST = 'agentscli-compose.yml';
+  OUTPUT_ROOT = '.agentscli/conventions';
 export const PRODUCT_SKILLS = [
   'agentscli-write-conventions',
   'agentscli-build-agents',
@@ -108,50 +107,4 @@ export function validPackageVersion(value) {
         .split('.')
         .every((v) => !/^\d+$/u.test(v) || v === '0' || !v.startsWith('0')))
   );
-}
-export function parseLegacyManifest(text) {
-  // Existing legacy metadata may contain language; only resource roots matter.
-  const fields = parseYaml(text, MANIFEST);
-  exactKeys(
-    fields,
-    ['templates_dir', 'conventions_dir'],
-    ['language'],
-    MANIFEST,
-  );
-  const a = rootDirectory(fields.templates_dir),
-    b = rootDirectory(fields.conventions_dir);
-  if (
-    portableKey(a) === portableKey(b) ||
-    portableKey(a).startsWith(`${portableKey(b)}/`) ||
-    portableKey(b).startsWith(`${portableKey(a)}/`)
-  )
-    throw new EngineError(
-      'ROOT_OVERLAP',
-      'Legacy roots must not overlap.',
-      2,
-      MANIFEST,
-    );
-  return { templates_dir: a, conventions_dir: b };
-}
-function rootDirectory(value) {
-  const normalized = relativePath(value);
-  if (
-    portableKey(normalized) === '.agentscli' ||
-    portableKey(normalized).startsWith('.agentscli/') ||
-    normalized
-      .split('/')
-      .some((part) =>
-        ['.git', '.agents', '.cache', 'node_modules'].includes(
-          portableKey(part),
-        ),
-      ) ||
-    ['agents.md', MANIFEST].includes(portableKey(normalized.split('/')[0]))
-  )
-    throw new EngineError(
-      'ROOT_RESERVED',
-      `Reserved legacy directory: ${value}.`,
-      2,
-      MANIFEST,
-    );
-  return normalized;
 }

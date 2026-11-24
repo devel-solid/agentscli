@@ -1,4 +1,4 @@
-export * from './manifest.mjs';
+export * from './contracts.mjs';
 export * from './io.mjs';
 export * from './plan.mjs';
 export * from './runtime.mjs';

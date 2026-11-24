@@ -144,8 +144,6 @@ export function monorepo(start, io = fs) {
           typeof identities.get('@devel-solid/agentscli')?.bin?.agentscli ===
             'string'
         ) {
-          if (io.existsSync(resolve(at, 'agentscli-compose.yml')))
-            throw new Error('Conflicting tool source/consumer role.');
           return at;
         }
       }
@@ -263,13 +261,6 @@ export function checkConvention(source, file, context) {
     throw new Error(
       `${file}: handwritten convention frontmatter, when present, supports only nonempty trigger.`,
     );
-  walk(tree(body), (node) => {
-    if (
-      node.type === 'html' &&
-      /<!--\s*AGENT-CARD\s+(?:START|END)/u.test(node.value)
-    )
-      throw new Error(`${file}: obsolete convention card declaration.`);
-  });
   const headings = [];
   walk(tree(body), (node) => {
     if (node.type === 'heading' && node.depth === 1) headings.push(plain(node));
@@ -295,7 +286,6 @@ export function checkOwnSkill(source, file, context) {
     'name',
     'description',
     'license',
-    'compatibility',
     'metadata',
     'allowed-tools',
   ];

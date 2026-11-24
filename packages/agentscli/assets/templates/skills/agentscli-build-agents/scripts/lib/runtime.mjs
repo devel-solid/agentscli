@@ -1,5 +1,5 @@
 import { containedPath } from './paths.mjs';
-import { EngineError } from './manifest.mjs';
+import { EngineError } from './contracts.mjs';
 import {
   checkRoot,
   assertClientContext,
@@ -9,7 +9,6 @@ import {
   replaceFile,
 } from './io.mjs';
 import { loadResources, plan } from './plan.mjs';
-import { planMigration } from './migration.mjs';
 const diagnostic = (error) => ({
   code: error instanceof EngineError ? error.code : 'IO_FAILURE',
   message: error instanceof Error ? error.message : 'File operation failed.',
@@ -24,7 +23,6 @@ export function applyEffects(io, root, effects) {
   let completed = 0;
   try {
     for (const effect of effects) {
-      effect.precondition?.(io, root);
       if (effect.action === 'delete') {
         if (effect.directory) {
           if (inspect(io, root, effect.path, 'directory'))
@@ -66,8 +64,6 @@ export async function execute(command, options, dependencies = {}) {
         'USAGE',
         'Expected apply or a private validate/sync mode.',
       );
-    if (options.migrate && (command !== 'apply' || options.check))
-      throw new EngineError('USAGE', '--migrate applies only to apply.');
     const io = dependencies.io ?? disk,
       root = checkRoot(io, options.repoRoot);
     assertClientContext(io, root);
@@ -75,9 +71,7 @@ export async function execute(command, options, dependencies = {}) {
       command === 'apply'
         ? (dependencies.resources ?? loadResources())
         : undefined;
-    const effects = options.migrate
-      ? planMigration(io, root, resources)
-      : plan(io, root, command, resources);
+    const effects = plan(io, root, command, resources);
     if (command === 'validate') return { exitCode: 0, result };
     if (options.dryRun || options.check) {
       result.changes = effects.map(({ path, action }) => ({
@@ -90,16 +84,6 @@ export async function execute(command, options, dependencies = {}) {
       return { exitCode, result };
     }
     const applied = applyEffects(io, root, effects);
-    if (options.migrate && !applied.ok) {
-      const retry = applied.diagnostics.find(
-        (d) => d.code === 'RETRY_OPERATION',
-      );
-      if (retry) {
-        retry.code = 'RETRY_MIGRATION';
-        retry.message +=
-          ' Repeat agentscli apply --migrate with the same options.';
-      }
-    }
     Object.assign(result, {
       ok: applied.ok,
       changes: applied.changes,

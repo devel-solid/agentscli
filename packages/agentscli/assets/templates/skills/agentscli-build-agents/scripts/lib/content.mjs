@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import { EngineError, exactKeys, resourceId } from './manifest.mjs';
+import { EngineError, exactKeys, resourceId } from './contracts.mjs';
 import { portableKey, uniquePaths } from './paths.mjs';
 import {
   activeNodes,
@@ -53,10 +53,10 @@ export function validateSkill(files, path) {
   exactKeys(
     f,
     ['name', 'description'],
-    ['license', 'compatibility', 'metadata', 'allowed-tools'],
+    ['license', 'metadata', 'allowed-tools'],
     path,
   );
-  for (const key of ['license', 'compatibility', 'allowed-tools'])
+  for (const key of ['license', 'allowed-tools'])
     if (f[key] !== undefined && typeof f[key] !== 'string')
       fail('SKILL_FRONTMATTER', `${key} must be a string.`, path);
   return { name: f.name, header };

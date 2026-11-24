@@ -6,12 +6,10 @@ import {
   EngineError,
   PRODUCT_SKILLS,
   parseYaml,
-  parseLegacyManifest,
-} from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
+} from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
 import {
   validateConvention,
   validateConventionFilename,
-  convertLegacyConvention,
   decode,
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
 import {
@@ -63,13 +61,7 @@ test('generic YAML rejects duplicate keys, aliases and explicit tags', () => {
     assert.throws(() => parseYaml(text));
 });
 
-test('legacy roots remain separately strict and portable paths reject aliases', () => {
-  assert.equal(
-    parseLegacyManifest(
-      'language: en\ntemplates_dir: templates\nconventions_dir: docs/rules',
-    ).templates_dir,
-    'templates',
-  );
+test('portable paths reject escapes, reserved names and aliases', () => {
   for (const path of [
     '../escape',
     'C:/drive',
@@ -102,14 +94,17 @@ test('conventions require only trigger and exactly one live H1; examples remain 
     '# Testing\n<!-- AGENT-CARD START -->\nRead testing.\n<!-- AGENT-CARD END -->\nRule.\n';
   assert.throws(
     () => validateConvention(old, 'testing.tpl.md'),
-    /apply --migrate/,
+    (error) =>
+      error instanceof EngineError &&
+      error.code === 'SOURCE_TRIGGER' &&
+      /Expected leading YAML frontmatter/.test(error.message),
   );
   assert.equal(
     validateConvention(
-      convertLegacyConvention(old, 'testing.tpl.md'),
+      `---\ntrigger: Current metadata.\n---\n${old}`,
       'testing.tpl.md',
     ).trigger,
-    'Read testing.',
+    'Current metadata.',
   );
 });
 test('convention filenames normalize Unicode titles without limiting their language', () => {
@@ -158,7 +153,6 @@ test('skill frontmatter validates required fields and keeps ordinary metadata an
 test('standard skill frontmatter rejects extension keys and non-string optional fields', () => {
   for (const extra of [
     'unknown: true\n',
-    'compatibility: [Node]\n',
     'license: {name: MIT}\n',
     'allowed-tools: [Bash]\n',
     'metadata: {owner: [team]}\n',
@@ -265,14 +259,6 @@ test('apply previews without writes then replaces managed drift while preserving
     'AGENTS.md',
     '---\ngeneratedBy: "@devel-solid/agentscli"\n---\nEdited managed copy.',
   );
-  fs.put(
-    '.agents/skills/agentscli-edit-agents/SKILL.md',
-    'broken output metadata',
-  );
-  fs.put(
-    '.agents/skills/agentscli-edit-agents/obsolete.yml',
-    'obsolete support',
-  );
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.match(fs.text('AGENTS.md'), /Custom/);
   assert.match(
@@ -290,12 +276,6 @@ test('apply previews without writes then replaces managed drift while preserving
     false,
   );
   assert.match(fs.text('.agents/skills/unrelated/SKILL.md'), /unrelated/);
-  assert.equal(
-    fs.io.info(
-      join(fs.root, '.agents/skills/agentscli-edit-agents/obsolete.yml'),
-    ),
-    undefined,
-  );
 });
 test('apply ignores obsolete configuration and preserves authored text in any language', async () => {
   const source =
@@ -325,6 +305,82 @@ test('apply ignores obsolete configuration and preserves authored text in any la
   };
   for (const command of ['apply', 'validate', 'sync'])
     assert.equal((await invoke(fs, command)).exitCode, 0);
+});
+
+test('unsupported configuration files are unrelated inputs and are never read or changed', async () => {
+  const files = {
+    'agentscli-compose.yml': 'invalid: [yaml\nlanguage: anything\n',
+    'templates/testing.tpl.md': '# Authored text outside current sources.\n',
+    'docs/conventions/testing.md': '# Unrelated instructions.\n',
+  };
+  const fs = client({
+    ...files,
+    '.agentscli/templates/conventions/testing.tpl.md': convention(),
+  });
+  const originalRead = fs.io.read;
+  fs.io.read = (path) => {
+    for (const file of Object.keys(files))
+      assert.notEqual(path, join(fs.root, file));
+    return originalRead(path);
+  };
+  for (const [command, options] of [
+    ['apply', { dryRun: true }],
+    ['validate', {}],
+    ['sync', { check: true }],
+    ['apply', {}],
+    ['sync', {}],
+  ]) {
+    const response = await invoke(fs, command, options);
+    assert.equal(
+      response.exitCode,
+      options.check ? 1 : 0,
+      JSON.stringify(response.result),
+    );
+    assert.ok(
+      response.result.changes.every(({ path }) => !Object.hasOwn(files, path)),
+    );
+  }
+  fs.io.read = originalRead;
+  for (const [path, content] of Object.entries(files))
+    assert.equal(fs.text(path), content);
+  assert.match(fs.text('AGENTS.md'), /Testing/);
+});
+
+test('former operational skill names have ordinary local ownership and validation', async () => {
+  for (const id of ['agentscli-update-agents', 'agentscli-edit-agents']) {
+    const base = `.agents/skills/${id}`;
+    const files = {
+      [`${base}/SKILL.md`]: skill(id),
+      [`${base}/references/note.md`]: bytes('Authored support.\n'),
+    };
+    const fs = client(files);
+    for (const [command, options] of [
+      ['apply', { dryRun: true }],
+      ['validate', {}],
+      ['apply', {}],
+      ['sync', {}],
+      ['sync', { check: true }],
+    ]) {
+      const response = await invoke(fs, command, options);
+      assert.equal(response.exitCode, 0, JSON.stringify(response.result));
+      assert.ok(
+        response.result.changes.every(({ path }) => !path.startsWith(base)),
+      );
+    }
+    for (const [path, content] of Object.entries(files))
+      assert.deepEqual(fs.io.read(join(fs.root, path)), content);
+
+    fs.put(`${base}/SKILL.md`, '# Missing required metadata.\n');
+    const before = fs.writes.length;
+    for (const command of ['apply', 'validate', 'sync']) {
+      assert.equal((await invoke(fs, command)).exitCode, 2);
+      assert.equal(fs.writes.length, before);
+    }
+
+    const metadata = client({ [base]: 'An unrelated regular file.\n' });
+    assert.equal((await invoke(metadata)).exitCode, 0);
+    assert.equal(metadata.text(base), 'An unrelated regular file.\n');
+  }
 });
 
 test('generation preserves a non-Latin title, trigger and body with deterministic links', async () => {
@@ -476,12 +532,8 @@ test('skill metadata and discovered support retain safe-path inspection before c
   assert.equal(fs.writes.length, 0);
 });
 
-test('regular files cannot occupy packaged or retired managed skill directories', async () => {
-  for (const id of [
-    ...PRODUCT_SKILLS,
-    'agentscli-update-agents',
-    'agentscli-edit-agents',
-  ]) {
+test('regular files cannot occupy packaged skill directories', async () => {
+  for (const id of PRODUCT_SKILLS) {
     const path = `.agents/skills/${id}`;
     const fs = client({ [path]: 'Protected authored file.\n' });
     for (const [command, options] of [
@@ -498,7 +550,7 @@ test('regular files cannot occupy packaged or retired managed skill directories'
     }
   }
 });
-test('manual root AGENTS, invalid authored input, and legacy state block all writes', async () => {
+test('manual root AGENTS and invalid authored input block all writes', async () => {
   for (const files of [
     { 'AGENTS.md': '# Handwritten\n' },
     {
@@ -507,7 +559,6 @@ test('manual root AGENTS, invalid authored input, and legacy state block all wri
         'unknown: true\ntrigger:',
       ),
     },
-    { 'agentscli-compose.yml': 'legacy' },
   ]) {
     const fs = client(files);
     const response = await invoke(fs);
@@ -587,6 +638,35 @@ test('partial file failure report completed/pending effects and retry converges'
   assert.ok(failed.result.changes.some((c) => c.status === 'pending'));
   fs.io.rename = original;
   assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal((await invoke(fs)).result.changes.length, 0);
+});
+
+test('obsolete generated output deletion failures report progress and retry the current plan', async () => {
+  const fs = client();
+  assert.equal((await invoke(fs)).exitCode, 0);
+  fs.put('.agentscli/templates/conventions/testing.tpl.md', convention());
+  const obsolete = '.agentscli/conventions/obsolete.md';
+  fs.put(obsolete, 'Replaceable output.\n');
+  const unlink = fs.io.unlink;
+  fs.io.unlink = (path) => {
+    if (path === join(fs.root, obsolete)) throw new Error('Deletion failed.');
+    unlink(path);
+  };
+  const failed = await invoke(fs);
+  assert.equal(failed.exitCode, 3);
+  assert.ok(failed.result.changes.some(({ status }) => status === 'completed'));
+  assert.ok(
+    failed.result.changes.some(
+      ({ path, status }) => path === obsolete && status === 'pending',
+    ),
+  );
+  assert.ok(
+    failed.result.diagnostics.some(({ code }) => code === 'RETRY_OPERATION'),
+  );
+  assert.equal(fs.text(obsolete), 'Replaceable output.\n');
+  fs.io.unlink = unlink;
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal(fs.io.info(join(fs.root, obsolete)), undefined);
   assert.equal((await invoke(fs)).result.changes.length, 0);
 });
 test('private argument parser rejects aliases, repeated flags, migration, language, and invalid modes without writes', async () => {

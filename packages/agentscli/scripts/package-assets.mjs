@@ -7,7 +7,7 @@ import {
   stringifyYaml,
   PRODUCT_SKILLS,
   validPackageVersion,
-} from '../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
+} from '../assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
 import { validateResources } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/content.mjs';
 import {
   uniquePaths,
@@ -81,16 +81,11 @@ export function stampSkill(content, pkg, path) {
     throw new Error(
       'Generated provenance belongs only to derived assets, never maintained source stamps or placeholders.',
     );
-  if (
-    (header.fields.license !== undefined && header.fields.license !== 'MIT') ||
-    (header.fields.compatibility !== undefined &&
-      header.fields.compatibility !== 'Requires Node.js >= 22.')
-  )
-    throw new Error('Invalid maintained license or Node compatibility.');
+  if (header.fields.license !== undefined && header.fields.license !== 'MIT')
+    throw new Error('Invalid maintained license.');
   const fields = {
     ...header.fields,
     license: 'MIT',
-    compatibility: 'Requires Node.js >= 22.',
     metadata: {
       ...header.fields.metadata,
       generatedBy: pkg.name,

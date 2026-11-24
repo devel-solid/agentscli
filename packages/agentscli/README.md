@@ -7,7 +7,7 @@ npx @devel-solid/agentscli apply --dry-run
 npx @devel-solid/agentscli apply
 ```
 
-`apply` is the only public operation, with `--repo-root`, `--json`, `--dry-run`, and explicit `--migrate`. `--help` and `--version` work without loading a project. Repeat apply after updating the CLI to replace its managed resources using that installed package's own engine.
+`apply` is the only public operation, with `--repo-root`, `--json`, and `--dry-run`. `--help` and `--version` work without loading a project. Repeat apply after updating the CLI to replace its managed resources using that installed package's own engine.
 
 Apply installs the two operational skills and immediately regenerates outputs. It distributes no starter conventions: without authored conventions, the index contains only its frontmatter and title. It preserves the complete authored template tree, Git metadata, unrelated files, and unrelated skills. It replaces managed edits and removes obsolete managed files; it never merges or resets the project. An existing root AGENTS.md must have valid frontmatter containing only `generatedBy: "@devel-solid/agentscli"`; handwritten instructions, other generators, and invalid metadata block all writes. Resolve such collisions explicitly before applying.
 
@@ -23,7 +23,7 @@ project/
     └── agentscli-build-agents/             managed operational skill
 ```
 
-There is no client configuration file or language selection. An old `.agentscli/config.yml` is ignored and preserved as an unrelated file. Version authored templates, generated instructions, and complete operational skills. Never edit managed resources to customize their behavior.
+There is no client configuration file or language selection. Files outside the managed paths remain unrelated inputs and are preserved. Version authored templates, generated instructions, and complete operational skills. Never edit managed resources to customize their behavior.
 
 ## Authoring
 
@@ -70,17 +70,6 @@ These are skill scripts, not public CLI commands. They use Node and versioned pr
 
 Exit codes: 0 success, 1 freshness drift under private `sync --check`, 2 usage/validation/collision, 3 operational failure. JSON has `schemaVersion: 1`, `command`, `ok`, `changes`, and `diagnostics`; changes distinguish pending and completed effects. After partial failure fix its cause and repeat the same authorized operation. No rollback or history database is maintained.
 
-## Upgrading old clients
-
-`init`, public `validate`, and public `sync` were removed. Use `apply` for package refresh and the build skill for agent-only generation/checks. There is no `agentscli.yml` resource list.
-
-```sh
-agentscli apply --migrate --dry-run --json
-agentscli apply --migrate --json
-```
-
-Migration explicitly transfers conventions from supported `agentscli-compose.yml` roots with link rebasing and final legacy cleanup, or converts fixed-layout AGENT-CARD discovery text into trigger frontmatter. Only the legacy template/output roots affect this operation; any old language field is ignored. Former root templates are preserved as authored files and do not participate in generation or migration. Existing AGENTS.md files still require the current ownership frontmatter; old comment markers do not authorize replacement. It preserves authored convention meaning and text. Ordinary operations never convert protected sources implicitly. Contradictory metadata and links to conventions/skills block conversion: perform separately authorized semantic authoring cleanup rather than automatically merging or deleting rules. Completed current migration is a no-op; ordinary apply refreshes installed operational resources. Retry partial migration with the same `apply --migrate` options. No configuration file or replacement marker records migration progress; verified sources, managed outputs, and skills establish the current state.
-
 ## Workspace development
 
-From the monorepo root run `npm run check` for type/format/unit checks and `npm run build` for delivery assembly. Package-specific scripts and unit tests live in this workspace. Sources and generated assets are distinct; deterministic assembly stamps the two operational skills with MIT, `compatibility: Requires Node.js >= 22.`, and the actual generating package name/version. Project-owned skills retain their metadata.
+From the monorepo root run `npm run check` for type/format/unit checks and `npm run build` for delivery assembly. Package-specific scripts and unit tests live in this workspace. Sources and generated assets are distinct; deterministic assembly stamps the two operational skills with MIT and the actual generating package name/version. Package engines declare the Node.js requirement. Project-owned skills retain their metadata.

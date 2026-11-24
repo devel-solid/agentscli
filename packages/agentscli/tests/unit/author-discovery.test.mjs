@@ -5,7 +5,7 @@ import { memory } from './memory.mjs';
 import * as author from '../../assets/templates/skills/agentscli-write-conventions/scripts/check.mjs';
 import { execute } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/runtime.mjs';
 const entry =
-  '---\nname: agentscli-build-agents\ndescription: Build requested instructions.\nlicense: MIT\ncompatibility: Requires Node.js >= 22.\nmetadata:\n  generatedBy: "@devel-solid/agentscli"\n  generatorVersion: "0.4.0"\n---\n# Build\n';
+  '---\nname: agentscli-build-agents\ndescription: Build requested instructions.\nlicense: MIT\nmetadata:\n  generatedBy: "@devel-solid/agentscli"\n  generatorVersion: "0.4.0"\n---\n# Build\n';
 const base = '.agents/skills/agentscli-build-agents';
 function fixture(files = {}) {
   const state = memory({
@@ -123,6 +123,39 @@ test(`conventions loads only the verified local engine and requests read-only va
   });
   assert.equal(response.exitCode, 0);
   assert.deepEqual(calls, [['validate', { repoRoot: fs.root }]]);
+});
+
+test(`conventions ignores unrelated compose files in the root and its ancestors`, async () => {
+  for (const relative of [
+    'agentscli-compose.yml',
+    '../agentscli-compose.yml',
+  ]) {
+    const content = 'this: [is not valid YAML',
+      state = fixture({ [relative]: content }),
+      file = join(state.root, relative),
+      read = state.fs.readFileSync,
+      calls = [];
+    state.fs.readFileSync = (path, ...args) => {
+      assert.notEqual(path, file);
+      return read(path, ...args);
+    };
+    const response = await author.check(['--repo-root', state.root], {
+      fs: state.fs,
+      load: async (path) => {
+        assert.equal(path, join(state.root, base, 'scripts/lib/index.mjs'));
+        return {
+          execute: async (...args) => {
+            calls.push(args);
+            return { exitCode: 0, result: { ok: true } };
+          },
+        };
+      },
+    });
+    assert.equal(response.exitCode, 0, relative);
+    assert.deepEqual(calls, [['validate', { repoRoot: state.root }]]);
+    assert.equal(state.text(relative), content);
+    assert.equal(state.writes.length, 0);
+  }
 });
 
 function validateWithEngine(state) {

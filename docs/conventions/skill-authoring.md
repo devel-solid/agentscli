@@ -11,7 +11,7 @@ Read when creating, reviewing, or refactoring owned skills and their support fil
 
 ## Format
 
-- Use standard leading YAML skill frontmatter with nonempty `name` matching its directory and a nonempty activation `description`. Metadata values are strings. The two distributed operational skills declare MIT and exactly `compatibility: Requires Node.js >= 22.`. Asset assembly stamps `metadata.generatedBy` and `metadata.generatorVersion` from the package's actual name/version; maintained sources stay unchanged. Do not invent per-skill versions.
+- Use standard leading YAML skill frontmatter with nonempty `name` matching its directory and a nonempty activation `description`. Metadata values are strings. The two distributed operational skills declare MIT. Package engines declare the Node.js requirement. Asset assembly stamps `metadata.generatedBy` and `metadata.generatorVersion` from the package's actual name/version; maintained sources stay unchanged. Do not invent per-skill versions.
 - Adopt the current beta contract directly without compatibility readers, conversions, transition workflows, or old-client protection. Replace disposable managed outputs from desired sources.
 
 ## Discovery and links

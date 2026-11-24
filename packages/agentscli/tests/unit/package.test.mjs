@@ -6,7 +6,7 @@ import {
   packageAssets,
   stampSkill,
 } from '../../scripts/package-assets.mjs';
-import { PRODUCT_SKILLS } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
+import { PRODUCT_SKILLS } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
 import { frontmatter } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
 
 function resourceIO(overrides = {}) {
@@ -155,7 +155,6 @@ test('derived metadata uses actual CLI identity/version without mutating source'
     ),
     fields = frontmatter(output.toString(), 'SKILL.md').fields;
   assert.equal(fields.license, 'MIT');
-  assert.equal(fields.compatibility, 'Requires Node.js >= 22.');
   assert.equal(fields.metadata.generatedBy, '@devel-solid/agentscli');
   assert.equal(fields.metadata.generatorVersion, '0.9.7');
   assert.equal(fields.metadata.category, 'authoring');
@@ -170,7 +169,6 @@ test('stamping rejects stale, malformed or placeholder provenance instead of sil
     );
   for (const extra of [
     'license: Other\n',
-    'compatibility: Requires Node.js.\n',
     'metadata:\n  generatedBy: old-package\n',
     'metadata:\n  generatorVersion: "0.1.0"\n',
     'metadata:\n  generatorVersion: PLACEHOLDER\n',
@@ -183,9 +181,7 @@ test('stamping rejects stale, malformed or placeholder provenance instead of sil
     { ...pkg, version: 0.4 },
   ])
     assert.throws(() => stampSkill(input(''), invalid, 'SKILL.md'));
-  const source = input(
-      'license: MIT\ncompatibility: Requires Node.js >= 22.\n',
-    ),
+  const source = input('license: MIT\n'),
     before = source.slice();
   assert.deepEqual(
     stampSkill(source, pkg, 'SKILL.md'),

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { EngineError } from './manifest.mjs';
+import { EngineError } from './contracts.mjs';
 import { containedPath, portableKey, relativePath } from './paths.mjs';
 export const disk = {
   info(path) {

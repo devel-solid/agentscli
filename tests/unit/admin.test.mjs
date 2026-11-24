@@ -123,7 +123,7 @@ test('administrative skill metadata stays standard and supports arbitrary string
 test('handwritten rules need no trigger and preserve literal examples plus ordinary/self links', () => {
   assert.deepEqual(
     checkConvention(
-      '# Review\n\n[Own](#examples) [Project](../package.json)\n\n```md\n[Testing](testing.md)\n<!-- AGENT-CARD START -->\n```',
+      '# Review\n\n[Own](#examples) [Project](../package.json)\n\n```md\n[Testing](testing.md)\n```',
       conventions[0],
       ctx,
     ),
@@ -141,15 +141,6 @@ test('handwritten rules need no trigger and preserve literal examples plus ordin
   assert.throws(
     () => checkConvention('# Wrong name', conventions[0], ctx),
     /canonical/,
-  );
-  assert.throws(
-    () =>
-      checkConvention(
-        '# Review\n<!-- AGENT-CARD START -->',
-        conventions[0],
-        ctx,
-      ),
-    /obsolete/,
   );
 });
 
@@ -193,7 +184,7 @@ test('skill guidance allows owned support and identity mentions, rejecting forei
     );
 });
 
-test('tool context checks its workspace identity and rejects unrelated private projects and mixed roles', () => {
+test('tool context checks its workspace identity and ignores unrelated configuration files', () => {
   const entries = {
     'package.json': JSON.stringify({
       private: true,
@@ -224,19 +215,20 @@ test('tool context checks its workspace identity and rejects unrelated private p
         root,
         memory({
           ...entries,
-          '.agentscli/config.yml': 'unreadable legacy data',
+          '.agentscli/config.yml': 'unreadable unrelated data',
         }),
       ),
       root,
     );
-    assert.throws(
-      () =>
-        contract.monorepo(
-          root,
-          memory({ ...entries, 'agentscli-compose.yml': '' }),
-        ),
-      /Conflicting/,
-    );
+    const obsolete = 'unreadable: [configuration',
+      io = memory({ ...entries, 'agentscli-compose.yml': obsolete }),
+      read = io.readFileSync;
+    io.readFileSync = (file) => {
+      assert.notEqual(file, resolve(root, 'agentscli-compose.yml'));
+      return read(file);
+    };
+    assert.equal(contract.monorepo(root, io), root);
+    assert.equal(read(resolve(root, 'agentscli-compose.yml')), obsolete);
   }
   const invalid = {
     ...entries,
@@ -438,7 +430,7 @@ function consumerArchive() {
   for (const id of ['agentscli-write-conventions', 'agentscli-build-agents']) {
     entries.push({
       name: `package/dist/assets/skills/${id}/SKILL.md`,
-      body: `---\nname: ${id}\ndescription: Perform the operation.\nlicense: MIT\ncompatibility: Requires Node.js >= 22.\nmetadata:\n  generatedBy: "${pkg.name}"\n  generatorVersion: ${pkg.version}\n---\n# Operation\n`,
+      body: `---\nname: ${id}\ndescription: Perform the operation.\nlicense: MIT\nmetadata:\n  generatedBy: "${pkg.name}"\n  generatorVersion: ${pkg.version}\n---\n# Operation\n`,
     });
   }
   return { pkg, entries };
@@ -473,7 +465,7 @@ test('release inspection requires complete skill trees and compares every prepar
         tar([
           ...entries,
           {
-            name: 'package/dist/assets/skills/agentscli-edit-agents/SKILL.md',
+            name: 'package/dist/assets/skills/unknown-skill/SKILL.md',
             body: '# Obsolete',
           },
         ]),
@@ -481,11 +473,7 @@ test('release inspection requires complete skill trees and compares every prepar
       ),
     /Incorrect operational skill inventory/,
   );
-  for (const path of [
-    'agentscli-edit-agents/scripts/check.mjs',
-    'unknown-skill/scripts/check.mjs',
-    'unowned.mjs',
-  ])
+  for (const path of ['unknown-skill/scripts/check.mjs', 'unowned.mjs'])
     assert.throws(
       () =>
         inspectArchive(

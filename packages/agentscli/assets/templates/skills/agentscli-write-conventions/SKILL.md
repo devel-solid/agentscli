@@ -2,12 +2,11 @@
 name: agentscli-write-conventions
 description: Create, review, or update local convention templates in an existing agentscli consumer project. Use for project rules, trigger text, self-contained guidance, and convention naming; never for tool administration.
 license: MIT
-compatibility: Requires Node.js >= 22.
 ---
 
 # Maintain client conventions
 
-Identify the consumer root from the request and project instructions. Run the read-only [checker](scripts/check.mjs) before edits: `node <this-skill>/scripts/check.mjs --repo-root <root>`. A nonzero result blocks authorship until the reported context/input issue is resolved; do not initialize, migrate, generate, or repair beyond the request.
+Identify the consumer root from the request and project instructions. Run the read-only [checker](scripts/check.mjs) before edits: `node <this-skill>/scripts/check.mjs --repo-root <root>`. A nonzero result blocks authorship until the reported context/input issue is resolved; do not initialize, generate, or repair beyond the request.
 
 Use the language requested by the user or already used in the client's relevant content, without storing that choice. Edit local convention templates under `.agentscli/templates/conventions/`; if none exist, create the first template there within the request. Neither configuration nor an existing convention is required. Generated output is managed; customize its authored template instead. Existing template text remains authored and is preserved by apply.
 
