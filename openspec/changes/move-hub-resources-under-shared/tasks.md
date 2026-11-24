@@ -28,14 +28,14 @@
 
 ## 5. Publish and verify both CLI packages
 
-- [ ] 5.1 Within the later execution authorization, commit the reviewed source and create/push unused immutable package-specific tags through the administrative native Git workflow. Verify the intended branch and `agentscli-hub-v<version>` / `agentscli-v<version>` refs identify the exact reviewed candidate source while preserving unrelated work and history.
-- [ ] 5.2 Publish the inspected `@devel-solid/agentscli-hub` tarball through native npm with public access. Verify registry identity/version/license/bin/visibility/SHA-512 and the exact remote source/tag; leave incomplete account or delivery actions open without overwriting identities.
-- [ ] 5.3 Publish the inspected `@devel-solid/agentscli` tarball through the same administrative workflow. Verify its own registry metadata, integrity, and remote source/tag independently; inspect the same exact identity before retrying any ambiguous response rather than republishing or blindly bumping.
+- [x] 5.1 Within the later execution authorization, commit the reviewed source and create/push unused immutable package-specific tags through the administrative native Git workflow. Verify the intended branch and `agentscli-hub-v<version>` / `agentscli-v<version>` refs identify the exact reviewed candidate source while preserving unrelated work and history.
+- [x] 5.2 Publish the inspected `@devel-solid/agentscli-hub` tarball through native npm with public access. Verify registry identity/version/license/bin/visibility/SHA-512 and the exact remote source/tag; leave incomplete account or delivery actions open without overwriting identities.
+- [x] 5.3 Publish the inspected `@devel-solid/agentscli` tarball through the same administrative workflow. Verify its own registry metadata, integrity, and remote source/tag independently; inspect the same exact identity before retrying any ambiguous response rather than republishing or blindly bumping.
 
 ## 6. Update and verify the active host
 
-- [ ] 6.1 After each package's public release is verified, install its exact version into the active host's global npm environment. Verify global package metadata and preserve unrelated packages and Node installations; track host failure separately from already completed publication.
-- [ ] 6.2 Verify both executables' resolution paths and reported versions against the exact released versions, resolving relevant PATH mismatches before claiming completion. Report both releases, host results, and remaining actions; verify neither CLI was applied to this source repository, the independent hub, the SGO, or another project.
+- [x] 6.1 After each package's public release is verified, install its exact version into the active host's global npm environment. Verify global package metadata and preserve unrelated packages and Node installations; track host failure separately from already completed publication.
+- [x] 6.2 Verify both executables' resolution paths and reported versions against the exact released versions, resolving relevant PATH mismatches before claiming completion. Report both releases, host results, and remaining actions; verify neither CLI was applied to this source repository, the independent hub, the SGO, or another project.
 
 ## Workflow follow-up
 
@@ -44,10 +44,12 @@
 
 ## Verification evidence
 
-- Implementation used Node.js `24.15.0` and npm `11.13.0`. Focused hub apply/assembly units passed 19/19, hub contract/publication units passed 32/32, and consumer import/offline/package units passed 39/39. Root `npm run check` passed both workspace unit/type/format gates and all administrative checks. Separate `npm run build` passed for both workspaces.
+- Implementation used Node.js `24.15.0` and npm `11.13.0`. Focused hub apply/assembly units passed 19/19, hub contract/publication units passed 32/32, and consumer import/offline/package units passed 39/39. Root `npm run check` passed 172 units (107 consumer, 51 hub, 14 administrative), both workspace type/format gates, and all administrative checks. Separate `npm run build` passed for both workspaces. The native pre-push hook reran the same complete gate successfully.
 - Independent reviews of consumer behavior, hub behavior/security, and documentation/scope against base `504842a84db068f1f70ed69a06d812f773df9388` found no confirmed remaining issue. No integration, installed-package, subprocess, or live-provider test suite was added.
 - The generic external skill-creator validator rejected the preexisting `compatibility` field required by this repository. That field was preserved; the native package resource/frontmatter/dependency/link checks and actual archive checks passed.
 - Prepared `@devel-solid/agentscli-hub@0.3.0`, tag `agentscli-hub-v0.3.0`: 35 files, archive `.tmp/releases/agentscli-hub-0.3.0/devel-solid-agentscli-hub-0.3.0.tgz`, integrity `sha512-GUVNgQyNxjka6mrcle3Kaj+9GpoSUGu3uSDlxINqPW4Hy7cNAsIJDOSnsiXQaGPRssN7O3/3pEY7imOpRBYK9Q==`.
 - Prepared `@devel-solid/agentscli@0.6.0`, tag `agentscli-v0.6.0`: 59 files, archive `.tmp/releases/agentscli-0.6.0/devel-solid-agentscli-0.6.0.tgz`, integrity `sha512-1KLafkaJLGQTruWYcalkOEAR7VdBSEO5gdry50lt/f5w8y2VpLgZDRPhkwFycC3QAAvNDxFPNHbKLycy5FHZPg==`.
 - Native pack previews and real tarballs passed the administrative archive checker against complete prepared inventories and bytes. Additional inspection confirmed the two `shared/` scaffold placeholders, absence of former shared scaffold roots, and current physical capture/mapping in the consumer import support.
-- This preparation evidence does not claim publication or host completion. Exact remote refs, registry integrity, and host executable versions are verified by the remaining delivery tasks.
+- Delivery completed on 2026-11-24. Source commit `195f3f7a36e6668da65fa9a05eae94cbc6816e35`, branch `codex/move-hub-resources-under-shared`, and annotated tags `agentscli-hub-v0.3.0` / `agentscli-v0.6.0` were pushed and verified on origin; both tags peel to that exact source commit.
+- Native npm accepted both inspected tarballs after account authentication. Unauthenticated public registry reads subsequently confirmed both exact names/versions, MIT licenses, executable mappings, `latest` tags, and the SHA-512 integrities above. Processing delays were verified without repeating either publication.
+- Native npm installed the exact verified releases in the active global prefix `C:\nvm4w\nodejs`. Global metadata and the resolved `agentscli.ps1` / `agentscli-hub.ps1` commands at that prefix report `0.6.0` and `0.3.0` respectively. OpenSpec `2.0.0`, corepack, npm, unrelated packages, and other Node installations were preserved. Neither CLI was applied to any project; the independent hub, personal `review` skill, and SGO were untouched. No publication, account, or host-update action remains.
