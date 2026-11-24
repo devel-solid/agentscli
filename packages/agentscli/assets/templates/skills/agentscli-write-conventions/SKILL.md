@@ -6,12 +6,16 @@ license: MIT
 
 # Maintain project conventions
 
+> A convention is an agreement that chooses a standard among possible ways of working to make work consistent and predictable. For example, a team might adopt Conventional Commits among the commit message formats accepted by Git.
+>
+> Conventions record choices for recurring situations in how we work. Product descriptions, feature requirements, and solutions limited to an isolated case belong in specifications and code.
+
 Identify the project root from the request and project instructions. Run the read-only [checker](scripts/check.mjs) before edits: `node <this-skill>/scripts/check.mjs --repo-root <root>`. A nonzero result blocks authorship until the reported input issue is resolved; do not initialize, generate, or repair beyond the request.
 
 Use the language requested by the user or already used in the project's relevant content. Write the final convention files directly under `.agentscli/conventions/`, including subdirectories when useful; if none exist, create the first convention there within the request. These files are authored content: initialization, skill updates, synchronization, and checking preserve their bytes.
 
 Each convention starts with YAML containing only nonempty string `trigger`, followed by one H1 outside examples and its body. Derive its `.md` basename from the H1: normalize with NFKD, remove combining marks, lowercase, collapse runs other than Unicode letters or numbers to hyphens, trim outer hyphens, then normalize to NFC. For example, `日本語` becomes `日本語.md`. Keep the trigger short and precise about when to read the rule. Keep the body self-contained: no links to conventions or skill entrypoints, directories, or support files. Ordinary non-resource links and own fragments are allowed. Trigger links resolve from root AGENTS; body links resolve from the convention's actual location. Skills have their own activation description: move misplaced procedural content only through a separately authorized skill-authoring request.
 
-After edits rerun the checker. Review usefulness, contradictory rules, and scope semantically; scripts prove only mechanically decidable checks. For an authorized index update, mention agentscli-build-agents and discover its actual project location through project skills; do not assume its path. Authorship alone does not authorize generation. Report edited conventions and actual validation.
+After edits rerun the checker. Review whether the content meets this definition, its usefulness, contradictory rules, and scope semantically; scripts prove only mechanically decidable checks. For an authorized index update, mention agentscli-build-agents and discover its actual project location through project skills; do not assume its path. Authorship alone does not authorize generation. Report edited conventions and actual validation.
 
 Use verified project facts within the authorized convention. When an authorized title change requires a canonical filename rename, update references within this skill's target scope; the convention index is rebuilt mechanically during authorized generation.

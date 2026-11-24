@@ -1,10 +1,8 @@
 # agentscli
 
-**Project rules in Markdown. A generated index for coding agents.**
+> A convention is a shared choice about how a team works in recurring situations, such as adopting Conventional Commits for commit messages. agentscli keeps these agreements in Markdown and generates an `AGENTS.md` index that tells coding agents when to read each one.
 
 [npm package](https://www.npmjs.com/package/@devel-solid/agentscli) · Node.js 22, 24 or 26 · [MIT](https://github.com/devel-solid/agentscli/blob/main/packages/agentscli/LICENSE)
-
-A growing `AGENTS.md` can mix testing rules, API guidelines, and deployment notes in one long document. With agentscli, keep each topic in its own Markdown file. Generate a short `AGENTS.md` with a link to each topic and a sentence explaining when to read it.
 
 ![Initialize the project, ask an agent to create a testing convention, then ask it to validate the conventions and generate an AGENTS.md index linking to that file.](https://raw.githubusercontent.com/devel-solid/agentscli/main/docs/assets/conventions-flow.svg)
 
