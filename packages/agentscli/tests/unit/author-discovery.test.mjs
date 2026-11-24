@@ -165,7 +165,7 @@ function validateWithEngine(state) {
   });
 }
 
-test(`conventions can validate an empty client and its first authored convention without configuration`, async () => {
+test(`conventions validates empty and populated convention trees`, async () => {
   const state = fixture();
   let response = await validateWithEngine(state);
   assert.equal(response.exitCode, 0, JSON.stringify(response.result));

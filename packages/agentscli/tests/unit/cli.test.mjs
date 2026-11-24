@@ -54,6 +54,17 @@ test('dispatch forwards root and read-only apply preview', async () => {
     'changes',
     'diagnostics',
   ]);
+  const preview = await runCli(['apply', '--dry-run'], {
+    execute: async () =>
+      engineResult('apply', 0, [
+        { action: 'update', path: 'AGENTS.md', status: 'pending' },
+      ]),
+  });
+  assert.equal(
+    preview.stdout,
+    'Planned changes; no files written.\npending update: AGENTS.md\n',
+  );
+  assert.equal(preview.stderr, '');
 });
 
 test('unknown, private, misplaced, duplicate, and incompatible options never dispatch', async () => {

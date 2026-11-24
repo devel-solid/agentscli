@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { dirname, resolve, sep } from 'node:path';
-import {
-  collectResources,
-  packageAssets,
-  stampSkill,
-} from '../../scripts/package-assets.mjs';
+import { resolve, sep } from 'node:path';
+import { collectResources, stampSkill } from '../../scripts/package-assets.mjs';
 import { PRODUCT_SKILLS } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
 import { frontmatter } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
 
@@ -61,7 +57,7 @@ function resourceIO(overrides = {}) {
   return { root, io, add, writes };
 }
 
-test('whole skill trees map without requiring initial convention sources', () => {
+test('whole operational skill trees map to package resources', () => {
   const { root, io } = resourceIO();
   const resources = collectResources(root, io);
   assert.equal(resources.length, 4);
@@ -157,7 +153,7 @@ test('derived metadata uses actual CLI identity/version without mutating source'
   assert.doesNotMatch(input.toString(), /generatorVersion/);
 });
 
-test('stamping rejects stale, malformed or placeholder provenance instead of silently hiding it', () => {
+test('stamping requires source metadata and valid package provenance', () => {
   const pkg = { name: '@devel-solid/agentscli', version: '0.4.0' };
   const input = (extra) =>
     Buffer.from(
@@ -165,8 +161,8 @@ test('stamping rejects stale, malformed or placeholder provenance instead of sil
     );
   for (const extra of [
     'license: Other\n',
-    'metadata:\n  generatedBy: old-package\n',
-    'metadata:\n  generatorVersion: "0.1.0"\n',
+    'metadata:\n  generatedBy: other-tool\n',
+    `metadata:\n  generatorVersion: "${pkg.version}"\n`,
     'metadata:\n  generatorVersion: PLACEHOLDER\n',
     'metadata:\n  generatorVersion: 1\n',
   ])

@@ -14,7 +14,7 @@ agentscli apply --repo-root ./my-project
 
 Agents perform generation and validation through the appropriate project skills and their deterministic scripts. Generation is offline, using Node.js and the shipped build skill without an installed CLI, Git, or npm installation. Project conventions and skills use local resources. See the package guide for schemas and managed paths.
 
-Package versions with major zero are beta; production begins at `1.0.0`. Beta contracts change directly without transition periods, migration, backward compatibility, or protection for old clients.
+Package versions with major zero are beta; production begins at `1.0.0`.
 
 ## Independent skill sources
 
@@ -31,11 +31,11 @@ packages/
         agentscli-build-agents/
 ```
 
-These five operational skills are independent and each has one responsibility. The three administrative skills stay internal; builds distribute exactly two consumer skills. A source/distribution manifest is unnecessary: the package owns its fixed asset roots. No skill source or custom implementation is shared between environments.
+These five operational skills are independent and each has one responsibility. The three administrative skills stay internal; builds distribute exactly two consumer skills from the package's fixed asset roots. No skill source or custom implementation is shared between environments.
 
 Conventions are self-contained rules with no links to other conventions or skills. Clients write final files directly in `.agentscli/conventions/**/*.md`, with a nonempty `trigger` in leading YAML frontmatter and a canonical H1/filename. Apply and private generation preserve convention bytes; only the index is generated from them. Client AGENTS.md is a mechanical convention index with the product's `generatedBy` frontmatter and fixed title, without additional project prose. Skills carry their own execution guidance and mention other skills by identity instead of linking or hardcoding their locations. Their own bundled support and project work inputs remain usable. The two distributed skills receive MIT and the package's actual name/version during assembly; maintained sources stay unchanged. Package engines declare the Node.js requirement.
 
-Clients author their own conventions. First apply installs the two skills and generates an empty index when no conventions exist. There is no language option or client configuration file; authored titles, triggers, and bodies determine their own language.
+Clients author their own conventions. First apply installs the two skills and generates an empty index when no conventions exist. Authored titles, triggers, and bodies determine their own language.
 
 ## Development
 

@@ -219,20 +219,11 @@ test('tool context checks its workspace identity and ignores unrelated configura
         root,
         memory({
           ...entries,
-          '.agentscli/config.yml': 'unreadable unrelated data',
+          'project-settings.yml': 'unreadable unrelated data',
         }),
       ),
       root,
     );
-    const obsolete = 'unreadable: [configuration',
-      io = memory({ ...entries, 'agentscli-compose.yml': obsolete }),
-      read = io.readFileSync;
-    io.readFileSync = (file) => {
-      assert.notEqual(file, resolve(root, 'agentscli-compose.yml'));
-      return read(file);
-    };
-    assert.equal(contract.monorepo(root, io), root);
-    assert.equal(read(resolve(root, 'agentscli-compose.yml')), obsolete);
   }
   const invalid = {
     ...entries,
@@ -470,7 +461,7 @@ test('release inspection requires complete skill trees and compares every prepar
           ...entries,
           {
             name: 'package/dist/assets/skills/unknown-skill/SKILL.md',
-            body: '# Obsolete',
+            body: '# Unowned',
           },
         ]),
         pkg,
@@ -499,7 +490,7 @@ test('release inspection requires complete skill trees and compares every prepar
           ...entries,
           {
             name: 'package/dist/assets/extra.md',
-            body: '# Obsolete',
+            body: '# Unowned',
           },
         ]),
         pkg,

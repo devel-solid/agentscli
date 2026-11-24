@@ -9,7 +9,7 @@ npx @devel-solid/agentscli apply
 
 `apply` is the only public operation, with `--repo-root`, `--json`, and `--dry-run`. `--help` and `--version` work without loading a project. Repeat apply after updating the CLI to replace its managed resources using that installed package's own engine.
 
-Apply installs the two operational skills and generates the root index. It distributes no starter conventions: without authored conventions, the index contains only its frontmatter and title. It reads and validates final conventions without writing, deleting, normalizing, or reformatting their bytes. Git metadata, unrelated files, and unrelated skills are preserved. Apply replaces managed skill edits and removes obsolete managed skill files; it never merges or resets the project. An existing root AGENTS.md must have valid frontmatter containing only `generatedBy: "@devel-solid/agentscli"`; handwritten instructions, other generators, and invalid metadata block all writes. Resolve such collisions explicitly before applying.
+Apply installs the two operational skills and generates the root index. With an empty convention tree, the index contains only its frontmatter and title. It reads and validates final conventions while preserving their bytes. Git metadata, unrelated files, and unrelated skills are preserved. Apply replaces each managed skill tree with the package's complete resources. An existing root AGENTS.md must have valid frontmatter containing only `generatedBy: "@devel-solid/agentscli"`; handwritten instructions, other generators, and invalid metadata block all writes. Resolve such collisions explicitly before applying.
 
 ```text
 project/
@@ -21,7 +21,7 @@ project/
     └── agentscli-build-agents/             managed operational skill
 ```
 
-There is no client configuration file or language selection. Files outside the managed paths remain unrelated inputs and are preserved. Version authored conventions, generated instructions, and complete operational skills. Customize conventions directly; refresh the index after editing or deleting one.
+Version authored conventions, generated instructions, and complete operational skills. Customize conventions directly; refresh the index after editing or deleting one.
 
 ## Authoring
 
@@ -37,7 +37,7 @@ generatedBy: '@devel-solid/agentscli'
 - [Testing](.agentscli/conventions/testing.md): Read before writing or changing tests.
 ```
 
-With no conventions, only the frontmatter and title remain. Use agentscli-write-conventions to create or edit a final convention, then agentscli-build-agents to regenerate the index. Authoring follows the requested language or the existing content without persisting that choice. Multiline triggers become one line per index item. The index contains no HTML comments or additional project prose. The `generatedBy` key and title are agentscli's contract, not requirements of the general AGENTS.md format. A complete convention is:
+With no conventions, only the frontmatter and title remain. Use agentscli-write-conventions to create or edit a final convention, then agentscli-build-agents to regenerate the index. Authoring follows the requested language or the existing content. Multiline triggers become one line per index item. The `generatedBy` key and title are agentscli's contract, not requirements of the general AGENTS.md format. A complete convention is:
 
 ```markdown
 ---
@@ -66,7 +66,7 @@ node <build-skill>/scripts/build-agents.mjs sync --repo-root <project> --check -
 
 These are skill scripts, not public CLI commands. They use Node and versioned project files with no installed CLI, compiler, Git, or network. Private sync updates only AGENTS.md; validation, previews, and freshness checks write nothing. Authored convention edits change the next index, and authored deletions remove entries without recreating files. Package operational asset repair belongs to public apply. Missing unrelated operational skills do not block a present build engine.
 
-Exit codes: 0 success, 1 freshness drift under private `sync --check`, 2 usage/validation/collision, 3 operational failure. JSON has `schemaVersion: 1`, `command`, `ok`, `changes`, and `diagnostics`; changes distinguish pending and completed effects. After partial failure fix its cause and repeat the same authorized operation. No rollback or history database is maintained.
+Exit codes: 0 success, 1 freshness drift under private `sync --check`, 2 usage/validation/collision, 3 operational failure. JSON has `schemaVersion: 1`, `command`, `ok`, `changes`, and `diagnostics`; changes distinguish pending and completed effects. After partial failure fix its cause and repeat the same authorized operation.
 
 ## Workspace development
 

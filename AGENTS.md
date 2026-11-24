@@ -4,7 +4,7 @@
 
 This private npm workspace develops `@devel-solid/agentscli`. See [README.md](README.md) for usage, package boundaries, and development commands.
 
-This repository is a tool source, not a consumer. Keep this AGENTS.md and `docs/conventions/` handwritten in English. Do not run the CLI's `apply` or client generation workflows here. Package name/bin identities and workspace declarations identify this context; there is no source manifest.
+This repository is a tool source, not a consumer. Keep this AGENTS.md and `docs/conventions/` handwritten in English. Do not run the CLI's `apply` or client generation workflows here. Package name/bin identities and workspace declarations identify this context.
 
 ## Workflows
 

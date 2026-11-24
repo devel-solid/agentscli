@@ -13,7 +13,11 @@ interface RuntimeResult {
   schemaVersion: number;
   command: string;
   ok: boolean;
-  changes: { path: string; action: string; status?: string }[];
+  changes: {
+    path: string;
+    action: string;
+    status: 'pending' | 'completed';
+  }[];
   diagnostics: { code: string; message: string; path?: string }[];
 }
 
@@ -132,12 +136,9 @@ function describeResult(
   preview: boolean,
 ): Omit<CliResponse, 'exitCode'> {
   const lines = result.changes.map(
-    (change) =>
-      `${change.status ?? (preview ? 'planned' : 'completed')} ${change.action}: ${change.path}`,
+    (change) => `${change.status} ${change.action}: ${change.path}`,
   );
-  if (result.ok && result.command === 'validate')
-    lines.unshift('Project inputs are valid.');
-  else if (result.ok && !result.changes.length)
+  if (result.ok && !result.changes.length)
     lines.unshift('Everything is up to date.');
   else if (preview) lines.unshift('Planned changes; no files written.');
   const diagnostics = result.diagnostics.map(

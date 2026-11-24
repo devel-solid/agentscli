@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { basename, dirname, relative, resolve, sep } from 'node:path';
+import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { frontmatter } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';

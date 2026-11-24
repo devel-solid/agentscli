@@ -13,4 +13,4 @@ Detailed self-contained topic rules belong to conventions, handled by agentscli-
 
 Root AGENTS discovery may link conventions; conventions themselves cannot link other conventions or skills. Check existing targets before updating discovery. Keep each separate authoring responsibility within the existing authorization and do not maintain another catalog.
 
-Review-only requests write nothing. Report the changed entrypoint, actual checks, and separate work still needed. Authorship does not imply generation, migration, Git mutation, or publication.
+Review-only requests write nothing. Report the changed entrypoint, actual checks, and separate work still needed. Authorship does not imply generation, Git mutation, or publication.

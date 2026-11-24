@@ -9,7 +9,7 @@ Discover this monorepo and its workspace through current package metadata and pr
 
 Derive package identity/version, executable, registry, Git remote, and tag from actual metadata and current local/remote/registry state. Tags use agentscli-v<version>. Preserve immutable identities, native authentication, unrelated work, and staging. Never collect/print tokens, rewrite history, force-push, or replace published identities.
 
-Assess completed impact and choose an unused semantic version. Major zero means beta; production starts at 1.0.0. Beta contract changes replace the old contract directly without transition periods, migration, or backward-compatibility machinery, and do not require promotion to production. Account for public command removals and managed replacement. Prepare metadata with native npm version --no-git-tag-version in the workspace and update the root lockfile.
+Assess completed impact and choose an unused semantic version. Major zero means beta; production starts at 1.0.0. Beta contract changes do not require promotion to production. Account for public contract impact and managed replacement. Prepare metadata with native npm version --no-git-tag-version in the workspace and update the root lockfile.
 
 Run focused units and the root check gate, then build and inspect npm pack previews and actual archives in ignored storage. Check each archive using this skill's checker with --archive <tarball>. Verify identity/version/license/bin, the exact runtime and resource inventory, two complete skill closures, actual generator stamps, and README/license. Rebuild when candidate inputs change.
 
