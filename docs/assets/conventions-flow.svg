@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="352" viewBox="0 0 1000 352" fill="none" role="img" aria-labelledby="title description">
-  <title id="title">One convention, one generated index entry</title>
-  <desc id="description">Step 1: Save .agentscli/conventions/testing.md with a YAML trigger of Read when changing tests., the heading Testing, and the rule Test one behavior at a time. Step 2: Run agentscli apply in a terminal. Step 3: Open AGENTS.md. Its rendered body contains the heading AGENTS.md and an entry linking Testing to the convention, followed by Read when changing tests. The full rule remains in testing.md.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="493" viewBox="0 0 1000 493" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">Initialize, write conventions, then build the index</title>
+  <desc id="description">Step 1: Run agentscli init to prepare the conventions folder and install two project skills. Step 2: Ask your agent: Create a testing convention: one behavior per test. The agent creates .agentscli/conventions/testing.md. Step 3: Ask your agent: Generate AGENTS.md from our conventions. Step 4: Open AGENTS.md. Its Testing link opens the convention; the full rule remains in testing.md.</desc>
   <style>
     .panel { fill: #ffffff; stroke: #d1d9e0; }
     .bar { fill: #eef1f4; }
@@ -26,40 +26,54 @@
     }
   </style>
 
-  <rect class="panel" x="24.5" y="8.5" width="367" height="325" rx="10"/>
-  <path class="bar" d="M35 9H381Q391 9 391 19V94H25V19Q25 9 35 9Z"/>
-  <text class="ink" x="44" y="36" font-size="17" font-weight="600">1. Write the rules</text>
-  <text class="ink mono" x="44" y="77" font-size="13">.agentscli/conventions/testing.md</text>
-  <path class="line" d="M25 94H391"/>
-  <g class="mono" font-size="15">
-    <text class="muted mono" x="44" y="127">---</text>
-    <text class="ink mono" x="44" y="153"><tspan class="blue">trigger:</tspan> Read when changing tests.</text>
-    <text class="muted mono" x="44" y="179">---</text>
-    <text class="ink mono" x="44" y="221"><tspan class="purple">#</tspan> Testing</text>
-    <text class="ink mono" x="44" y="263">- Test one behavior at a time.</text>
-  </g>
-  <text class="muted" x="44" y="314" font-size="14">Authored Markdown · stays unchanged</text>
+  <rect id="init-card" class="panel" x="24.5" y="8.5" width="951" height="88" rx="10"/>
+  <path class="bar" d="M35 9H965Q975 9 975 19V48H25V19Q25 9 35 9Z"/>
+  <text class="ink" x="44" y="36" font-size="18" font-weight="600">1. Initialize the project</text>
+  <path id="init-divider" class="line" d="M25 48H975"/>
+  <text id="init-command" class="ink mono" x="44" y="77.7" font-size="16.5">agentscli init</text>
 
-  <rect class="panel" x="416.5" y="104.5" width="167" height="123" rx="10"/>
-  <text class="ink" x="500" y="130" text-anchor="middle" font-size="17" font-weight="600">2. Run the CLI</text>
-  <path class="line" d="M417 148H583"/>
-  <text class="muted" x="430" y="172" font-size="13">Terminal</text>
-  <text class="ink mono" x="430" y="205" font-size="13.5"><tspan class="muted">$ </tspan>agentscli apply</text>
+  <g transform="translate(0 36)">
+  <rect id="write-card" class="panel" x="24.5" y="80.5" width="447" height="88" rx="10"/>
+  <path class="bar" d="M35 81H461Q471 81 471 91V120H25V91Q25 81 35 81Z"/>
+  <text class="ink" x="44" y="107" font-size="18" font-weight="600">2. Ask your agent</text>
+  <path id="write-divider" class="line" d="M25 120H471"/>
+  <text id="write-request" class="ink" x="44" y="151.07" font-size="16.5">“Create a testing convention: one behavior per test.”</text>
+
+  <g transform="translate(0 -39)">
+  <rect class="panel" x="24.5" y="224.5" width="447" height="253" rx="10"/>
+  <path class="bar" d="M35 225H461Q471 225 471 235V270H25V235Q25 225 35 225Z"/>
+  <text class="ink mono" x="44" y="253" font-size="14.5">.agentscli/conventions/testing.md</text>
+  <path class="line" d="M25 270H471"/>
+  <g class="mono" font-size="16.5">
+    <text class="muted mono" x="44" y="302">---</text>
+    <text class="ink mono" x="44" y="328"><tspan class="blue">trigger:</tspan> Read when changing tests.</text>
+    <text class="muted mono" x="44" y="354">---</text>
+    <text class="ink mono" x="44" y="396"><tspan class="purple">#</tspan> Testing</text>
+    <text class="ink mono" x="44" y="438">- Test one behavior at a time.</text>
+  </g>
+  </g>
+
+  <rect id="build-card" class="panel" x="528.5" y="80.5" width="447" height="88" rx="10"/>
+  <path class="bar" d="M539 81H965Q975 81 975 91V120H529V91Q529 81 539 81Z"/>
+  <text class="ink" x="548" y="107" font-size="18" font-weight="600">3. Ask your agent</text>
+  <path id="build-divider" class="line" d="M529 120H975"/>
+  <text id="build-request" class="ink" x="548" y="151.07" font-size="16.5">“Generate AGENTS.md from our conventions.”</text>
   <g stroke-linecap="round" stroke-linejoin="round">
-    <path class="arrow-halo" d="M398 188H410M405 183L410 188L405 193M590 188H602M597 183L602 188L597 193" stroke-width="5"/>
-    <path class="arrow" d="M398 188H410M405 183L410 188L405 193M590 188H602M597 183L602 188L597 193" stroke-width="2"/>
+    <path class="arrow-halo" d="M248 174V180M243 175L248 180L253 175M752 174V180M747 175L752 180L757 175M480 311H520M512 303L520 311L512 319" stroke-width="5"/>
+    <path class="arrow" d="M248 174V180M243 175L248 180L253 175M752 174V180M747 175L752 180L757 175M480 311H520M512 303L520 311L512 319" stroke-width="2"/>
   </g>
 
-  <rect class="panel" x="608.5" y="8.5" width="367" height="325" rx="10"/>
-  <path class="bar" d="M619 9H965Q975 9 975 19V94H609V19Q609 9 619 9Z"/>
-  <text class="ink" x="628" y="36" font-size="17" font-weight="600">3. Open AGENTS.md</text>
-  <text class="ink mono" x="628" y="77" font-size="14">AGENTS.md</text>
-  <text class="muted" x="954" y="77" text-anchor="end" font-size="13">Rendered body</text>
-  <path class="line" d="M609 94H975"/>
-  <text class="ink" x="628" y="143" font-size="26" font-weight="600">AGENTS.md</text>
-  <path class="line" d="M628 159H954"/>
-  <circle class="ink" cx="634" cy="193" r="2.5"/>
-  <text class="ink" x="650" y="199" font-size="16"><tspan class="blue" text-decoration="underline">Testing</tspan>: Read when changing tests.</text>
-  <text class="muted" x="628" y="282" font-size="15">The link opens testing.md.</text>
-  <text class="muted" x="628" y="308" font-size="15">The full rule stays in that file.</text>
+  <g transform="translate(0 -39)">
+  <rect class="panel" x="528.5" y="224.5" width="447" height="253" rx="10"/>
+  <path class="bar" d="M539 225H965Q975 225 975 235V302H529V235Q529 225 539 225Z"/>
+  <text class="ink" x="548" y="252" font-size="18" font-weight="600">4. Open AGENTS.md</text>
+  <text class="ink mono" x="548" y="285" font-size="14.5">AGENTS.md</text>
+  <text class="muted" x="954" y="285" text-anchor="end" font-size="14.5">Rendered body</text>
+  <path class="line" d="M529 302H975"/>
+  <text class="ink" x="548" y="346" font-size="26" font-weight="600">AGENTS.md</text>
+  <path class="line" d="M548 362H954"/>
+  <circle class="ink" cx="554" cy="396" r="2.5"/>
+  <text class="ink" x="570" y="402" font-size="16.5"><tspan class="blue" text-decoration="underline">Testing</tspan>: Read when changing tests.</text>
+  </g>
+  </g>
 </svg>
