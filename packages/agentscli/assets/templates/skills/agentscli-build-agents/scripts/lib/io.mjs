@@ -173,6 +173,11 @@ function parents(io, root, path) {
       io.mkdir(containedPath(root, parent));
   }
 }
+export function createDirectory(io, root, path) {
+  if (inspect(io, root, path, 'directory')) return;
+  parents(io, root, path);
+  io.mkdir(containedPath(root, path));
+}
 function unchanged(io, root, path, previous) {
   const exists = inspect(io, root, path, 'file');
   const current = exists ? io.read(containedPath(root, path)) : undefined;

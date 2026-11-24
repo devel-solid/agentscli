@@ -80,13 +80,13 @@ export function discoverEngine(root, { fs = nodeFs } = {}) {
     names.some((name) => fold(name) === identity && name !== identity)
   )
     throw new Error(
-      'Restore the canonical local build skill with agentscli apply.',
+      'Restore the canonical local build skill with agentscli init.',
     );
   const tree = safe(join(directory, identity), fs, 'directory');
   const entry = safe(join(tree, 'SKILL.md'), fs, 'file');
   if (!isBuildIdentity(fs.readFileSync(entry, 'utf8')))
     throw new Error(
-      'The local build skill lacks its canonical leading identity and generated provenance; restore it with agentscli apply.',
+      'The local build skill lacks its canonical leading identity and generated provenance; preserve or move the ambiguous skill tree, then run agentscli init.',
     );
   return safe(join(tree, 'scripts', 'lib', 'index.mjs'), fs, 'file');
 }

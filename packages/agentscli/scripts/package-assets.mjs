@@ -8,7 +8,7 @@ import {
   PRODUCT_SKILLS,
   validPackageVersion,
 } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
-import { validateResources } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/content.mjs';
+import { validateProductResources } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/resources.mjs';
 import {
   uniquePaths,
   containedPath,
@@ -43,17 +43,17 @@ export function collectResources(root, io = fs) {
   for (const name of PRODUCT_SKILLS)
     collect(`assets/templates/skills/${name}`, `skills/${name}`);
   uniquePaths(resources.map((r) => r.destination));
-  const skills = PRODUCT_SKILLS.map((id) => ({
-    id,
-    source: 'local',
-    path: `.agents/skills/${id}`,
-    files: Object.fromEntries(
-      resources
-        .filter((r) => r.destination.startsWith(`skills/${id}/`))
-        .map((r) => [r.destination.slice(`skills/${id}/`.length), r.content]),
-    ),
-  }));
-  validateResources({ skills });
+  const skills = Object.fromEntries(
+    PRODUCT_SKILLS.map((id) => [
+      id,
+      Object.fromEntries(
+        resources
+          .filter((r) => r.destination.startsWith(`skills/${id}/`))
+          .map((r) => [r.destination.slice(`skills/${id}/`.length), r.content]),
+      ),
+    ]),
+  );
+  validateProductResources({ skills }, { generated: false });
   return resources;
 }
 export function stampSkill(content, pkg, path) {

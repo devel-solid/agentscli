@@ -34,7 +34,7 @@ try {
     ),
   };
   const { exitCode, result } = await execute(
-    'apply',
+    'update',
     { repoRoot: root, dryRun: true },
     { resources },
   );
@@ -45,7 +45,17 @@ try {
         'Managed resources differ. Run npm run dogfood and review the diff.',
       );
     process.exitCode = exitCode || 1;
-  } else console.log(JSON.stringify(validate(root)));
+  }
+  const index = await execute('sync', { repoRoot: root, check: true });
+  console.log(JSON.stringify(index.result));
+  if (index.exitCode) {
+    process.exitCode = Math.max(process.exitCode ?? 0, index.exitCode);
+    if (index.exitCode === 1)
+      console.error(
+        'Generated index differs. Run npm run dogfood and review the diff.',
+      );
+  }
+  console.log(JSON.stringify(validate(root)));
 } finally {
   fs.rmSync(temporary, { recursive: true, force: true });
 }

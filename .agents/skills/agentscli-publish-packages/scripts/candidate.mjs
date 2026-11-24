@@ -4,6 +4,7 @@ import { basename, resolve } from 'node:path';
 import { regular, checkPath } from './lib.mjs';
 import * as nodeFs from 'node:fs';
 import { parseDocument, visit } from 'yaml';
+import { PRODUCT_SUPPORT } from '../../../../packages/agentscli/assets/templates/skills/agentscli-build-agents/scripts/lib/resources.mjs';
 
 const names = {
   agentscli: ['agentscli-write-conventions', 'agentscli-build-agents'],
@@ -257,14 +258,7 @@ export function inspectArchive(bytes, expected, prepared) {
     )
       throw new Error(`Invalid or stale generated skill metadata: ${skill}`);
   }
-  const support = {
-    'agentscli-write-conventions': ['scripts/check.mjs'],
-    'agentscli-build-agents': [
-      'scripts/build-agents.mjs',
-      'scripts/lib/index.mjs',
-    ],
-  };
-  for (const [skill, entries] of Object.entries(support))
+  for (const [skill, entries] of Object.entries(PRODUCT_SUPPORT))
     for (const entry of entries)
       if (!files.has(`${prefix}${skill}/${entry}`))
         throw new Error(`Missing runtime closure: ${skill}/${entry}`);

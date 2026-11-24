@@ -1,7 +1,7 @@
 {
   "name": "@devel-solid/agentscli",
   "version": "0.6.0",
-  "description": "Generate a project AGENTS.md index from authored Markdown conventions.",
+  "description": "Install skills for authoring conventions and generating a project AGENTS.md index.",
   "license": "MIT",
   "repository": {
     "type": "git",

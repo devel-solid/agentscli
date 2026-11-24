@@ -3,6 +3,7 @@ import { EngineError } from './contracts.mjs';
 import {
   checkRoot,
   assertProjectTarget,
+  createDirectory,
   disk,
   inspect,
   removeFile,
@@ -28,6 +29,8 @@ export function applyEffects(io, root, effects) {
           if (inspect(io, root, effect.path, 'directory'))
             io.rmdir(containedPath(root, effect.path));
         } else removeFile(io, root, effect.path, effect.previous);
+      } else if (effect.directory) {
+        createDirectory(io, root, effect.path);
       } else {
         replaceFile(io, root, effect.path, effect.content, effect.previous);
       }
@@ -59,16 +62,16 @@ export async function execute(command, options, dependencies = {}) {
     diagnostics: [],
   };
   try {
-    if (!['apply', 'validate', 'sync'].includes(command))
+    if (!['init', 'update', 'validate', 'sync'].includes(command))
       throw new EngineError(
         'USAGE',
-        'Expected apply or a private validate/sync mode.',
+        'Expected init, update, or a private validate/sync mode.',
       );
     const io = dependencies.io ?? disk,
       root = checkRoot(io, options.repoRoot);
     assertProjectTarget(io, root);
     const resources =
-      command === 'apply'
+      command === 'init' || command === 'update'
         ? (dependencies.resources ?? loadResources())
         : undefined;
     const effects = plan(io, root, command, resources);

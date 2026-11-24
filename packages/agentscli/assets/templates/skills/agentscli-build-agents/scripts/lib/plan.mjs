@@ -1,11 +1,17 @@
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { EngineError, CONVENTION_ROOT, PRODUCT_SKILLS } from './contracts.mjs';
+import {
+  EngineError,
+  CONVENTION_ROOT,
+  PRODUCT_SKILLS,
+  validPackageVersion,
+} from './contracts.mjs';
 import { decode, frontmatter } from './markdown.mjs';
 import { containedPath, portableKey, uniquePaths } from './paths.mjs';
 import { assertProjectTarget, disk, inspect, walk } from './io.mjs';
 import { render } from './render.mjs';
 import { validateResources } from './content.mjs';
+import { validateProductResources } from './resources.mjs';
 const compareKeys = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const bytes = (text) => new TextEncoder().encode(text);
 export const equalBytes = (a, b) =>
@@ -135,31 +141,76 @@ function effectBuilder(io, root) {
       names: (absolute) =>
         io.names(absolute).filter((name) => !hidden(join(absolute, name))),
     };
-    for (const [relative, content] of Object.entries(files))
+    for (const [relative, content] of Object.entries(files).sort(([a], [b]) =>
+      a === 'SKILL.md' ? -1 : b === 'SKILL.md' ? 1 : compareKeys(a, b),
+    ))
       compare(`${directory}/${relative}`, content, prospective);
   };
   return { effects, compare, tree };
 }
-export function plan(io, root, command, resources) {
-  assertProjectTarget(io, root);
-  const applying = command === 'apply';
-  const { effects, compare, tree } = effectBuilder(io, root);
-  if (applying) {
-    if (!resources)
-      throw new EngineError(
-        'PACKAGE_RESOURCE',
-        'Apply requires installed package assets.',
-        3,
-      );
+function installedIdentity(io, root, id) {
+  const path = `.agents/skills/${id}/SKILL.md`;
+  if (!inspect(io, root, path, 'file')) return undefined;
+  try {
+    const fields = frontmatter(
+      decode(read(io, root, path), path),
+      path,
+    )?.fields;
+    return (
+      fields?.name === id &&
+      fields.metadata?.generatedBy === '@devel-solid/agentscli' &&
+      validPackageVersion(fields.metadata?.generatorVersion)
+    );
+  } catch {
+    return false;
+  }
+}
+function installSkills(io, root, command, resources, tree) {
+  validateProductResources(resources);
+  const installed = PRODUCT_SKILLS.map((id) => {
+    const path = `.agents/skills/${id}`;
+    const exists = inspect(io, root, path, 'directory');
+    return {
+      id,
+      path,
+      exists,
+      identity: exists ? installedIdentity(io, root, id) : undefined,
+    };
+  });
+  const recognized = installed.some(({ identity }) => identity === true);
+  for (const { path, exists, identity } of installed)
     if (
-      Object.keys(resources.skills).sort().join('\n') !==
-      [...PRODUCT_SKILLS].sort().join('\n')
+      exists &&
+      (identity === false ||
+        (identity === undefined &&
+          !recognized &&
+          io.names(containedPath(root, path)).length))
     )
       throw new EngineError(
-        'PACKAGE_RESOURCE',
-        'Expected exactly two operational skill assets.',
-        3,
+        'SKILL_CONFLICT',
+        'Skill ownership is ambiguous. Preserve or move this tree before running agentscli init.',
+        2,
+        path,
       );
+  if (command === 'update' && !recognized)
+    throw new EngineError(
+      'NOT_INITIALIZED',
+      'No installed product skill was recognized. Run agentscli init first.',
+    );
+  for (const { id, path } of installed) tree(path, resources.skills[id]);
+}
+export function plan(io, root, command, resources) {
+  assertProjectTarget(io, root);
+  const { effects, compare, tree } = effectBuilder(io, root);
+  if (command === 'init' || command === 'update') {
+    installSkills(io, root, command, resources, tree);
+    if (command === 'init' && !inspect(io, root, CONVENTION_ROOT, 'directory'))
+      effects.unshift({
+        path: CONVENTION_ROOT,
+        action: 'create',
+        directory: true,
+      });
+    return effects;
   }
 
   const conventions = walk(io, root, CONVENTION_ROOT)
@@ -191,27 +242,18 @@ export function plan(io, root, command, resources) {
       if (files['SKILL.md'])
         skills.push({ id, source: 'local', path: directory, files });
     }
-  if (applying)
-    for (const id of PRODUCT_SKILLS)
+  for (const id of PRODUCT_SKILLS)
+    if (inspect(io, root, `.agents/skills/${id}/SKILL.md`, 'file'))
       skills.push({
         id,
         source: 'local',
         path: `.agents/skills/${id}`,
-        files: resources.skills[id],
+        files: {
+          'SKILL.md': bytes(
+            `---\nname: ${id}\ndescription: Installed operational resource.\n---\n`,
+          ),
+        },
       });
-  else
-    for (const id of PRODUCT_SKILLS)
-      if (inspect(io, root, `.agents/skills/${id}/SKILL.md`, 'file'))
-        skills.push({
-          id,
-          source: 'local',
-          path: `.agents/skills/${id}`,
-          files: {
-            'SKILL.md': bytes(
-              `---\nname: ${id}\ndescription: Installed operational resource.\n---\n`,
-            ),
-          },
-        });
   validateResources({ conventions, skills });
   const documents = render(conventions);
   for (const [path, text] of documents) {
@@ -223,15 +265,11 @@ export function plan(io, root, command, resources) {
     )
       throw new EngineError(
         'DOCUMENT_CONFLICT',
-        'Root AGENTS.md is not owned by @devel-solid/agentscli. Preserve its content outside the generated index before applying.',
+        'Root AGENTS.md is not owned by @devel-solid/agentscli. Preserve its content outside the generated index before synchronization.',
         2,
         path,
       );
     compare(path, bytes(text));
-  }
-  if (applying) {
-    for (const id of PRODUCT_SKILLS)
-      tree(`.agents/skills/${id}`, resources.skills[id]);
   }
   uniquePaths(
     effects

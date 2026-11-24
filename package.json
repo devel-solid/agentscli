@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "dogfood": "npm run build && node packages/agentscli/dist/cli.js apply --repo-root .",
+    "dogfood": "npm run build && node packages/agentscli/dist/cli.js init --repo-root . && node .agents/skills/agentscli-build-agents/scripts/build-agents.mjs sync --repo-root .",
     "typecheck": "npm run typecheck --workspaces",
     "format": "prettier --write package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit .agentscli/conventions README.md .github/workflows/node.yml \".agents/skills/agentscli-publish-packages/**/*\" && npm run format --workspaces",
     "format:check": "prettier --check package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit .agentscli/conventions README.md .github/workflows/node.yml \".agents/skills/agentscli-publish-packages/**/*\" && npm run format:check --workspaces",

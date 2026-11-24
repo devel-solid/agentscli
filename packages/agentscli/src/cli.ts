@@ -3,23 +3,12 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import type { execute } from '#engine';
-type Command = 'apply';
-interface ExecuteOptions {
-  repoRoot: string;
-  dryRun?: boolean;
-}
-interface RuntimeResult {
-  schemaVersion: number;
-  command: string;
-  ok: boolean;
-  changes: {
-    path: string;
-    action: string;
-    status: 'pending' | 'completed';
-  }[];
-  diagnostics: { code: string; message: string; path?: string }[];
-}
+import type {
+  execute,
+  PublicCommand as Command,
+  ExecuteOptions,
+  RuntimeResult,
+} from '#engine';
 
 const version = (
   JSON.parse(
@@ -30,22 +19,25 @@ const version = (
 ).version;
 
 export function helpText(packageVersion = version): string {
-  return `agentscli ${packageVersion} — project instruction index from authored conventions
+  return `agentscli ${packageVersion} — install project convention skills
 
 Usage:
-  agentscli apply [--dry-run]
+  agentscli init [--dry-run]
+  agentscli update [--dry-run]
   agentscli --help
   agentscli --version
 
 Common options: --repo-root <directory>, --json.
 
-apply updates root AGENTS.md and the two operational skill trees, removing obsolete
-managed skill files. Author conventions directly in .agentscli/conventions/**/*.md
-with agentscli-write-conventions. Their YAML trigger, H1, body and original bytes are
-preserved. Git state and unrelated files stay preserved. --dry-run previews without
-writes. Root AGENTS.md is a replaceable generated index. Version .agentscli and
-operational skills. Validation and offline synchronization belong to the private
-scripts of agentscli-build-agents, discoverable through project skills.
+init creates .agentscli/conventions/ if needed and installs the two product skills.
+update refreshes both skills from this CLI version; it requires at least one
+installed product SKILL.md with matching name, generator identity and valid version.
+Missing skill files are repaired; ambiguous existing entries require manual recovery.
+Both commands replace managed skill trees and remove obsolete files. Conventions,
+AGENTS.md, local skills, Git state and unrelated files stay preserved. --dry-run
+previews without writes. Repeat init safely to prepare an existing project.
+Use agentscli-write-conventions to create or edit conventions, then
+agentscli-build-agents to validate them and generate/check AGENTS.md.
 After partial failure repeat the same authorized operation; there is no rollback.
 Exit codes: 0 success; 2 usage/validation/conflict; 3 operational failure.
 `;
@@ -90,14 +82,16 @@ export function parseArguments(
       throw new Error('Use --version by itself.');
     return { action: 'version', json: false };
   }
-  if (positionals.length > 1) throw new Error('Expected one command: apply.');
+  if (positionals.length > 1)
+    throw new Error('Expected one command: init or update.');
   const command = positionals[0];
-  if (command && command !== 'apply')
+  if (command && !['init', 'update'].includes(command))
     throw new Error(`Unknown command: ${command}. Use agentscli --help.`);
   if (!command && !values.help)
-    throw new Error('Choose apply. Use agentscli --help.');
+    throw new Error('Choose init or update. Use agentscli --help.');
   const allowed: Record<string, string[]> = {
-    apply: ['dry-run'],
+    init: ['dry-run'],
+    update: ['dry-run'],
   };
   for (const name of seen) {
     if (['repo-root', 'json', 'help'].includes(name)) continue;
@@ -179,7 +173,7 @@ export async function runCli(
     parsed = parseArguments(args, dependencies.cwd);
   } catch (error) {
     return failure(
-      args.find((arg) => arg === 'apply') ?? 'unknown',
+      args.find((arg) => ['init', 'update'].includes(arg)) ?? 'unknown',
       'USAGE',
       error instanceof Error ? error.message : 'Invalid arguments.',
       args.includes('--json'),

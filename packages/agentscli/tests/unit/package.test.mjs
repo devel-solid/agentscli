@@ -4,6 +4,10 @@ import { resolve, sep } from 'node:path';
 import { collectResources, stampSkill } from '../../scripts/package-assets.mjs';
 import { PRODUCT_SKILLS } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
 import { frontmatter } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
+import {
+  PRODUCT_SUPPORT,
+  validateProductResources,
+} from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/resources.mjs';
 
 function resourceIO(overrides = {}) {
   const root = resolve('unit-resources');
@@ -18,6 +22,8 @@ function resourceIO(overrides = {}) {
       `---\nname: ${name}\ndescription: Write useful project instructions.\n---\nBody\n`,
     );
     add(`${path}/references/example.md`, 'Support content\n');
+    for (const support of PRODUCT_SUPPORT[name])
+      add(`${path}/${support}`, 'export {};\n');
   }
   const writes = [];
   const io = {
@@ -60,7 +66,7 @@ function resourceIO(overrides = {}) {
 test('whole operational skill trees map to package resources', () => {
   const { root, io } = resourceIO();
   const resources = collectResources(root, io);
-  assert.equal(resources.length, 4);
+  assert.equal(resources.length, 7);
   assert.equal(
     resources
       .find(
@@ -180,4 +186,109 @@ test('stamping requires source metadata and valid package provenance', () => {
     stampSkill(source, pkg, 'SKILL.md'),
   );
   assert.deepEqual(source, before);
+});
+
+function productResources() {
+  const { root, io } = resourceIO();
+  const entries = collectResources(root, io);
+  return {
+    skills: Object.fromEntries(
+      PRODUCT_SKILLS.map((id) => [
+        id,
+        Object.fromEntries(
+          entries
+            .filter((r) => r.destination.startsWith(`skills/${id}/`))
+            .map((r) => [
+              r.destination.slice(`skills/${id}/`.length),
+              r.destination.endsWith('/SKILL.md')
+                ? stampSkill(
+                    r.content,
+                    { name: '@devel-solid/agentscli', version: '0.6.0' },
+                    r.destination,
+                  )
+                : r.content,
+            ]),
+        ),
+      ]),
+    ),
+  };
+}
+
+test('operational assets require complete nonempty runtime support before installation', () => {
+  assert.doesNotThrow(() => validateProductResources(productResources()));
+  for (const id of PRODUCT_SKILLS)
+    for (const path of PRODUCT_SUPPORT[id])
+      for (const content of [
+        undefined,
+        Buffer.alloc(0),
+        Buffer.from(' \n'),
+        Buffer.from([0xff]),
+      ]) {
+        const resources = productResources();
+        if (content === undefined) delete resources.skills[id][path];
+        else resources.skills[id][path] = content;
+        assert.throws(
+          () => validateProductResources(resources),
+          (error) =>
+            error.code === 'PACKAGE_RESOURCE' &&
+            error.exitCode === 3 &&
+            error.path.endsWith(path),
+        );
+      }
+});
+
+test('derived operational assets validate identities, provenance, and one release version', () => {
+  for (const change of [
+    (resources) => {
+      delete resources.skills['agentscli-build-agents'];
+    },
+    (resources) => {
+      resources.skills.extra = {};
+    },
+    (resources) => {
+      resources.skills['agentscli-write-conventions']['SKILL.md'] = Buffer.from(
+        '---\nname: wrong\ndescription: Useful\n---\n',
+      );
+    },
+    (resources) => {
+      const files = resources.skills['agentscli-write-conventions'];
+      files['SKILL.md'] = Buffer.from(
+        files['SKILL.md'].toString().replace('license: MIT', 'license: Other'),
+      );
+    },
+    (resources) => {
+      const files = resources.skills['agentscli-write-conventions'];
+      files['SKILL.md'] = Buffer.from(
+        files['SKILL.md']
+          .toString()
+          .replace(
+            'generatedBy: "@devel-solid/agentscli"',
+            'generatedBy: other',
+          ),
+      );
+    },
+    (resources) => {
+      const files = resources.skills['agentscli-write-conventions'];
+      files['SKILL.md'] = Buffer.from(
+        files['SKILL.md']
+          .toString()
+          .replace('generatorVersion: 0.6.0', 'generatorVersion: invalid'),
+      );
+    },
+    (resources) => {
+      const files = resources.skills['agentscli-write-conventions'];
+      files['SKILL.md'] = Buffer.from(
+        files['SKILL.md']
+          .toString()
+          .replace('generatorVersion: 0.6.0', 'generatorVersion: 0.7.0'),
+      );
+    },
+  ]) {
+    const resources = productResources();
+    change(resources);
+    assert.throws(
+      () => validateProductResources(resources),
+      (error) => error.code === 'PACKAGE_RESOURCE' && error.exitCode === 3,
+    );
+  }
 });

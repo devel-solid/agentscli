@@ -41,14 +41,23 @@ export const resources = {
     PRODUCT_SKILLS.map((id) => [
       id,
       {
-        'SKILL.md': skill(id),
+        'SKILL.md': skill(
+          id,
+          'license: MIT\nmetadata:\n  generatedBy: \"@devel-solid/agentscli\"\n  generatorVersion: \"0.6.0\"\n',
+        ),
         'references/note.md': bytes('Own support.\n'),
+        ...(id === 'agentscli-build-agents'
+          ? {
+              'scripts/build-agents.mjs': bytes('export const build = true;'),
+              'scripts/lib/index.mjs': bytes('export const engine = true;'),
+            }
+          : { 'scripts/check.mjs': bytes('export const check = true;') }),
       },
     ]),
   ),
 };
 export const client = (files) => memory(files);
-export const invoke = (fs, command = 'apply', options = {}) =>
+export const invoke = (fs, command = 'sync', options = {}) =>
   execute(command, { repoRoot: fs.root, ...options }, { io: fs.io, resources });
 
 test('generic YAML rejects duplicate keys, aliases and explicit tags', () => {
@@ -238,29 +247,32 @@ test('supported links reject cross-resource references, HTML, encoded aliases, a
     ],
   });
 });
-test('apply previews without writes then replaces managed drift while preserving authored state', async () => {
+test('init previews directory creation and skill replacement while preserving authored state', async () => {
   const fs = memory();
-  const preview = await invoke(fs, 'apply', { dryRun: true });
+  const preview = await invoke(fs, 'init', { dryRun: true });
   assert.equal(preview.exitCode, 0);
   assert.equal(fs.writes.length, 0);
-  assert.ok(preview.result.changes.length);
-  assert.equal((await invoke(fs)).exitCode, 0);
-  assert.equal((await invoke(fs)).result.changes.length, 0);
-  fs.put('.agentscli/conventions/custom.md', convention('Custom'));
-  const attachment = new Uint8Array([0, 255, 13, 10]);
-  fs.put('.agentscli/conventions/notes/attachment.bin', attachment);
-  fs.put('.agents/skills/agentscli-build-agents/unwanted.txt', 'obsolete');
-  fs.put('.agents/skills/unrelated/SKILL.md', skill('unrelated'));
-  fs.put(
-    'AGENTS.md',
-    '---\ngeneratedBy: "@devel-solid/agentscli"\n---\nEdited managed copy.',
+  assert.ok(
+    preview.result.changes.some(
+      (c) => c.path === '.agentscli/conventions' && c.action === 'create',
+    ),
   );
-  assert.equal((await invoke(fs)).exitCode, 0);
-  assert.match(fs.text('AGENTS.md'), /Custom/);
-  assert.match(fs.text('.agentscli/conventions/custom.md'), /trigger:/);
+  const installed = await invoke(fs, 'init');
+  assert.equal(installed.exitCode, 0);
   assert.deepEqual(
-    fs.io.read(join(fs.root, '.agentscli/conventions/notes/attachment.bin')),
-    attachment,
+    installed.result.changes.map((c) => ({ ...c, status: 'pending' })),
+    preview.result.changes,
+  );
+  assert.equal((await invoke(fs, 'init')).result.changes.length, 0);
+  fs.put('.agentscli/conventions/custom.md', '# Draft without metadata.');
+  fs.put('.agents/skills/agentscli-build-agents/unwanted.txt', 'obsolete');
+  fs.put('.agents/skills/unrelated/SKILL.md', '# Authored draft.');
+  fs.put('AGENTS.md', '# Handwritten instructions.');
+  assert.equal((await invoke(fs, 'init')).exitCode, 0);
+  assert.equal(fs.text('AGENTS.md'), '# Handwritten instructions.');
+  assert.equal(
+    fs.text('.agentscli/conventions/custom.md'),
+    '# Draft without metadata.',
   );
   assert.equal(
     fs.nodes.has(
@@ -268,8 +280,12 @@ test('apply previews without writes then replaces managed drift while preserving
     ),
     false,
   );
-  assert.match(fs.text('.agents/skills/unrelated/SKILL.md'), /unrelated/);
+  assert.equal(
+    fs.text('.agents/skills/unrelated/SKILL.md'),
+    '# Authored draft.',
+  );
 });
+
 test('repeated operations preserve authored convention bytes including BOM, CRLF and whitespace', async () => {
   const path = '.agentscli/conventions/team/regras-gerais.md';
   const authored = bytes(
@@ -278,10 +294,10 @@ test('repeated operations preserve authored convention bytes including BOM, CRLF
   const fs = client({ [path]: authored });
   for (let repeat = 0; repeat < 2; repeat++) {
     for (const [command, options] of [
-      ['apply', { dryRun: true }],
+      ['init', { dryRun: true }],
       ['validate', {}],
       ['sync', { dryRun: true }],
-      ['apply', {}],
+      ['init', {}],
       ['sync', {}],
       ['sync', { check: true }],
     ]) {
@@ -327,10 +343,10 @@ test('unrelated authored files are never read or changed', async () => {
     return originalRead(path);
   };
   for (const [command, options] of [
-    ['apply', { dryRun: true }],
+    ['init', { dryRun: true }],
     ['validate', {}],
     ['sync', { check: true }],
-    ['apply', {}],
+    ['init', {}],
     ['sync', {}],
   ]) {
     const response = await invoke(fs, command, options);
@@ -358,9 +374,9 @@ test('local skills have protected ownership and full validation', async () => {
     };
     const fs = client(files);
     for (const [command, options] of [
-      ['apply', { dryRun: true }],
+      ['init', { dryRun: true }],
       ['validate', {}],
-      ['apply', {}],
+      ['init', {}],
       ['sync', {}],
       ['sync', { check: true }],
     ]) {
@@ -375,7 +391,7 @@ test('local skills have protected ownership and full validation', async () => {
 
     fs.put(`${base}/SKILL.md`, '# Missing required metadata.\n');
     const before = fs.writes.length;
-    for (const command of ['apply', 'validate', 'sync']) {
+    for (const command of ['validate', 'sync']) {
       assert.equal((await invoke(fs, command)).exitCode, 2);
       assert.equal(fs.writes.length, before);
     }
@@ -402,7 +418,7 @@ test('generation preserves a non-Latin title, trigger and body with deterministi
   assert.equal((await invoke(fs)).result.changes.length, 0);
 });
 
-test('first apply generates an empty index and sync indexes a first authored convention', async () => {
+test('first sync generates an empty index and sync indexes a first authored convention', async () => {
   const fs = client();
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
@@ -428,7 +444,7 @@ test('private validate/check are offline, write-free, and do not need unrelated 
   );
 });
 
-test('skill discovery preserves regular metadata across apply and private generation', async () => {
+test('skill discovery preserves regular metadata across init and private generation', async () => {
   const metadata = {
     '.agents/skills/.tool-target': bytes('codex\n'),
     '.agents/skills/tool-metadata.bin': new Uint8Array([0, 255, 13, 10]),
@@ -439,7 +455,7 @@ test('skill discovery preserves regular metadata across apply and private genera
     '.agents/skills/check/SKILL.md': skill('check'),
   });
   for (const [command, options] of [
-    ['apply', { dryRun: true }],
+    ['init', { dryRun: true }],
     ['validate', {}],
     ['sync', { dryRun: true }],
     ['sync', { check: true }],
@@ -487,8 +503,6 @@ test('regular metadata does not bypass custom skill validation', async () => {
       ),
     });
     for (const [command, options] of [
-      ['apply', { dryRun: true }],
-      ['apply', {}],
       ['validate', {}],
       ['sync', { dryRun: true }],
       ['sync', { check: true }],
@@ -512,7 +526,7 @@ test('skill metadata and discovered support retain safe-path inspection before c
     ]) {
       const fs = client({ '.agents/skills/review/SKILL.md': skill('review') });
       fs.put(path, 'unsafe', overrides);
-      for (const command of ['apply', 'validate', 'sync']) {
+      for (const command of ['validate', 'sync']) {
         const response = await invoke(fs, command);
         assert.equal(response.exitCode, 2);
         assert.equal(response.result.diagnostics[0].code, 'PATH_UNSAFE');
@@ -534,8 +548,8 @@ test('regular files cannot occupy packaged skill directories', async () => {
     const path = `.agents/skills/${id}`;
     const fs = client({ [path]: 'Protected authored file.\n' });
     for (const [command, options] of [
-      ['apply', { dryRun: true }],
-      ['apply', {}],
+      ['init', { dryRun: true }],
+      ['init', {}],
       ['validate', {}],
       ['sync', { check: true }],
     ]) {
@@ -547,7 +561,7 @@ test('regular files cannot occupy packaged skill directories', async () => {
     }
   }
 });
-test('manual root AGENTS and invalid authored input block all writes', async () => {
+test('manual root AGENTS and invalid authored input block generation writes', async () => {
   for (const files of [
     { 'AGENTS.md': '# Handwritten\n' },
     {
@@ -559,8 +573,6 @@ test('manual root AGENTS and invalid authored input block all writes', async () 
   ]) {
     const fs = client(files);
     for (const [command, options] of [
-      ['apply', {}],
-      ['apply', { dryRun: true }],
       ['validate', {}],
       ['sync', {}],
       ['sync', { check: true }],
@@ -598,7 +610,7 @@ test('nested convention body links resolve at their final path and trigger links
     assert.equal(rejected.text(path), text);
   }
 });
-test('source workspaces apply and synchronize their own authored conventions', async () => {
+test('source workspaces init and synchronize their own authored conventions', async () => {
   const authored = convention().replaceAll('\n', '\r\n');
   const files = {
     'package.json': JSON.stringify({
@@ -618,6 +630,7 @@ test('source workspaces apply and synchronize their own authored conventions', a
   const fs = client(files);
   assert.equal((await invoke(fs, 'validate')).exitCode, 0);
   assert.equal(fs.writes.length, 0);
+  assert.equal((await invoke(fs, 'init')).exitCode, 0);
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
   assert.equal((await invoke(fs)).result.changes.length, 0);
@@ -646,7 +659,7 @@ test('installed package targets and descendants are protected before mutation', 
     const fs = client({ [`${location}/package.json`]: identity });
     fs.put(`${location}/nested/project.txt`, 'Preserved');
     for (const target of [location, `${location}/nested`])
-      for (const command of ['apply', 'sync', 'validate']) {
+      for (const command of ['init', 'update', 'sync', 'validate']) {
         const response = await execute(
           command,
           { repoRoot: join(fs.root, target) },
@@ -692,14 +705,14 @@ test('partial file failure report completed/pending effects and retry converges'
     if (++count === 3) throw new Error('unit failure');
     original(...args);
   };
-  const failed = await invoke(fs);
+  const failed = await invoke(fs, 'init');
   assert.equal(failed.exitCode, 3);
   assert.ok(failed.result.changes.some((c) => c.status === 'completed'));
   assert.ok(failed.result.changes.some((c) => c.status === 'pending'));
   assert.deepEqual(fs.io.read(join(fs.root, path)), authored);
   fs.io.rename = original;
-  assert.equal((await invoke(fs)).exitCode, 0);
-  assert.equal((await invoke(fs)).result.changes.length, 0);
+  assert.equal((await invoke(fs, 'update')).exitCode, 0);
+  assert.equal((await invoke(fs, 'init')).result.changes.length, 0);
   assert.deepEqual(fs.io.read(join(fs.root, path)), authored);
 });
 
@@ -732,7 +745,8 @@ test('authored edits and deletions update only the index and are never recreated
 
 test('private argument parser rejects public commands, unknown flags and incompatible modes', async () => {
   for (const args of [
-    ['apply'],
+    ['init'],
+    ['update'],
     ['validate', '--check'],
     ['sync', '--unknown'],
     ['sync', '--json', '--json'],
@@ -791,9 +805,9 @@ test('skill resource aliases reject local paths, remote URLs, HTML entities, cas
   );
 });
 
-test('apply replaces proven managed file and directory topologies without adopting unrelated paths', async () => {
+test('update replaces proven managed file and directory topologies without adopting unrelated paths', async () => {
   const fs = memory();
-  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal((await invoke(fs, 'init')).exitCode, 0);
   const id = 'agentscli-build-agents',
     base = `.agents/skills/${id}`;
   fs.put(`${base}/support/item.mjs`, 'obsolete support');
@@ -805,7 +819,7 @@ test('apply replaces proven managed file and directory topologies without adopti
     },
   };
   let response = await execute(
-    'apply',
+    'update',
     { repoRoot: fs.root },
     { io: fs.io, resources: upgraded },
   );
@@ -822,14 +836,14 @@ test('apply replaces proven managed file and directory topologies without adopti
     },
   };
   response = await execute(
-    'apply',
+    'update',
     { repoRoot: fs.root },
     { io: fs.io, resources: upgraded },
   );
   assert.equal(response.exitCode, 0, JSON.stringify(response.result));
   assert.equal(fs.text(`${base}/support/item.mjs`), 'nested again');
   fs.put('.agents/skills/unrelated/support', 'authored');
-  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal((await invoke(fs, 'init')).exitCode, 0);
   assert.equal(fs.text('.agents/skills/unrelated/support'), 'authored');
 });
 
@@ -874,8 +888,8 @@ test('root ownership requires exact structural generatedBy frontmatter', async (
     );
     const fs = client({ 'AGENTS.md': root });
     for (const [command, options] of [
-      ['apply', {}],
-      ['apply', { dryRun: true }],
+      ['sync', {}],
+      ['sync', { dryRun: true }],
       ['sync', { check: true }],
     ]) {
       const response = await invoke(fs, command, options);
@@ -944,4 +958,140 @@ test('multiline setext convention titles occupy one index line', () => {
     document,
     '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md\n\n- [Testing policy](.agentscli/conventions/testing-policy.md): Read before testing.\n',
   );
+});
+
+test('update requires recognized installation and repairs missing skill resources without creating conventions', async () => {
+  const fresh = client();
+  const rejected = await invoke(fresh, 'update', { dryRun: true });
+  assert.equal(rejected.exitCode, 2);
+  assert.equal(rejected.result.diagnostics[0].code, 'NOT_INITIALIZED');
+  assert.match(rejected.result.diagnostics[0].message, /agentscli init/);
+  assert.equal(fresh.writes.length, 0);
+  const base = `.agents/skills/${PRODUCT_SKILLS[0]}`;
+  const state = client({
+    [`${base}/SKILL.md`]: resources.skills[PRODUCT_SKILLS[0]]['SKILL.md'],
+    'AGENTS.md': '# Authored root',
+  });
+  const preview = await invoke(state, 'update', { dryRun: true });
+  assert.equal(preview.exitCode, 0);
+  assert.equal(state.writes.length, 0);
+  assert.ok(
+    preview.result.changes.some((c) =>
+      c.path.endsWith('scripts/build-agents.mjs'),
+    ),
+  );
+  assert.equal((await invoke(state, 'update')).exitCode, 0);
+  assert.equal(
+    state.nodes.has(join(state.root, '.agentscli/conventions')),
+    false,
+  );
+  assert.equal(state.text('AGENTS.md'), '# Authored root');
+  assert.equal((await invoke(state, 'update')).result.changes.length, 0);
+  assert.equal((await invoke(state, 'init')).exitCode, 0);
+  assert.equal(
+    state.io.info(join(state.root, '.agentscli/conventions')).kind,
+    'directory',
+  );
+});
+
+test('recognized installation can recover a sibling without an entry, but ambiguous entries remain protected', async () => {
+  const [id, other] = PRODUCT_SKILLS;
+  const base = `.agents/skills/${id}`;
+  const sibling = `.agents/skills/${other}`;
+  const fs = client({
+    [`${base}/SKILL.md`]: resources.skills[id]['SKILL.md'],
+    [`${sibling}/obsolete.mjs`]: 'partial support',
+  });
+  assert.equal((await invoke(fs, 'update')).exitCode, 0);
+  assert.equal(fs.nodes.has(join(fs.root, `${sibling}/obsolete.mjs`)), false);
+  for (const entry of [
+    '# Authored local procedure',
+    '---\nname: other\nmetadata: {generatedBy: "@devel-solid/agentscli", generatorVersion: "0.6.0"}\n---\n',
+    '---\nname: agentscli-build-agents\nmetadata: {generatedBy: "@devel-solid/agentscli", generatorVersion: invalid}\n---\n',
+  ]) {
+    const fs = client({
+      [`${base}/SKILL.md`]: resources.skills[id]['SKILL.md'],
+      [`${sibling}/SKILL.md`]: entry,
+    });
+    for (const command of ['init', 'update']) {
+      assert.equal(
+        (await invoke(fs, command)).result.diagnostics[0].code,
+        'SKILL_CONFLICT',
+      );
+      assert.equal(fs.writes.length, 0);
+      assert.equal(fs.text(`${sibling}/SKILL.md`), entry);
+    }
+  }
+  const partial = client({ [`${base}/notes.txt`]: 'unproven content' });
+  assert.equal(
+    (await invoke(partial, 'init')).result.diagnostics[0].code,
+    'SKILL_CONFLICT',
+  );
+  assert.equal(partial.writes.length, 0);
+});
+
+test('init adopts empty target directories and update preserves invalid authored content without reading it', async () => {
+  const fs = client();
+  const base = `.agents/skills/${PRODUCT_SKILLS[0]}`;
+  fs.put(`${base}/placeholder`, '');
+  fs.nodes.delete(join(fs.root, `${base}/placeholder`));
+  assert.equal((await invoke(fs, 'init')).exitCode, 0);
+  fs.put('.agentscli/conventions/draft.md', new Uint8Array([255]));
+  fs.put('AGENTS.md', new Uint8Array([255]));
+  fs.put('.agents/skills/local/SKILL.md', '# Draft');
+  const read = fs.io.read;
+  fs.io.read = (path) => {
+    assert.notEqual(path, join(fs.root, 'AGENTS.md'));
+    assert.ok(!path.startsWith(join(fs.root, '.agentscli/conventions')));
+    assert.ok(!path.startsWith(join(fs.root, '.agents/skills/local')));
+    return read(path);
+  };
+  assert.equal((await invoke(fs, 'update', { dryRun: true })).exitCode, 0);
+  assert.equal((await invoke(fs, 'update')).exitCode, 0);
+});
+
+test('init validates complete package resources before any directory or file writes', async () => {
+  for (const mutate of [
+    (r) => delete r.skills[PRODUCT_SKILLS[1]],
+    (r) => delete r.skills[PRODUCT_SKILLS[0]]['scripts/check.mjs'],
+    (r) => {
+      r.skills[PRODUCT_SKILLS[1]]['scripts/lib/index.mjs'] = bytes('');
+    },
+    (r) => {
+      r.skills[PRODUCT_SKILLS[0]]['SKILL.md'] = skill(PRODUCT_SKILLS[0]);
+    },
+  ]) {
+    const fs = client();
+    const assets = structuredClone(resources);
+    mutate(assets);
+    const response = await execute(
+      'init',
+      { repoRoot: fs.root },
+      { io: fs.io, resources: assets },
+    );
+    assert.equal(response.exitCode, 3, JSON.stringify(response.result));
+    assert.equal(fs.writes.length, 0);
+  }
+});
+
+test('public installation rejects unsafe skill targets before creating conventions or writing resources', async () => {
+  for (const override of [{ kind: 'link' }, { nlink: 2 }, { kind: 'other' }]) {
+    const id = PRODUCT_SKILLS[0];
+    const fs = client();
+    fs.put(
+      `.agents/skills/${id}/SKILL.md`,
+      resources.skills[id]['SKILL.md'],
+      override,
+    );
+    for (const command of ['init', 'update']) {
+      const response = await invoke(fs, command);
+      assert.equal(response.exitCode, 2);
+      assert.equal(response.result.diagnostics[0].code, 'PATH_UNSAFE');
+      assert.equal(fs.writes.length, 0);
+      assert.equal(
+        fs.nodes.has(join(fs.root, '.agentscli/conventions')),
+        false,
+      );
+    }
+  }
 });

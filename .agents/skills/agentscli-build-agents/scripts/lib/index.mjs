@@ -7764,6 +7764,11 @@ function parents(io, root, path) {
       io.mkdir(containedPath(root, parent));
   }
 }
+function createDirectory(io, root, path) {
+  if (inspect(io, root, path, "directory")) return;
+  parents(io, root, path);
+  io.mkdir(containedPath(root, path));
+}
 function unchanged(io, root, path, previous2) {
   const exists = inspect(io, root, path, "file");
   const current = exists ? io.read(containedPath(root, path)) : void 0;
@@ -16679,6 +16684,58 @@ function validateResources({ conventions = [], skills = [] }) {
   }
 }
 
+// assets/templates/skills/agentscli-build-agents/scripts/lib/resources.mjs
+var PRODUCT_SUPPORT = {
+  "agentscli-write-conventions": ["scripts/check.mjs"],
+  "agentscli-build-agents": [
+    "scripts/build-agents.mjs",
+    "scripts/lib/index.mjs"
+  ]
+};
+function validateProductResources(resources, { generated = true } = {}) {
+  const fail2 = (message, path) => {
+    throw new EngineError("PACKAGE_RESOURCE", message, 3, path);
+  };
+  if (!resources?.skills || typeof resources.skills !== "object" || Array.isArray(resources.skills) || Object.keys(resources.skills).sort().join("\n") !== [...PRODUCT_SKILLS].sort().join("\n"))
+    fail2("Expected exactly two operational skill assets.");
+  try {
+    const skills = PRODUCT_SKILLS.map((id) => {
+      const files = resources.skills[id], path = `.agents/skills/${id}`;
+      if (!files || typeof files !== "object" || Array.isArray(files))
+        fail2("Expected an operational skill resource tree.", path);
+      for (const relative2 of PRODUCT_SUPPORT[id]) {
+        const content3 = files[relative2];
+        if (!(content3 instanceof Uint8Array) || !content3.byteLength)
+          fail2(
+            `Missing or empty runtime support: ${relative2}.`,
+            `${path}/${relative2}`
+          );
+        if (!decode2(content3, `${path}/${relative2}`).trim())
+          fail2(`Empty runtime support: ${relative2}.`, `${path}/${relative2}`);
+      }
+      return { id, source: "local", path, files };
+    });
+    validateResources({ skills });
+    const versions = /* @__PURE__ */ new Set();
+    if (generated) {
+      for (const { path, files } of skills) {
+        const { fields } = frontmatter(decode2(files["SKILL.md"], path), path);
+        if (fields.license !== "MIT" || fields.metadata?.generatedBy !== "@devel-solid/agentscli" || !validPackageVersion(fields.metadata?.generatorVersion))
+          fail2(
+            "Invalid generated operational skill provenance or license.",
+            path
+          );
+        versions.add(fields.metadata.generatorVersion);
+      }
+      if (versions.size !== 1)
+        fail2("Operational skill assets must share one generator version.");
+    }
+  } catch (error) {
+    if (error instanceof EngineError) fail2(error.message, error.path);
+    throw error;
+  }
+}
+
 // assets/templates/skills/agentscli-build-agents/scripts/lib/plan.mjs
 var compareKeys = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var bytes = (text3) => new TextEncoder().encode(text3);
@@ -16792,28 +16849,66 @@ function effectBuilder(io, root) {
       info: (absolute) => hidden(absolute) ? void 0 : io.info(absolute),
       names: (absolute) => io.names(absolute).filter((name) => !hidden(join2(absolute, name)))
     };
-    for (const [relative2, content3] of Object.entries(files))
+    for (const [relative2, content3] of Object.entries(files).sort(
+      ([a], [b]) => a === "SKILL.md" ? -1 : b === "SKILL.md" ? 1 : compareKeys(a, b)
+    ))
       compare(`${directory}/${relative2}`, content3, prospective);
   };
   return { effects, compare, tree };
 }
+function installedIdentity(io, root, id) {
+  const path = `.agents/skills/${id}/SKILL.md`;
+  if (!inspect(io, root, path, "file")) return void 0;
+  try {
+    const fields = frontmatter(
+      decode2(read(io, root, path), path),
+      path
+    )?.fields;
+    return fields?.name === id && fields.metadata?.generatedBy === "@devel-solid/agentscli" && validPackageVersion(fields.metadata?.generatorVersion);
+  } catch {
+    return false;
+  }
+}
+function installSkills(io, root, command, resources, tree) {
+  validateProductResources(resources);
+  const installed = PRODUCT_SKILLS.map((id) => {
+    const path = `.agents/skills/${id}`;
+    const exists = inspect(io, root, path, "directory");
+    return {
+      id,
+      path,
+      exists,
+      identity: exists ? installedIdentity(io, root, id) : void 0
+    };
+  });
+  const recognized = installed.some(({ identity }) => identity === true);
+  for (const { path, exists, identity } of installed)
+    if (exists && (identity === false || identity === void 0 && !recognized && io.names(containedPath(root, path)).length))
+      throw new EngineError(
+        "SKILL_CONFLICT",
+        "Skill ownership is ambiguous. Preserve or move this tree before running agentscli init.",
+        2,
+        path
+      );
+  if (command === "update" && !recognized)
+    throw new EngineError(
+      "NOT_INITIALIZED",
+      "No installed product skill was recognized. Run agentscli init first."
+    );
+  for (const { id, path } of installed) tree(path, resources.skills[id]);
+}
 function plan(io, root, command, resources) {
   assertProjectTarget(io, root);
-  const applying = command === "apply";
   const { effects, compare, tree } = effectBuilder(io, root);
-  if (applying) {
-    if (!resources)
-      throw new EngineError(
-        "PACKAGE_RESOURCE",
-        "Apply requires installed package assets.",
-        3
-      );
-    if (Object.keys(resources.skills).sort().join("\n") !== [...PRODUCT_SKILLS].sort().join("\n"))
-      throw new EngineError(
-        "PACKAGE_RESOURCE",
-        "Expected exactly two operational skill assets.",
-        3
-      );
+  if (command === "init" || command === "update") {
+    installSkills(io, root, command, resources, tree);
+    if (command === "init" && !inspect(io, root, CONVENTION_ROOT, "directory"))
+      effects.unshift({
+        path: CONVENTION_ROOT,
+        action: "create",
+        directory: true
+      });
+    return effects;
   }
   const conventions = walk(io, root, CONVENTION_ROOT).filter((path) => path.endsWith(".md")).sort((a, b) => compareKeys(portableKey(a), portableKey(b))).map((path) => ({
     path,
@@ -16841,31 +16936,22 @@ function plan(io, root, command, resources) {
       if (files["SKILL.md"])
         skills.push({ id, source: "local", path: directory, files });
     }
-  if (applying)
-    for (const id of PRODUCT_SKILLS)
+  for (const id of PRODUCT_SKILLS)
+    if (inspect(io, root, `.agents/skills/${id}/SKILL.md`, "file"))
       skills.push({
         id,
         source: "local",
         path: `.agents/skills/${id}`,
-        files: resources.skills[id]
-      });
-  else
-    for (const id of PRODUCT_SKILLS)
-      if (inspect(io, root, `.agents/skills/${id}/SKILL.md`, "file"))
-        skills.push({
-          id,
-          source: "local",
-          path: `.agents/skills/${id}`,
-          files: {
-            "SKILL.md": bytes(
-              `---
+        files: {
+          "SKILL.md": bytes(
+            `---
 name: ${id}
 description: Installed operational resource.
 ---
 `
-            )
-          }
-        });
+          )
+        }
+      });
   validateResources({ conventions, skills });
   const documents = render(conventions);
   for (const [path, text3] of documents) {
@@ -16873,15 +16959,11 @@ description: Installed operational resource.
     if (path === "AGENTS.md" && existing && !isGenerated(io.read(containedPath(root, path))))
       throw new EngineError(
         "DOCUMENT_CONFLICT",
-        "Root AGENTS.md is not owned by @devel-solid/agentscli. Preserve its content outside the generated index before applying.",
+        "Root AGENTS.md is not owned by @devel-solid/agentscli. Preserve its content outside the generated index before synchronization.",
         2,
         path
       );
     compare(path, bytes(text3));
-  }
-  if (applying) {
-    for (const id of PRODUCT_SKILLS)
-      tree(`.agents/skills/${id}`, resources.skills[id]);
   }
   uniquePaths(
     effects.filter((e) => !e.directory && e.action !== "delete").map((e) => e.path)
@@ -16912,6 +16994,8 @@ function applyEffects(io, root, effects) {
           if (inspect(io, root, effect.path, "directory"))
             io.rmdir(containedPath(root, effect.path));
         } else removeFile(io, root, effect.path, effect.previous);
+      } else if (effect.directory) {
+        createDirectory(io, root, effect.path);
       } else {
         replaceFile(io, root, effect.path, effect.content, effect.previous);
       }
@@ -16943,14 +17027,14 @@ async function execute(command, options, dependencies = {}) {
     diagnostics: []
   };
   try {
-    if (!["apply", "validate", "sync"].includes(command))
+    if (!["init", "update", "validate", "sync"].includes(command))
       throw new EngineError(
         "USAGE",
-        "Expected apply or a private validate/sync mode."
+        "Expected init, update, or a private validate/sync mode."
       );
     const io = dependencies.io ?? disk, root = checkRoot(io, options.repoRoot);
     assertProjectTarget(io, root);
-    const resources = command === "apply" ? dependencies.resources ?? loadResources() : void 0;
+    const resources = command === "init" || command === "update" ? dependencies.resources ?? loadResources() : void 0;
     const effects = plan(io, root, command, resources);
     if (command === "validate") return { exitCode: 0, result };
     if (options.dryRun || options.check) {
@@ -16983,11 +17067,13 @@ export {
   CONVENTION_ROOT,
   EngineError,
   PRODUCT_SKILLS,
+  PRODUCT_SUPPORT,
   activeNodes,
   allDirectories,
   applyEffects,
   assertProjectTarget,
   checkRoot,
+  createDirectory,
   decode2 as decode,
   directoryPaths,
   disk,
@@ -17011,6 +17097,7 @@ export {
   validPackageVersion,
   validateConvention,
   validateConventionFilename,
+  validateProductResources,
   validateResourceLinks,
   validateResources,
   validateSkill,

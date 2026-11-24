@@ -16,18 +16,18 @@ function engineResult(command, exitCode = 0, changes = []) {
   };
 }
 
-test('dispatch forwards root and read-only apply preview', async () => {
+test('dispatch forwards root and read-only init preview', async () => {
   const calls = [];
   const response = await runCli(
-    ['--repo-root', 'client', 'apply', '--dry-run', '--json'],
+    ['--repo-root', 'client', 'init', '--dry-run', '--json'],
     {
       cwd: resolve('workspace'),
       execute: async (...args) => {
         calls.push(args);
-        return engineResult('apply', 0, [
+        return engineResult('init', 0, [
           {
             action: 'update',
-            path: 'AGENTS.md',
+            path: '.agents/skills/agentscli-build-agents/SKILL.md',
             status: 'pending',
           },
         ]);
@@ -36,7 +36,7 @@ test('dispatch forwards root and read-only apply preview', async () => {
   );
   assert.deepEqual(calls, [
     [
-      'apply',
+      'init',
       {
         repoRoot: resolve('workspace/client'),
         dryRun: true,
@@ -54,15 +54,19 @@ test('dispatch forwards root and read-only apply preview', async () => {
     'changes',
     'diagnostics',
   ]);
-  const preview = await runCli(['apply', '--dry-run'], {
+  const preview = await runCli(['init', '--dry-run'], {
     execute: async () =>
-      engineResult('apply', 0, [
-        { action: 'update', path: 'AGENTS.md', status: 'pending' },
+      engineResult('init', 0, [
+        {
+          action: 'update',
+          path: '.agents/skills/agentscli-build-agents/SKILL.md',
+          status: 'pending',
+        },
       ]),
   });
   assert.equal(
     preview.stdout,
-    'Planned changes; no files written.\npending update: AGENTS.md\n',
+    'Planned changes; no files written.\npending update: .agents/skills/agentscli-build-agents/SKILL.md\n',
   );
   assert.equal(preview.stderr, '');
 });
@@ -73,12 +77,12 @@ test('unknown, private, misplaced, duplicate, and incompatible options never dis
     ['unknown'],
     ['validate'],
     ['sync'],
-    ['apply', '--unknown'],
-    ['apply', '--check'],
-    ['apply', '--dry-run=true'],
-    ['apply', '--repo-root='],
-    ['apply', '--json', '--json'],
-    ['apply', 'extra'],
+    ['init', '--unknown'],
+    ['init', '--check'],
+    ['init', '--dry-run=true'],
+    ['init', '--repo-root='],
+    ['init', '--json', '--json'],
+    ['init', 'extra'],
     ['--help', '--check'],
     ['--version', '--help'],
     ['--version', '--json'],
@@ -109,12 +113,12 @@ test('help and standalone version use no runtime or project writes', async () =>
     stdout: '0.1.0\n',
     stderr: '',
   });
-  for (const args of [['--help'], ['apply', '--help']]) {
+  for (const args of [['--help'], ['init', '--help'], ['update', '--help']]) {
     const response = await runCli(args, dependencies);
     assert.equal(response.exitCode, 0);
     assert.match(response.stdout, /agentscli 0\.1\.0/);
-    assert.match(response.stdout, /agentscli apply/);
-    assert.match(response.stdout, /two operational skill trees/);
+    assert.match(response.stdout, /agentscli init/);
+    assert.match(response.stdout, /two product skills/);
     assert.match(response.stdout, /repeat the same/);
     assert.equal(response.stderr, '');
   }
@@ -123,14 +127,14 @@ test('help and standalone version use no runtime or project writes', async () =>
   assert.match(JSON.parse(help.stdout).text, /Git state/);
   assert.match(
     helpText('0.1.0'),
-    /Author conventions directly in \.agentscli\/conventions\/\*\*\/\*\.md/,
+    /agentscli-write-conventions to create or edit conventions/,
   );
-  assert.match(helpText('0.1.0'), /original bytes are\npreserved/);
+  assert.match(helpText('0.1.0'), /AGENTS.md, local skills, Git state/);
 });
 
 test('JSON preserves drift, validation, and operational exit codes in one document', async () => {
   for (const exitCode of [0, 1, 2, 3]) {
-    const expected = engineResult('apply', exitCode, [
+    const expected = engineResult('init', exitCode, [
       {
         action: 'update',
         path: '.agents/skills/agentscli-build-agents/SKILL.md',
@@ -142,7 +146,7 @@ test('JSON preserves drift, validation, and operational exit codes in one docume
         code: 'FAILURE',
         message: 'Blocked.',
       });
-    const response = await runCli(['apply', '--json'], {
+    const response = await runCli(['init', '--json'], {
       execute: async () => expected,
     });
     assert.equal(response.exitCode, exitCode);
@@ -153,8 +157,12 @@ test('JSON preserves drift, validation, and operational exit codes in one docume
 });
 
 test('partial failures retain completed and pending effects without claiming success', async () => {
-  const failed = engineResult('apply', 3, [
-    { action: 'update', path: 'AGENTS.md', status: 'completed' },
+  const failed = engineResult('init', 3, [
+    {
+      action: 'update',
+      path: '.agents/skills/agentscli-build-agents/SKILL.md',
+      status: 'completed',
+    },
     {
       action: 'update',
       path: '.agents/skills/agentscli-build-agents/SKILL.md',
@@ -163,18 +171,18 @@ test('partial failures retain completed and pending effects without claiming suc
   ]);
   failed.result.diagnostics.push({
     code: 'OPERATION_FAILED',
-    message: 'Repeat apply to finish.',
+    message: 'Repeat init to finish.',
   });
-  const response = await runCli(['apply'], { execute: async () => failed });
+  const response = await runCli(['init'], { execute: async () => failed });
   assert.equal(response.exitCode, 3);
-  assert.match(response.stdout, /completed update: AGENTS\.md/);
+  assert.match(response.stdout, /completed update: \.agents\/skills/);
   assert.match(response.stdout, /pending update: \.agents\/skills/);
-  assert.match(response.stderr, /Repeat apply/);
+  assert.match(response.stderr, /Repeat init/);
   assert.doesNotMatch(response.stdout, /Everything is up to date/);
 });
 
 test('unexpected boundary exceptions become operational results and usage remains JSON', async () => {
-  const response = await runCli(['apply', '--json'], {
+  const response = await runCli(['init', '--json'], {
     execute: async () => {
       throw new Error('Read failed.');
     },
@@ -184,18 +192,39 @@ test('unexpected boundary exceptions become operational results and usage remain
   assert.deepEqual(JSON.parse(response.stdout).diagnostics, [
     { code: 'OPERATION_FAILED', message: 'Read failed.' },
   ]);
-  const usage = await runCli(['apply', '--unknown', '--json']);
+  const usage = await runCli(['init', '--unknown', '--json']);
   assert.equal(usage.exitCode, 2);
   assert.equal(JSON.parse(usage.stdout).diagnostics[0].code, 'USAGE');
   assert.equal(usage.stderr, '');
 });
 
-test('apply uses the current root and accepts only common flags', () => {
+test('init uses the current root and accepts only common flags', () => {
   const root = resolve('client');
-  assert.deepEqual(parseArguments(['apply', '--json'], root), {
+  assert.deepEqual(parseArguments(['init', '--json'], root), {
     action: 'execute',
-    command: 'apply',
+    command: 'init',
     json: true,
     options: { repoRoot: root },
   });
 });
+
+for (const command of ['init', 'update']) {
+  test(`${command} accepts the shared preview and root options`, async () => {
+    const calls = [];
+    const response = await runCli(
+      [command, '--dry-run', '--repo-root', 'project', '--json'],
+      {
+        cwd: resolve('workspace'),
+        execute: async (...args) => {
+          calls.push(args);
+          return engineResult(command);
+        },
+      },
+    );
+    assert.equal(response.exitCode, 0);
+    assert.deepEqual(calls, [
+      [command, { repoRoot: resolve('workspace/project'), dryRun: true }],
+    ]);
+    assert.equal(JSON.parse(response.stdout).command, command);
+  });
+}

@@ -1,15 +1,17 @@
 # agentscli
 
-Generate AGENTS.md as an index of project-owned Markdown conventions. Requires Node.js 22, 24, or 26.
+Prepare project skills for authoring Markdown conventions and generating their AGENTS.md index. Requires Node.js 22, 24, or 26.
 
 ```sh
-npx @devel-solid/agentscli apply --dry-run
-npx @devel-solid/agentscli apply
+npx @devel-solid/agentscli init --dry-run
+npx @devel-solid/agentscli init
 ```
 
-`apply` is the only public operation, with `--repo-root`, `--json`, and `--dry-run`. `--help` and `--version` work without loading a project. Repeat apply after updating the CLI to replace its managed resources using that installed package's own engine.
+`init` creates `.agentscli/conventions/` when needed and installs the two operational skills. `update` refreshes an existing installation using resources from the CLI version being run. Both share the same installer and support `--repo-root`, `--json`, and `--dry-run`; previews write nothing. `--help` and `--version` work without loading a project.
 
-Apply installs the two operational skills and generates the root index. With an empty convention tree, the index contains only its frontmatter and title. It reads and validates final conventions while preserving their bytes. Git metadata, unrelated files, and unrelated skills are preserved. Apply replaces each managed skill tree with the package's complete resources. An existing root AGENTS.md must have valid frontmatter containing only `generatedBy: "@devel-solid/agentscli"`; handwritten instructions, other generators, and invalid metadata block all writes. Resolve such collisions explicitly before applying.
+Repeat `init` to complete or repair setup. Both commands replace each managed skill tree with the package's complete resources, removing obsolete files and local edits within those trees. They preserve authored convention bytes, any root `AGENTS.md`, Git metadata, unrelated files, and unrelated skills. Package resource integrity and destination safety are checked before writes; convention validation and index generation belong to agentscli-build-agents.
+
+Existing installation means at least one product `SKILL.md` has its matching `name`, `metadata.generatedBy: "@devel-solid/agentscli"`, and a valid semantic `metadata.generatorVersion`. `update` can restore the other missing skill or entrypoint; without any recognized entrypoint it directs you to `init`. Initialization accepts missing or empty skill directories. Preserve ambiguous content elsewhere before retrying: foreign or invalid entrypoints are collisions. `update` does not require or recreate `.agentscli/conventions/`.
 
 ```text
 project/
@@ -21,7 +23,14 @@ project/
     └── agentscli-build-agents/             managed operational skill
 ```
 
-Version authored conventions, generated instructions, and complete operational skills. Customize conventions directly; refresh the index after editing or deleting one.
+After initialization, ask agentscli-write-conventions to create your rules, then agentscli-build-agents to validate them, preview, and generate AGENTS.md. Version authored conventions, generated instructions, and complete operational skills. Customize conventions directly; refresh the index after editing or deleting one.
+
+After upgrading the CLI, preview and refresh its installed skills:
+
+```sh
+npx @devel-solid/agentscli update --dry-run
+npx @devel-solid/agentscli update
+```
 
 ## Authoring
 
@@ -64,7 +73,9 @@ node <build-skill>/scripts/build-agents.mjs sync --repo-root <project> --json
 node <build-skill>/scripts/build-agents.mjs sync --repo-root <project> --check --json
 ```
 
-These are skill scripts, not public CLI commands. They use Node and versioned project files with no installed CLI, compiler, Git, or network. Private sync updates only AGENTS.md; validation, previews, and freshness checks write nothing. Authored convention edits change the next index, and authored deletions remove entries without recreating files. Package operational asset repair belongs to public apply. Missing unrelated operational skills do not block a present build engine.
+These are skill scripts, not public CLI commands. They use Node and versioned project files with no installed CLI, compiler, Git, or network. Private sync updates only AGENTS.md; validation, previews, and freshness checks write nothing. Authored convention edits change the next index, and authored deletions remove entries without recreating files. Use `init` to prepare or recover setup and `update` to refresh an existing installation. Missing unrelated operational skills do not block a present build engine.
+
+The build skill protects handwritten root instructions. Before replacing an existing AGENTS.md, it requires valid frontmatter containing only `generatedBy: "@devel-solid/agentscli"`. Preserve existing rules in conventions and keep the original document separately before requesting a generated index. With no conventions, generation produces only its frontmatter and title.
 
 Exit codes: 0 success, 1 freshness drift under private `sync --check`, 2 usage/validation/collision, 3 operational failure. JSON has `schemaVersion: 1`, `command`, `ok`, `changes`, and `diagnostics`; changes distinguish pending and completed effects. After partial failure fix its cause and repeat the same authorized operation.
 
