@@ -6,7 +6,7 @@ description: Create, review, or update authored convention files in an agentscli
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.6.0
+  generatorVersion: 0.7.0
 ---
 
 # Maintain project conventions
