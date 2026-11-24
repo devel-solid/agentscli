@@ -433,7 +433,7 @@ test('private validate/check are offline, write-free, and do not need unrelated 
 
 test('skill discovery preserves regular metadata across apply and private generation', async () => {
   const metadata = {
-    '.agents/skills/.openspec-target': bytes('codex\n'),
+    '.agents/skills/.tool-target': bytes('codex\n'),
     '.agents/skills/tool-metadata.bin': new Uint8Array([0, 255, 13, 10]),
   };
   const fs = client({
@@ -481,7 +481,7 @@ test('regular metadata does not bypass custom skill validation', async () => {
     },
   ]) {
     const fs = client({
-      '.agents/skills/.openspec-target': 'codex\n',
+      '.agents/skills/.tool-target': 'codex\n',
       ...Object.fromEntries(
         Object.entries(files).map(([path, content]) => [
           `.agents/skills/review/${path}`,
@@ -504,7 +504,7 @@ test('regular metadata does not bypass custom skill validation', async () => {
 
 test('skill metadata and discovered support retain safe-path inspection before classification', async () => {
   for (const path of [
-    '.agents/skills/.openspec-target',
+    '.agents/skills/.tool-target',
     '.agents/skills/review/references/note.md',
   ])
     // Windows junctions and symbolic links have the same injected link kind.
@@ -523,8 +523,8 @@ test('skill metadata and discovered support retain safe-path inspection before c
       }
     }
   const fs = client({
-    '.agents/skills/.openspec-target': 'codex\n',
-    '.agents/skills/.OPENSPEC-TARGET': 'alias\n',
+    '.agents/skills/.tool-target': 'codex\n',
+    '.agents/skills/.TOOL-TARGET': 'alias\n',
   });
   const response = await invoke(fs);
   assert.equal(response.exitCode, 2);

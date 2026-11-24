@@ -9,7 +9,7 @@ This repository is a tool source, not a consumer. Keep this AGENTS.md and `docs/
 ## Workflows
 
 - Use `agentscli-adm-write-conventions` for handwritten conventions, `agentscli-adm-edit-agents` for this file, and `agentscli-adm-publish-packages` for authorized native Git/npm releases. Each skill has one responsibility and its own deterministic support.
-- The three administrative skills live in `.agents/skills/`. OpenSpec skills remain development tools outside the operational inventory.
+- The three administrative skills live in `.agents/skills/`.
 - Consumer skill sources live under the package's `assets/templates/skills/`. Keep all five operational skills independent, even when their wording is similar. Builds assemble exactly two consumer skill trees without sharing source across environments.
 - The package distributes operational skills only; clients author their own convention templates.
 

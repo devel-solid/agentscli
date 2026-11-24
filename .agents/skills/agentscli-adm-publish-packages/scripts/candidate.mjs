@@ -280,7 +280,7 @@ export function inspectArchive(bytes, expected, prepared) {
         `Unsupported root instruction template in archive: ${path}`,
       );
     if (
-      /^package\/(?:tests|openspec|\.agents|src)\//u.test(path) ||
+      /^package\/(?:tests|\.agents|src)\//u.test(path) ||
       /agentscli-adm-/u.test(path)
     )
       throw new Error(`Repository-only material in archive: ${path}`);
