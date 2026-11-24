@@ -5,7 +5,6 @@ import {
   EngineError,
   MANIFEST,
   OUTPUT_ROOT,
-  TEMPLATE_ROOT,
   language,
   parseLegacyManifest,
   parseManifest,
@@ -25,6 +24,7 @@ import {
   allDirectories,
   equalBytes,
   isGenerated,
+  isGeneratedConvention,
   plan,
   read,
 } from './plan.mjs';
@@ -69,13 +69,9 @@ function ordered(paths) {
   );
 }
 function newSources(io, root) {
-  const main = `${TEMPLATE_ROOT}/AGENTS.tpl.md`;
-  return ordered([
-    ...(inspect(io, root, main, 'file') ? [main] : []),
-    ...walk(io, root, CONVENTION_ROOT).filter((path) =>
-      path.endsWith('.tpl.md'),
-    ),
-  ]);
+  return ordered(
+    walk(io, root, CONVENTION_ROOT).filter((path) => path.endsWith('.tpl.md')),
+  );
 }
 function withoutLegacy(io, root) {
   const legacy = containedPath(root, MANIFEST);
@@ -171,35 +167,22 @@ export function planMigration(io, root, resources, selectedLanguage) {
       'Language differs from the migration options. Retry with the same --lang selection.',
     );
   const oldMain = `${legacy.templates_dir}/AGENTS.tpl.md`;
-  const main = `${TEMPLATE_ROOT}/AGENTS.tpl.md`;
   const oldSources = ordered(
-    walk(io, root, legacy.templates_dir).filter((path) =>
-      path.endsWith('.tpl.md'),
+    walk(io, root, legacy.templates_dir).filter(
+      (path) => path.endsWith('.tpl.md') && path !== oldMain,
     ),
   );
   uniquePaths(oldSources);
-  if (!cleaning && !oldSources.includes(oldMain))
-    conflict(oldMain, 'Missing legacy main template.');
   const toNewSource = (source) =>
-    source === oldMain
-      ? main
-      : `${CONVENTION_ROOT}/${source.slice(legacy.templates_dir.length + 1)}`;
+    `${CONVENTION_ROOT}/${source.slice(legacy.templates_dir.length + 1)}`;
   const toOldSource = (source) =>
-    source === main
-      ? oldMain
-      : `${legacy.templates_dir}/${source.slice(CONVENTION_ROOT.length + 1)}`;
+    `${legacy.templates_dir}/${source.slice(CONVENTION_ROOT.length + 1)}`;
   const toOldOutput = (source) =>
-    source === oldMain
-      ? 'AGENTS.md'
-      : `${legacy.conventions_dir}/${source.slice(legacy.templates_dir.length + 1, -7)}.md`;
+    `${legacy.conventions_dir}/${source.slice(legacy.templates_dir.length + 1, -7)}.md`;
   const toNewOutput = (source) =>
-    source === main
-      ? 'AGENTS.md'
-      : `${OUTPUT_ROOT}/${source.slice(CONVENTION_ROOT.length + 1, -7)}.md`;
+    `${OUTPUT_ROOT}/${source.slice(CONVENTION_ROOT.length + 1, -7)}.md`;
   const existingNewSources = newSources(io, root);
   const inventory = cleaning ? existingNewSources.map(toOldSource) : oldSources;
-  if (cleaning && !inventory.includes(oldMain))
-    conflict(main, 'Published client has no main template.');
   const mappings = new Map();
   for (const source of inventory) {
     mappings.set(source, toNewSource(source));
@@ -224,26 +207,20 @@ export function planMigration(io, root, resources, selectedLanguage) {
     original.set(source, content);
     inputs.set(source, content);
     const destination = toNewSource(source);
-    if (source !== oldMain)
-      validateConventionFilename(
-        validateLegacyConvention(decode(content, source), source).title,
-        source,
-      );
+    validateConventionFilename(
+      validateLegacyConvention(decode(content, source), source).title,
+      source,
+    );
     const rebased = rebaseLinks(
       raw(content, source),
       source,
       toOldOutput(source),
       toNewOutput(destination),
       mappings,
-      source !== oldMain,
     );
     transferred.set(
       destination,
-      bytes(
-        source === oldMain
-          ? rebased
-          : convertLegacyConvention(rebased, destination),
-      ),
+      bytes(convertLegacyConvention(rebased, destination)),
     );
   }
   if (cleaning) {
@@ -258,14 +235,12 @@ export function planMigration(io, root, resources, selectedLanguage) {
       transferred.set(source, content);
     }
   }
-  const conventions = expectedSourceNames
-    .filter((source) => source !== main)
-    .map((source) => ({
-      source,
-      authoredSource: source,
-      output: toNewOutput(source),
-      text: decode(transferred.get(source), source),
-    }));
+  const conventions = expectedSourceNames.map((source) => ({
+    source,
+    authoredSource: source,
+    output: toNewOutput(source),
+    text: decode(transferred.get(source), source),
+  }));
   validateResources({
     conventions: conventions.map((c) => ({
       id: c.source.slice(CONVENTION_ROOT.length + 1, -7),
@@ -285,10 +260,6 @@ export function planMigration(io, root, resources, selectedLanguage) {
   );
   const normalEffects = plan(projected, root, 'apply', resources);
   const documents = render(
-    {
-      source: main,
-      text: decode(transferred.get(main), main),
-    },
     conventions.sort((a, b) =>
       portableKey(a.output) < portableKey(b.output)
         ? -1
@@ -301,28 +272,15 @@ export function planMigration(io, root, resources, selectedLanguage) {
   const newDocuments = new Map(
     [...documents].map(([path, text]) => [path, bytes(text)]),
   );
-  const oldConventions = oldSources
-    .filter((source) => source !== oldMain)
-    .map((source) => ({
-      source,
-      output: toOldOutput(source),
-      text: decode(original.get(source), source),
-    }));
-  const oldDocuments = render(
-    {
-      source: oldMain,
-      text: original.has(oldMain)
-        ? decode(original.get(oldMain), oldMain)
-        : '# Migration\n<!-- agentscli:conventions -->\n',
-    },
-    oldConventions,
-    legacy.language,
-    {
-      legacyLayout: true,
-    },
-  );
-  if (!original.has(oldMain) || oldSources.length !== inventory.length)
-    oldDocuments.delete('AGENTS.md');
+  const oldConventions = oldSources.map((source) => ({
+    source,
+    output: toOldOutput(source),
+    text: decode(original.get(source), source),
+  }));
+  const oldDocuments = render(oldConventions, legacy.language, {
+    legacyLayout: true,
+  });
+  oldDocuments.delete('AGENTS.md');
   const oldOutputFiles = walk(io, root, legacy.conventions_dir);
   for (const path of new Set([
     ...oldOutputFiles,
@@ -333,7 +291,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
     if (oldDocuments.has(path)) {
       const converted = newDocuments.get(mappings.get(path));
       if (
-        !isGenerated(content) ||
+        !isGeneratedConvention(content) ||
         (!equalBytes(content, bytes(oldDocuments.get(path))) &&
           !(converted && equalBytes(content, converted)))
       )
@@ -342,7 +300,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
           'Legacy generated output was edited directly. Reconcile useful content in its template first.',
         );
     }
-    if (mappings.has(path) && !isGenerated(content))
+    if (mappings.has(path) && !isGeneratedConvention(content))
       conflict(path, 'A manual document occupies an expected legacy output.');
     inputs.set(path, content);
   }
@@ -369,8 +327,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
   function prepare(path, content, rootDocument = false) {
     const previous = snapshot(io, root, path);
     if (previous && !equalBytes(previous, content)) {
-      const old = oldDocuments.get(path);
-      if (!rootDocument || !old || !equalBytes(previous, bytes(old)))
+      if (!rootDocument || !isGenerated(previous))
         conflict(
           path,
           'Occupied new destination differs from its deterministic migration result.',
@@ -399,7 +356,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
       if (
         path.endsWith('.md') &&
         !newDocuments.has(path) &&
-        isGenerated(read(io, root, path))
+        isGeneratedConvention(read(io, root, path))
       )
         conflict(
           path,
@@ -422,19 +379,11 @@ export function planMigration(io, root, resources, selectedLanguage) {
         3,
         CONVENTION_ROOT,
       );
-    const hidden = withoutLegacy(current, currentRoot),
-      configPath = containedPath(currentRoot, CONFIG_PATH);
-    const configured = {
-      ...hidden,
-      info: (path) =>
-        path === configPath
-          ? {
-              kind: 'file',
-              nlink: 1,
-            }
-          : hidden.info(path),
-      read: (path) => (path === configPath ? config : hidden.read(path)),
-    };
+    const configured = prospectiveFiles(
+      withoutLegacy(current, currentRoot),
+      currentRoot,
+      new Map([[CONFIG_PATH, config]]),
+    );
     if (plan(configured, currentRoot, 'apply', resources).length)
       throw new EngineError(
         'MIGRATION_CHANGED',
@@ -475,7 +424,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
   const deleted = new Set();
   for (const path of oldOutputFiles) {
     const previous = read(io, root, path);
-    if (path.endsWith('.md') && isGenerated(previous)) {
+    if (path.endsWith('.md') && isGeneratedConvention(previous)) {
       effects.push({
         path,
         action: 'delete',
@@ -531,13 +480,13 @@ export function planMigration(io, root, resources, selectedLanguage) {
       cleanupGuard(current, currentRoot);
       verify(current, currentRoot, removed);
       if (
-        walk(current, currentRoot, legacy.templates_dir).some((path) =>
-          path.endsWith('.tpl.md'),
+        walk(current, currentRoot, legacy.templates_dir).some(
+          (path) => path.endsWith('.tpl.md') && path !== oldMain,
         ) ||
         walk(current, currentRoot, legacy.conventions_dir).some(
           (path) =>
             path.endsWith('.md') &&
-            isGenerated(read(current, currentRoot, path)),
+            isGeneratedConvention(read(current, currentRoot, path)),
         )
       )
         throw new EngineError(

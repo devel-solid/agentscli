@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { rebaseLinks } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/migration-links.mjs';
 
 const mapping = new Map([
-  ['templates/AGENTS.tpl.md', '.agentscli/templates/AGENTS.tpl.md'],
   [
     'templates/testing/unit.tpl.md',
     '.agentscli/templates/conventions/testing/unit.tpl.md',
@@ -21,15 +20,6 @@ const mapping = new Map([
     '.agentscli/conventions/policy.details.md',
   ],
 ]);
-const main = (text) =>
-  rebaseLinks(
-    text,
-    'templates/AGENTS.tpl.md',
-    'AGENTS.md',
-    'AGENTS.md',
-    mapping,
-    false,
-  );
 const body = (text) =>
   rebaseLinks(
     text,
@@ -37,10 +27,13 @@ const body = (text) =>
     'docs/conventions/testing/unit.md',
     '.agentscli/conventions/testing/unit.md',
     mapping,
-    true,
   );
 const card = (text) =>
   `<!-- AGENT-CARD START -->\n${text}\n<!-- AGENT-CARD END -->\n`;
+const discovery = (text) =>
+  body(card(text))
+    .replace(/^<!-- AGENT-CARD START -->\n/u, '')
+    .replace(/\n<!-- AGENT-CARD END -->\n$/u, '');
 
 test('migration rebases Markdown inline links/images and retains source layout', () => {
   const source =
@@ -61,14 +54,13 @@ test('migration rebases Markdown inline links/images and retains source layout',
     'old/docs/nested/rule.md',
     '.agentscli/conventions/rule.md',
     mapping,
-    true,
   );
   assert.equal(deeper, '[Root](../../README.md)\n');
 });
 
-test('migration maps main and card links using root output context', () => {
+test('migration maps discovery card links using root output context', () => {
   assert.equal(
-    main('[Unit](docs/conventions/testing/unit.md#case)\n'),
+    discovery('[Unit](docs/conventions/testing/unit.md#case)\n'),
     '[Unit](.agentscli/conventions/testing/unit.md#case)\n',
   );
   assert.equal(
@@ -87,7 +79,7 @@ test('migration rebases full/collapsed/shortcut references and image definitions
     '[id]: <../policy.details.md?x=1#part>  "Description"\n' +
     '[image]: ../../../images/a.png\n';
   assert.equal(body(source), source);
-  const changed = main(
+  const changed = discovery(
     '[Policy][p]\n\n[p]: docs/conventions/policy.details.md#x "Title"\n',
   );
   assert.equal(
@@ -101,7 +93,6 @@ test('migration rebases full/collapsed/shortcut references and image definitions
       'old/docs/nested/source.md',
       '.agentscli/conventions/source.md',
       mapping,
-      true,
     ),
     '![Pic][i]\n\n[i]: <../../images/a%20b.png?x=1&amp;y=2#part>  "Title"\n',
   );
@@ -118,7 +109,6 @@ test('migration encodes URL paths while preserving nested labels and titles', ()
       'docs/conventions/rule.md',
       '.agentscli/conventions/rule.md',
       links,
-      false,
     );
   assert.equal(
     rewrite('[Label with `]` and **text**](<a(b).md?q=1#p> "unchanged")\n'),
@@ -129,7 +119,7 @@ test('migration encodes URL paths while preserving nested labels and titles', ()
     '![nested [label]](new%20name.md)\n',
   );
   assert.equal(
-    main('[Portable](Docs/Conventions/Policy.Details.md)\n'),
+    discovery('[Portable](Docs/Conventions/Policy.Details.md)\n'),
     '[Portable](.agentscli/conventions/policy.details.md)\n',
   );
 });
@@ -183,7 +173,7 @@ test('migration rejects shared definitions needing different card/body destinati
 
 test('migration rejects affected local HTML while preserving unaffected HTML', () => {
   assert.throws(
-    () => main('<a href="docs/conventions/testing/unit.md">Unit</a>\n'),
+    () => discovery('<a href="docs/conventions/testing/unit.md">Unit</a>\n'),
     /HTML href\/src/u,
   );
   assert.throws(
@@ -191,7 +181,7 @@ test('migration rejects affected local HTML while preserving unaffected HTML', (
     /HTML href\/src/u,
   );
   assert.equal(
-    main('<a href="README.md">Read</a>\n'),
+    discovery('<a href="README.md">Read</a>\n'),
     '<a href="README.md">Read</a>\n',
   );
   assert.equal(
@@ -213,12 +203,12 @@ test('HTML preflight respects quoted tag boundaries and decodes attribute refere
     '<a title=">" HREF="docs/conventions/testing/unit.md">Unit</a>\n',
   ]) {
     assert.throws(
-      () => main(input),
+      () => discovery(input),
       (error) => {
         assert.equal(error.code, 'MIGRATION_LINK');
         assert.match(
           error.message,
-          /templates\/AGENTS.tpl.md:1:1:.*HTML href\/src/u,
+          /templates\/testing\/unit.tpl.md:2:1:.*HTML href\/src/u,
         );
         return true;
       },
@@ -231,7 +221,7 @@ test('HTML preflight respects quoted tag boundaries and decodes attribute refere
     '<a href="https://example.test/?x=1&copy=2">Web</a>\n',
     '<a href="READM&#69;.md">Read</a>\n',
   ])
-    assert.equal(main(input), input);
+    assert.equal(discovery(input), input);
 });
 
 test('URL suffixes distinguish numeric path references from queries and fragments', () => {
@@ -239,15 +229,15 @@ test('URL suffixes distinguish numeric path references from queries and fragment
     const target = `docs${separator}conventions${separator}testing${separator}unit.md`;
     const suffix = '?mode=1&amp;other=2#part';
     assert.equal(
-      main(`[Unit](${target}${suffix})\r\n`),
+      discovery(`[Unit](${target}${suffix})\r\n`),
       `[Unit](.agentscli/conventions/testing/unit.md${suffix})\r\n`,
     );
     assert.equal(
-      main(`![Unit][u]\n\n[u]: <${target}${suffix}> "Keep"\n`),
+      discovery(`![Unit][u]\n\n[u]: <${target}${suffix}> "Keep"\n`),
       `![Unit][u]\n\n[u]: <.agentscli/conventions/testing/unit.md${suffix}> "Keep"\n`,
     );
     assert.equal(
-      main(`[Unit](${target})\n`),
+      discovery(`[Unit](${target})\n`),
       '[Unit](.agentscli/conventions/testing/unit.md)\n',
     );
   }
@@ -258,7 +248,7 @@ test('URL suffixes distinguish numeric path references from queries and fragment
     '&quest;mode=1&num;part',
   ]) {
     assert.equal(
-      main(`[Unit](docs/conventions/testing/unit.md${suffix})\n`),
+      discovery(`[Unit](docs/conventions/testing/unit.md${suffix})\n`),
       `[Unit](.agentscli/conventions/testing/unit.md${suffix})\n`,
     );
   }

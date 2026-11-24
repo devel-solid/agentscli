@@ -2,14 +2,7 @@ import { posix } from 'node:path';
 import { EngineError } from './manifest.mjs';
 import { CARD_END, CARD_START, parseMarkdown } from './markdown.mjs';
 import { portableKey } from './paths.mjs';
-export function rebaseLinks(
-  text,
-  source,
-  oldOutput,
-  newOutput,
-  mapping,
-  convention,
-) {
+export function rebaseLinks(text, source, oldOutput, newOutput, mapping) {
   const tree = parseMarkdown(text);
   const portableMapping = new Map(
     [...mapping].map(([before, after]) => [portableKey(before), after]),
@@ -33,8 +26,8 @@ export function rebaseLinks(
   const marker = (value) =>
     nodes.find((node) => node.type === 'html' && node.value.trim() === value)
       ?.position?.start.offset;
-  const cardStart = convention ? marker(CARD_START) : undefined;
-  const cardEnd = convention ? marker(CARD_END) : undefined;
+  const cardStart = marker(CARD_START);
+  const cardEnd = marker(CARD_END);
   function inCard(node) {
     const offset = node.position?.start.offset ?? -1;
     return (

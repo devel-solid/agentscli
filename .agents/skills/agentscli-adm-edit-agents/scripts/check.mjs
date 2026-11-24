@@ -11,6 +11,7 @@ import {
   walk,
   checkOwnSkill,
   checkConvention,
+  header,
 } from './lib.mjs';
 
 export function parseArgs(args) {
@@ -37,10 +38,11 @@ export function checkOwn(root, io = fs) {
 }
 
 export function checkEntrypoint(source, root, io = fs) {
-  if (source.startsWith('<!-- agentscli:generated -->'))
+  const parsed = header(source);
+  if (parsed.value?.generatedBy === '@devel-solid/agentscli')
     throw new Error('Root AGENTS must remain handwritten.');
   const headings = [];
-  walk(tree(source), (node) => {
+  walk(tree(parsed.body), (node) => {
     if (node.type === 'heading' && node.depth === 1) headings.push(node);
   });
   if (headings.length !== 1) throw new Error('Root AGENTS requires one H1.');

@@ -12,7 +12,6 @@ import {
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
 import {
   validateConvention,
-  validateTemplate,
   convertLegacyConvention,
   decode,
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
@@ -24,10 +23,14 @@ import {
   validateResources,
   validateSkill,
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/content.mjs';
+import {
+  render,
+  INDEX_HEADER,
+} from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/render.mjs';
+import { isGenerated } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/plan.mjs';
 import { execute } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/runtime.mjs';
 import { run } from '../../assets/templates/skills/agentscli-build-agents/scripts/build-agents.mjs';
 export const bytes = (text) => new TextEncoder().encode(text);
-export const main = '# Project\n\n<!-- agentscli:conventions -->\n';
 export const convention = (
   title = 'Testing',
   trigger = 'Read before testing.',
@@ -39,13 +42,11 @@ export const skill = (name, extra = '') =>
 export const resources = {
   templates: {
     en: {
-      'AGENTS.tpl.md': bytes(main),
       'conventions/project-context.tpl.md': bytes(
         convention('Project context'),
       ),
     },
     'pt-br': {
-      'AGENTS.tpl.md': bytes(main),
       'conventions/contexto-do-projeto.tpl.md': bytes(
         convention('Contexto do projeto'),
       ),
@@ -64,7 +65,6 @@ export const resources = {
 export const client = (files) =>
   memory({
     '.agentscli/config.yml': 'language: en\n',
-    '.agentscli/templates/AGENTS.tpl.md': main,
     ...files,
   });
 export const invoke = (fs, command = 'apply', options = {}) =>
@@ -118,7 +118,6 @@ test('conventions require only trigger and exactly one live H1; examples remain 
     '# Testing\n',
   ])
     assert.throws(() => validateConvention(text, 'testing.tpl.md'));
-  assert.throws(() => validateTemplate('# Project\n', 'AGENTS.tpl.md'));
   assert.throws(() => decode(new Uint8Array([0xff]), 'invalid'));
   const old =
     '# Testing\n<!-- AGENT-CARD START -->\nRead testing.\n<!-- AGENT-CARD END -->\nRule.\n';
@@ -260,7 +259,10 @@ test('apply previews without writes then replaces managed drift while preserving
   fs.put('.agentscli/conventions/extra.bin', 'obsolete');
   fs.put('.agents/skills/agentscli-build-agents/unwanted.txt', 'obsolete');
   fs.put('.agents/skills/unrelated/SKILL.md', skill('unrelated'));
-  fs.put('AGENTS.md', '<!-- agentscli:generated -->\nEdited managed copy.');
+  fs.put(
+    'AGENTS.md',
+    '---\ngeneratedBy: "@devel-solid/agentscli"\n---\nEdited managed copy.',
+  );
   fs.put(
     '.agents/skills/agentscli-edit-agents/SKILL.md',
     'broken output metadata',
@@ -427,7 +429,11 @@ test('skill metadata and discovered support retain safe-path inspection before c
 });
 
 test('regular files cannot occupy packaged or retired managed skill directories', async () => {
-  for (const id of [...PRODUCT_SKILLS, 'agentscli-update-agents']) {
+  for (const id of [
+    ...PRODUCT_SKILLS,
+    'agentscli-update-agents',
+    'agentscli-edit-agents',
+  ]) {
     const path = `.agents/skills/${id}`;
     const fs = client({ [path]: 'Protected authored file.\n' });
     for (const [command, options] of [
@@ -505,7 +511,11 @@ test('tool package identity, verified workspaces, and ancestors guard contexts w
 test('safe path preflight rejects symlinks, hardlinks, and portable aliases before mutation', async () => {
   for (const overrides of [{ kind: 'link' }, { nlink: 2 }]) {
     const fs = client();
-    fs.put('.agentscli/templates/AGENTS.tpl.md', main, overrides);
+    fs.put(
+      '.agentscli/templates/conventions/testing.tpl.md',
+      convention(),
+      overrides,
+    );
     assert.equal((await invoke(fs)).exitCode, 2);
     assert.equal(fs.writes.length, 0);
   }
@@ -630,4 +640,154 @@ test('apply replaces proven managed file and directory topologies without adopti
   fs.put('.agents/skills/unrelated/support', 'authored');
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal(fs.text('.agents/skills/unrelated/support'), 'authored');
+});
+
+test('index bytes are fixed, sorted, escaped and independent of source order or locale', () => {
+  const inputs = [
+    {
+      source: '.agentscli/templates/conventions/z/seguranca-dados.tpl.md',
+      output: '.agentscli/conventions/z pasta/(dados)/seguranca-dados.md',
+      text: convention(
+        'Segurança [dados]',
+        '"Consultar ao manipular\\r\\ndados **sensíveis**."',
+      ),
+    },
+    {
+      source: '.agentscli/templates/conventions/testes.tpl.md',
+      output: '.agentscli/conventions/testes.md',
+      text: convention('Testes', 'consultar ao criar ou alterar testes.'),
+    },
+  ];
+  const expected =
+    '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md\n\n' +
+    '- [Testes](.agentscli/conventions/testes.md): consultar ao criar ou alterar testes.\n' +
+    '- [Segurança \\[dados\\]](.agentscli/conventions/z%20pasta/%28dados%29/seguranca-dados.md): Consultar ao manipular dados **sensíveis**.\n';
+  assert.equal(render(inputs, 'en').get('AGENTS.md'), expected);
+  assert.equal(
+    render([...inputs].reverse(), 'pt-br').get('AGENTS.md'),
+    expected,
+  );
+  assert.doesNotMatch(expected, /<!--/u);
+  assert.equal(render([], 'en').get('AGENTS.md'), INDEX_HEADER);
+});
+
+test('empty client generation needs no main template and never restores deleted conventions', async () => {
+  const fs = client();
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
+  assert.equal(
+    fs.io.info(join(fs.root, '.agentscli/templates/AGENTS.tpl.md')),
+    undefined,
+  );
+  assert.equal(
+    fs.io.info(join(fs.root, '.agentscli/templates/conventions')),
+    undefined,
+  );
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
+  assert.equal((await invoke(fs)).result.changes.length, 0);
+});
+
+test('retired authored main templates are preserved and have no effect on generated index', async () => {
+  const path = '.agentscli/templates/AGENTS.tpl.md';
+  const authored =
+    '# Local project\n\nDo not lose these authored instructions.\n';
+  const fs = client({ [path]: authored });
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal(fs.text(path), authored);
+  assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
+});
+
+test('root ownership requires exact structural generatedBy frontmatter', async () => {
+  for (const root of [
+    '# Handwritten\n',
+    '<!-- agentscli:generated -->\n# Former output\n',
+    '---\ngeneratedBy: another-generator\n---\n# Other output\n',
+    '---\ngeneratedBy: ["@devel-solid/agentscli"]\n---\n',
+    '---\ngeneratedBy: "@devel-solid/agentscli"\ngeneratedBy: "@devel-solid/agentscli"\n---\n',
+    '---\ngeneratedBy: "@devel-solid/agentscli"\nextra: true\n---\n',
+    '---\ngeneratedBy: &source "@devel-solid/agentscli"\nother: *source\n---\n',
+    '---\ngeneratedBy: !!str "@devel-solid/agentscli"\n---\n',
+    '---\ngeneratedBy: "@devel-solid/agentscli"\n',
+    new Uint8Array([0xff]),
+  ]) {
+    assert.equal(
+      isGenerated(typeof root === 'string' ? bytes(root) : root),
+      false,
+    );
+    const fs = client({ 'AGENTS.md': root });
+    for (const [command, options] of [
+      ['apply', {}],
+      ['apply', { dryRun: true }],
+      ['sync', { check: true }],
+    ]) {
+      const response = await invoke(fs, command, options);
+      assert.equal(response.exitCode, 2);
+      assert.equal(response.result.diagnostics[0].code, 'DOCUMENT_CONFLICT');
+      assert.equal(fs.writes.length, 0);
+    }
+  }
+  const owned =
+    "---\r\ngeneratedBy: '@devel-solid/agentscli'\r\n---\r\nChanged body.\r\n";
+  assert.equal(isGenerated(bytes(owned)), true);
+  const fs = client({ 'AGENTS.md': owned });
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
+});
+
+test('comment-bearing discovery triggers are rejected before any planned writes', async () => {
+  for (const trigger of [
+    'consultar <!-- hidden --> ao testar.',
+    '> <!-- hidden -->',
+    'texto\n<!-- hidden -->',
+  ]) {
+    const fs = client({
+      '.agentscli/templates/conventions/testing.tpl.md': convention(
+        'Testing',
+        JSON.stringify(trigger),
+      ),
+    });
+    const response = await invoke(fs);
+    assert.equal(response.exitCode, 2);
+    assert.equal(response.result.diagnostics[0].code, 'SOURCE_TRIGGER');
+    assert.equal(fs.writes.length, 0);
+  }
+  validateConvention(
+    convention('Testing', "'consultar o literal `<!-- comment -->`.'"),
+    'testing.tpl.md',
+  );
+});
+
+test('normalized discovery triggers retain cross-resource link validation', async () => {
+  for (const trigger of [
+    '> [Other](.agentscli/conventions/other.md)',
+    '[Other](.agents/skills/review/SKILL.md)\nwhen editing tests.',
+  ]) {
+    const fs = client({
+      '.agentscli/templates/conventions/testing.tpl.md': convention(
+        'Testing',
+        JSON.stringify(trigger),
+      ),
+    });
+    const response = await invoke(fs);
+    assert.equal(response.exitCode, 2);
+    assert.equal(response.result.diagnostics[0].code, 'RESOURCE_LINK');
+    assert.equal(fs.writes.length, 0);
+  }
+});
+
+test('multiline setext convention titles occupy one index line', () => {
+  const document = render(
+    [
+      {
+        source: '.agentscli/templates/conventions/testing-policy.tpl.md',
+        output: '.agentscli/conventions/testing-policy.md',
+        text: '---\ntrigger: Read before testing.\n---\n\nTesting\npolicy\n======\n\nKeep useful rules.\n',
+      },
+    ],
+    'en',
+  ).get('AGENTS.md');
+  assert.equal(
+    document,
+    '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md\n\n- [Testing policy](.agentscli/conventions/testing-policy.md): Read before testing.\n',
+  );
 });

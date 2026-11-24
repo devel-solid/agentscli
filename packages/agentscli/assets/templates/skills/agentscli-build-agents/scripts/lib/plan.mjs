@@ -12,7 +12,7 @@ import {
   parseManifest,
   serializeManifest,
 } from './manifest.mjs';
-import { decode, GENERATED } from './markdown.mjs';
+import { decode, frontmatter, GENERATED } from './markdown.mjs';
 import { containedPath, portableKey, uniquePaths } from './paths.mjs';
 import { assertClientContext, disk, inspect, walk } from './io.mjs';
 import { render } from './render.mjs';
@@ -21,8 +21,20 @@ const compareKeys = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const bytes = (text) => new TextEncoder().encode(text);
 export const equalBytes = (a, b) =>
   a.length === b.length && a.every((value, index) => value === b[index]);
-export const isGenerated = (content) =>
+export const isGeneratedConvention = (content) =>
   Buffer.from(content).toString('utf8').split(/\r?\n/u, 1)[0] === GENERATED;
+export function isGenerated(content) {
+  try {
+    const header = frontmatter(decode(content, 'AGENTS.md'), 'AGENTS.md');
+    return (
+      !!header &&
+      Object.keys(header.fields).length === 1 &&
+      header.fields.generatedBy === '@devel-solid/agentscli'
+    );
+  } catch {
+    return false;
+  }
+}
 export function loadResources() {
   // The CLI resolves its own installed asset engine, never a mutable project copy.
   const root = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -168,9 +180,7 @@ export function plan(io, root, command, resources, selectedLanguage) {
   const virtual = new Map();
   for (const path of walk(io, root, CONVENTION_ROOT))
     if (path.endsWith('.tpl.md')) virtual.set(path, read(io, root, path));
-  const main = `${TEMPLATE_ROOT}/AGENTS.tpl.md`;
-  if (inspect(io, root, main, 'file')) virtual.set(main, read(io, root, main));
-  const initialized = !!stored || virtual.has(main);
+  const initialized = !!stored || virtual.size > 0;
   if (applying) {
     if (!resources)
       throw new EngineError(
@@ -184,32 +194,33 @@ export function plan(io, root, command, resources, selectedLanguage) {
     )
       throw new EngineError(
         'PACKAGE_RESOURCE',
-        'Expected exactly three consumer operational skill assets.',
+        'Expected exactly two consumer operational skill assets.',
         3,
       );
     const defaults = resources.templates[manifest.language];
-    if (!defaults?.['AGENTS.tpl.md'])
-      throw new EngineError('PACKAGE_RESOURCE', 'Missing main template.', 3);
+    if (
+      !defaults ||
+      Object.keys(defaults).some(
+        (path) => !path.startsWith('conventions/') || !path.endsWith('.tpl.md'),
+      )
+    )
+      throw new EngineError(
+        'PACKAGE_RESOURCE',
+        'Expected convention template assets only.',
+        3,
+      );
     for (const [relative, content] of Object.entries(defaults).sort(
       ([a], [b]) => compareKeys(a, b),
     )) {
       const path = `${TEMPLATE_ROOT}/${relative}`;
-      if ((path === main || !initialized) && !virtual.has(path)) {
+      if (!initialized && !virtual.has(path)) {
         inspect(io, root, path, 'file');
         virtual.set(path, content);
         compare(path, content);
       }
     }
   }
-  if (!virtual.has(main))
-    throw new EngineError(
-      'SOURCE_MISSING',
-      `Missing main template: ${main}.`,
-      2,
-      main,
-    );
   const localConventions = [...virtual]
-    .filter(([path]) => path !== main)
     .sort(([a], [b]) => compareKeys(portableKey(a), portableKey(b)))
     .map(([path, content]) => ({
       id: path.slice(CONVENTION_ROOT.length + 1, -7),
@@ -227,7 +238,8 @@ export function plan(io, root, command, resources, selectedLanguage) {
     for (const id of io.names(containedPath(root, '.agents/skills')).sort()) {
       const directory = `.agents/skills/${id}`;
       const managed =
-        PRODUCT_SKILLS.includes(id) || id === 'agentscli-update-agents';
+        PRODUCT_SKILLS.includes(id) ||
+        ['agentscli-update-agents', 'agentscli-edit-agents'].includes(id);
       const entry = inspect(
         io,
         root,
@@ -267,7 +279,6 @@ export function plan(io, root, command, resources, selectedLanguage) {
         });
   validateResources({ conventions, skills });
   const documents = render(
-    { source: main, text: decode(virtual.get(main), main) },
     conventions.map((c) => ({
       source: c.path,
       output: c.output,
@@ -284,7 +295,7 @@ export function plan(io, root, command, resources, selectedLanguage) {
     )
       throw new EngineError(
         'DOCUMENT_CONFLICT',
-        'A handwritten root AGENTS.md must be preserved in its template before applying.',
+        'Root AGENTS.md is not owned by @devel-solid/agentscli. Preserve its content outside the generated index before applying.',
         2,
         path,
       );
@@ -296,6 +307,7 @@ export function plan(io, root, command, resources, selectedLanguage) {
     for (const id of PRODUCT_SKILLS)
       tree(`.agents/skills/${id}`, resources.skills[id]);
     tree('.agents/skills/agentscli-update-agents', {});
+    tree('.agents/skills/agentscli-edit-agents', {});
   }
   if (applying && (!stored || stored.language !== manifest.language))
     compare(CONFIG_PATH, bytes(serializeManifest(manifest)));

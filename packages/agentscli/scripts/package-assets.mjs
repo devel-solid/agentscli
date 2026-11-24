@@ -2,10 +2,7 @@ import * as fs from 'node:fs';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
-import {
-  frontmatter,
-  validateTemplate,
-} from '../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
+import { frontmatter } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
 import {
   stringifyYaml,
   PRODUCT_SKILLS,
@@ -38,7 +35,7 @@ export function collectResources(root, io = fs) {
   }
   const names = io.readdirSync(resolve(root, 'assets/templates/skills')).sort();
   if (names.join('\n') !== [...PRODUCT_SKILLS].sort().join('\n'))
-    throw new Error('Expected exactly the three consumer skill directories.');
+    throw new Error('Expected exactly the two consumer skill directories.');
   for (const name of PRODUCT_SKILLS)
     collect(`assets/templates/skills/${name}`, `skills/${name}`);
   for (const lang of ['en', 'pt-br'])
@@ -58,12 +55,15 @@ export function collectResources(root, io = fs) {
   for (const lang of ['en', 'pt-br']) {
     const prefix = `templates/${lang}/`;
     const locale = resources.filter((r) => r.destination.startsWith(prefix));
-    validateTemplate(
-      Buffer.from(
-        locale.find((r) => r.destination === prefix + 'AGENTS.tpl.md').content,
-      ).toString('utf8'),
-      'AGENTS.tpl.md',
-    );
+    if (
+      !locale.length ||
+      locale.some(
+        (r) =>
+          !r.destination.startsWith(prefix + 'conventions/') ||
+          !r.destination.endsWith('.tpl.md'),
+      )
+    )
+      throw new Error(`Expected only convention templates in locale ${lang}.`);
     validateResources({
       conventions: locale
         .filter((r) => r.destination.startsWith(prefix + 'conventions/'))
@@ -152,9 +152,7 @@ export async function packageAssets(root) {
       fs.writeFileSync(target, stampSkill(content, pkg, destination));
     else if (
       destination === 'skills/agentscli-build-agents/scripts/lib/index.mjs' ||
-      ['agentscli-write-conventions', 'agentscli-edit-agents'].some(
-        (name) => destination === `skills/${name}/scripts/check.mjs`,
-      )
+      destination === 'skills/agentscli-write-conventions/scripts/check.mjs'
     ) {
       const source = resolve(
         root,

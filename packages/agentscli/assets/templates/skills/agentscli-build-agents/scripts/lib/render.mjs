@@ -1,10 +1,11 @@
 import {
   GENERATED,
+  inlineTrigger,
   validateConvention,
   validateLegacyConvention,
   validateConventionFilename,
-  validateTemplate,
 } from './markdown.mjs';
+import { portableKey } from './paths.mjs';
 function notice(source, language) {
   const message =
     language === 'pt-br'
@@ -22,32 +23,31 @@ function link(path) {
     )
     .join('/');
 }
-export function render(
-  main,
-  conventions,
-  language,
-  { legacyLayout = false } = {},
-) {
-  const template = validateTemplate(main.text, main.source),
-    outputs = new Map();
-  const entries = conventions.map((input) => {
+export const INDEX_HEADER =
+  '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md\n';
+export function render(conventions, language, { legacyLayout = false } = {}) {
+  const outputs = new Map();
+  const ordered = [...conventions].sort((a, b) => {
+    const left = portableKey(a.output),
+      right = portableKey(b.output);
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
+  const entries = ordered.map((input) => {
     const authoredSource = input.authoredSource ?? input.source;
     const parsed = legacyLayout
       ? validateLegacyConvention(input.text, authoredSource)
       : validateConvention(input.text, authoredSource);
     if (!legacyLayout) validateConventionFilename(parsed.title, authoredSource);
     outputs.set(input.output, notice(input.source, language) + parsed.body);
-    const title = (parsed.title || 'Convention').replace(/[\\[\]]/gu, '\\$&');
-    return `- [${title}](${link(input.output)})\n${parsed.card
-      .split('\n')
-      .map((line) => `  ${line}`)
-      .join('\n')}`;
+    const title = parsed.title
+      .replace(/\s+/gu, ' ')
+      .replace(/[\\`*{}\[\]<>()!_#|~]/gu, '\\$&');
+    const trigger = inlineTrigger(parsed.card);
+    return `- [${title}](${link(input.output)}): ${trigger}`;
   });
-  const lines = template.text.split('\n');
-  lines.splice(template.insertion, 1, entries.join('\n\n'));
   outputs.set(
     'AGENTS.md',
-    notice(main.source, language) + lines.join('\n').trimEnd() + '\n',
+    INDEX_HEADER + (entries.length ? '\n' + entries.join('\n') + '\n' : ''),
   );
   return outputs;
 }

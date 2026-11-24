@@ -10,15 +10,12 @@ import {
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
 
 const bytes = (text) => new TextEncoder().encode(text);
-const main = '# Project\n\n<!-- agentscli:conventions -->\n';
+const retiredMain =
+  '# Authored root instructions\n\nPreserve this authored content.\n';
 const convention =
   '# Unit\n\n<!-- AGENT-CARD START -->\nRead for rules.\n<!-- AGENT-CARD END -->\n\nKeep this literal.\n';
 const skills = Object.fromEntries(
-  [
-    'agentscli-build-agents',
-    'agentscli-edit-agents',
-    'agentscli-write-conventions',
-  ].map((name) => [
+  ['agentscli-build-agents', 'agentscli-write-conventions'].map((name) => [
     name,
     {
       'SKILL.md': bytes(
@@ -31,13 +28,11 @@ const skills = Object.fromEntries(
 const resources = {
   templates: {
     en: {
-      'AGENTS.tpl.md': bytes(main),
       'conventions/project-context.tpl.md': bytes(
         convention.replace('# Unit', '# Project context'),
       ),
     },
     'pt-br': {
-      'AGENTS.tpl.md': bytes(main),
       'conventions/contexto-do-projeto.tpl.md': bytes(
         convention.replace('# Unit', '# Contexto do projeto'),
       ),
@@ -124,7 +119,6 @@ function legacy({
   extras = {},
 } = {}) {
   const documents = render(
-    { source: `${templates}/AGENTS.tpl.md`, text: main },
     Object.entries(sources)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([relative, text]) => ({
@@ -137,7 +131,7 @@ function legacy({
   );
   return memory({
     'agentscli-compose.yml': `language: ${language}\ntemplates_dir: ${templates}\nconventions_dir: ${outputs}\n`,
-    [`${templates}/AGENTS.tpl.md`]: main,
+    [`${templates}/AGENTS.tpl.md`]: retiredMain,
     ...Object.fromEntries(
       Object.entries(sources).map(([path, text]) => [
         `${templates}/${path}`,
@@ -165,7 +159,6 @@ test('fixed-layout card migration preserves regular skill metadata and local ski
   };
   const fs = memory({
     '.agentscli/config.yml': 'language: en\n',
-    '.agentscli/templates/AGENTS.tpl.md': main,
     '.agentscli/templates/conventions/unit.tpl.md': convention,
     ...metadata,
     '.agents/skills/review/SKILL.md':
@@ -194,50 +187,18 @@ test('fixed-layout card migration preserves regular skill metadata and local ski
   );
 });
 
-test('affected HTML is rejected before migration writes even with quotes or entities', async () => {
-  for (const html of [
-    '<a title=">" href="docs/conventions/testing/unit.md">Unit</a>',
-    '<a href="docs&#47;conventions&#47;testing&#47;unit.md">Unit</a>',
-  ]) {
-    const fs = legacy();
-    fs.put('templates/AGENTS.tpl.md', main + '\n' + html + '\n');
-    const result = await invoke(fs);
-    assert.equal(result.exitCode, 2);
-    assert.equal(result.result.diagnostics[0].code, 'MIGRATION_LINK');
-    assert.equal(fs.writes.length, 0);
-    assert.ok(exists(fs, 'agentscli-compose.yml'));
-    assert.ok(exists(fs, 'docs/conventions/testing/unit.md'));
-  }
-});
-
-test('migration retains real URL suffixes when authored paths use numeric entities', async () => {
-  const fs = legacy();
-  const authored =
-    main +
-    '\n[Unit](docs&#47;conventions&#47;testing&#47;unit.md?mode=1#part)\n';
-  fs.put('templates/AGENTS.tpl.md', authored);
-  fs.put(
-    'AGENTS.md',
-    render(
-      { source: 'templates/AGENTS.tpl.md', text: authored },
-      [
-        {
-          source: 'templates/testing/unit.tpl.md',
-          output: 'docs/conventions/testing/unit.md',
-          text: convention,
-        },
-      ],
-      'en',
-      { legacyLayout: true },
-    ).get('AGENTS.md'),
-  );
+test('migration preserves retired main sources without reading or transferring them', async () => {
+  const fs = legacy({
+    extras: {
+      '.agentscli/templates/AGENTS.tpl.md': 'Unrelated authored source.\n',
+    },
+  });
   assertSuccess(await invoke(fs));
-  for (const path of ['AGENTS.md', '.agentscli/templates/AGENTS.tpl.md'])
-    assert.ok(
-      fs
-        .text(path)
-        .includes('[Unit](.agentscli/conventions/testing/unit.md?mode=1#part)'),
-    );
+  assert.equal(fs.text('templates/AGENTS.tpl.md'), retiredMain);
+  assert.equal(
+    fs.text('.agentscli/templates/AGENTS.tpl.md'),
+    'Unrelated authored source.\n',
+  );
 });
 
 test('migration previews the same ordered transfers, full skills and bounded cleanup without writes', async () => {
@@ -327,11 +288,11 @@ test('migration rejects a noncanonical legacy source before preview or apply wri
 test('migration accepts missing old outputs, empty conventions and preserves raw source newlines', async () => {
   const fs = legacy({ sources: {} });
   fs.nodes.delete(join(fs.root, 'AGENTS.md'));
-  fs.put('templates/AGENTS.tpl.md', main.replaceAll('\n', '\r\n'));
+  fs.put('templates/AGENTS.tpl.md', retiredMain.replaceAll('\n', '\r\n'));
   assertSuccess(await invoke(fs));
   assert.equal(
-    fs.text('.agentscli/templates/AGENTS.tpl.md'),
-    main.replaceAll('\n', '\r\n'),
+    fs.text('templates/AGENTS.tpl.md'),
+    retiredMain.replaceAll('\n', '\r\n'),
   );
   assert.ok(!exists(fs, '.agentscli/templates/conventions'));
   const missing = legacy();
@@ -344,7 +305,6 @@ test('migration rejects all foreseeable content conflicts before any writes', as
     ['AGENTS.md', `${GENERATED}\nDirect edit.\n`],
     ['docs/conventions/testing/unit.md', 'Manual output.'],
     ['docs/conventions/testing/unit.md', `${GENERATED}\nDirect edit.\n`],
-    ['.agentscli/templates/AGENTS.tpl.md', main + 'Different.\n'],
     ['.agentscli/conventions/testing/unit.md', `${GENERATED}\nDifferent.\n`],
     ['.agentscli/templates/conventions/unrelated.tpl.md', convention],
     ['.agentscli/conventions/stale.md', `${GENERATED}\nStale.\n`],
@@ -539,8 +499,9 @@ test('migration checks prepared destinations before configuration and source del
       ) {
         changed = true;
         fs.put(
-          '.agentscli/templates/AGENTS.tpl.md',
-          main + 'Concurrent edit.\n',
+          '.agentscli/templates/conventions/testing/unit.tpl.md',
+          convertLegacyConvention(convention, 'unit.tpl.md') +
+            'Concurrent edit.\n',
         );
       }
     };
@@ -560,7 +521,10 @@ test('changed old source is preserved at its deletion boundary', async () => {
   fs.io.unlink = (path) => {
     unlink(path);
     if (path === join(fs.root, 'docs/conventions/testing/unit.md'))
-      fs.put('templates/AGENTS.tpl.md', main + 'Changed after planning.\n');
+      fs.put(
+        'templates/testing/unit.tpl.md',
+        convention + 'Changed after planning.\n',
+      );
   };
   const result = await invoke(fs);
   assert.equal(result.exitCode, 3);
@@ -626,7 +590,6 @@ test('interrupted empty-directory cleanup converges without removing unrelated c
 test('fixed-layout card migration previews, preserves authored body, and is a completed no-op', async () => {
   const fs = memory({
     '.agentscli/config.yml': 'language: pt-br\n',
-    '.agentscli/templates/AGENTS.tpl.md': main,
     '.agentscli/templates/conventions/unit.tpl.md': convention,
   });
   const preview = await invoke(fs, { dryRun: true });
@@ -660,7 +623,6 @@ test('fixed-layout conversion never runs implicitly and rejects ambiguous metada
   ]) {
     const fs = memory({
       '.agentscli/config.yml': 'language: en\n',
-      '.agentscli/templates/AGENTS.tpl.md': main,
       '.agentscli/templates/conventions/unit.tpl.md': source,
     });
     assert.equal(
@@ -680,7 +642,6 @@ test('fixed-layout migration retains discoverable old cards until its final auth
   const seed = () =>
     memory({
       '.agentscli/config.yml': 'language: en\n',
-      '.agentscli/templates/AGENTS.tpl.md': main,
       '.agentscli/templates/conventions/unit.tpl.md': convention,
     });
   const initial = seed(),
@@ -709,5 +670,32 @@ test('fixed-layout migration retains discoverable old cards until its final auth
     fs.io.rename = original;
     assertSuccess(await invoke(fs));
     assert.equal((await invoke(fs)).result.changes.length, 0, target);
+  }
+});
+
+test('legacy convention migration needs no main template and protects unowned root documents', async () => {
+  const fs = legacy();
+  fs.nodes.delete(join(fs.root, 'templates/AGENTS.tpl.md'));
+  fs.nodes.delete(join(fs.root, 'AGENTS.md'));
+  assertSuccess(await invoke(fs));
+  assert.match(
+    fs.text('AGENTS.md'),
+    /^---\ngeneratedBy: "@devel-solid\/agentscli"\n---\n\n# AGENTS.md\n\n- \[Unit\]/u,
+  );
+  assert.equal(exists(fs, '.agentscli/templates/AGENTS.tpl.md'), false);
+  for (const root of [
+    '# Handwritten project\n',
+    `${GENERATED}\n# Old generated instructions\n`,
+    '---\ngeneratedBy: another-generator\n---\n# Other output\n',
+  ]) {
+    const fs = legacy({ extras: { 'AGENTS.md': root } });
+    for (const dryRun of [true, false]) {
+      const response = await invoke(fs, { dryRun });
+      assert.equal(response.exitCode, 2);
+      assert.equal(response.result.diagnostics[0].code, 'DOCUMENT_CONFLICT');
+      assert.equal(fs.writes.length, 0);
+      assert.equal(fs.text('AGENTS.md'), root);
+      assert.equal(fs.text('templates/AGENTS.tpl.md'), retiredMain);
+    }
   }
 });

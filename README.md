@@ -31,13 +31,12 @@ packages/
       pt-br/
       skills/
         agentscli-write-conventions/
-        agentscli-edit-agents/
         agentscli-build-agents/
 ```
 
-These six operational skills are independent and each has one responsibility. The three administrative skills stay internal; builds distribute exactly three consumer skills. OpenSpec is development-only. A source/distribution manifest is unnecessary: the package owns its fixed asset roots. No skill source or custom implementation is shared between environments.
+These five operational skills are independent and each has one responsibility. The three administrative skills stay internal; builds distribute exactly two consumer skills. OpenSpec is development-only. A source/distribution manifest is unnecessary: the package owns its fixed asset roots. No skill source or custom implementation is shared between environments.
 
-Conventions are self-contained rules with no links to other conventions or skills. Consumer convention templates have a nonempty `trigger` in leading YAML frontmatter and a canonical H1/filename. Skills carry their own execution guidance and mention other skills by identity instead of linking or hardcoding their locations. Their own bundled support and project work inputs remain usable. The three distributed skills receive MIT, `compatibility: Requires Node.js >= 22.`, and the package's actual name/version during assembly; maintained sources stay unchanged.
+Conventions are self-contained rules with no links to other conventions or skills. Consumer convention templates have a nonempty `trigger` in leading YAML frontmatter and a canonical H1/filename. Client AGENTS.md is a mechanical convention index with the product's `generatedBy` frontmatter and fixed title; it has no template or additional project prose. Skills carry their own execution guidance and mention other skills by identity instead of linking or hardcoding their locations. Their own bundled support and project work inputs remain usable. The two distributed skills receive MIT, `compatibility: Requires Node.js >= 22.`, and the package's actual name/version during assembly; maintained sources stay unchanged.
 
 ## Development
 

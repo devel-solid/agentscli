@@ -5,6 +5,7 @@ import {
   activeNodes,
   decode,
   frontmatter,
+  inlineTrigger,
   parseMarkdown,
   validateConvention,
   validateConventionFilename,
@@ -208,10 +209,14 @@ export function validateResources({ conventions = [], skills = [] }) {
       skillRoots,
     };
     validateResourceLinks(parsed.body, c.output ?? c.path, opts);
-    validateResourceLinks(parsed.trigger, 'AGENTS.md', {
-      ...opts,
-      trigger: true,
-    });
+    validateResourceLinks(
+      'Discovery: ' + inlineTrigger(parsed.trigger),
+      'AGENTS.md',
+      {
+        ...opts,
+        trigger: true,
+      },
+    );
     const key = `${c.source}:${portableKey(c.id)}`;
     if (seenConventions.has(key))
       fail('RESOURCE_COLLISION', `Duplicate convention ${key}.`, c.path);

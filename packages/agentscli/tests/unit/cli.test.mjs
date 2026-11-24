@@ -122,7 +122,7 @@ test('help and standalone version use no runtime or project writes', async () =>
     assert.equal(response.exitCode, 0);
     assert.match(response.stdout, /agentscli 0\.1\.0/);
     assert.match(response.stdout, /agentscli apply/);
-    assert.match(response.stdout, /three operational\nskill trees/);
+    assert.match(response.stdout, /two operational\nskill trees/);
     assert.match(response.stdout, /repeat the same/);
     assert.equal(response.stderr, '');
   }

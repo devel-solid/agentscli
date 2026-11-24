@@ -35,10 +35,6 @@ function resourceIO(overrides = {}) {
   }
   for (const [language, basename, title, hint] of starterConventions) {
     add(
-      `assets/templates/${language}/AGENTS.tpl.md`,
-      '# Project\n<!-- agentscli:conventions -->\n',
-    );
-    add(
       `assets/templates/${language}/conventions/${basename}.tpl.md`,
       `---\ntrigger: Read before working.\n---\n\n# ${title}\n\n<!-- ${hint}. -->\n`,
     );
@@ -84,7 +80,7 @@ function resourceIO(overrides = {}) {
 test('whole skill trees and both document locales map without duplicated sources', () => {
   const { root, io } = resourceIO();
   const resources = collectResources(root, io);
-  assert.equal(resources.length, 10);
+  assert.equal(resources.length, 6);
   assert.equal(
     resources
       .find(
@@ -96,9 +92,13 @@ test('whole skill trees and both document locales map without duplicated sources
     'Support content\n',
   );
   assert.ok(
-    resources.some(
-      (item) => item.destination === 'templates/pt-br/AGENTS.tpl.md',
-    ),
+    resources
+      .filter((item) => item.destination.startsWith('templates/'))
+      .every((item) =>
+        /^templates\/(en|pt-br)\/conventions\/.+\.tpl\.md$/u.test(
+          item.destination,
+        ),
+      ),
   );
   assert.ok(resources.every((item) => !item.destination.includes('release')));
   assert.deepEqual(
@@ -172,11 +172,24 @@ test('packaging rejects linked sources, hardlinks, unsafe aliases and missing sk
     assert.throws(() => collectResources(root, io), /Unsafe/);
   }
   io.lstatSync = original;
-  add('assets/templates/pt-br/agents.tpl.md', '# Collision\n');
+  add(
+    'assets/templates/pt-br/conventions/CONTEXTO-DO-PROJETO.tpl.md',
+    '# Collision\n',
+  );
   assert.throws(
     () => collectResources(root, io),
     /Equivalent|overlapping|alias/,
   );
+});
+test('locale assets reject files outside convention templates', () => {
+  for (const path of ['instructions.tpl.md', 'conventions/readme.txt']) {
+    const { root, io, add } = resourceIO();
+    add(`assets/templates/en/${path}`, '# Unexpected locale resource\n');
+    assert.throws(
+      () => collectResources(root, io),
+      /only convention templates/,
+    );
+  }
 });
 test('derived metadata uses actual CLI identity/version without mutating source', () => {
   const input = Buffer.from(

@@ -4,14 +4,14 @@ Read when creating, reviewing, or refactoring owned skills and their support fil
 
 ## Responsibility and content
 
-- Use the available skill creation guidance. Each skill performs one coherent operation in one environment. Keep all six operational sources independent, even when their bodies match. Descriptions must state what activates the skill and what it changes. Wrong-environment requests must fail before writes.
+- Use the available skill creation guidance. Each skill performs one coherent operation in one environment. Keep all five operational sources independent, even when their bodies match. Descriptions must state what activates the skill and what it changes. Wrong-environment requests must fail before writes.
 - Preserve the request and its authorization. A skill cannot expand editing scope or require repeated approval when existing authorization suffices. Separate convention authorship, root instructions, generation, and npm publication.
 - Include necessary inputs, decisions, procedures, non-obvious constraints, and completion criteria. Prefer short common-path guidance and directly linked own support with an explicit consultation condition. Avoid generic tutorials, duplicated catalogs, deep reference chains, and session history.
 - Keep each skill's prose and examples in one language. Preserve exact technical literals. Before removing content, identify consumers and retain operational guarantees. Semantic review must distinguish declarative conventions from procedures that belong in a separately scoped skill.
 
 ## Format
 
-- Use standard leading YAML skill frontmatter with nonempty `name` matching its directory and a nonempty activation `description`. Metadata values are strings. The three distributed operational skills declare MIT and exactly `compatibility: Requires Node.js >= 22.`. Asset assembly stamps `metadata.generatedBy` and `metadata.generatorVersion` from the package's actual name/version; maintained sources stay unchanged. Do not invent per-skill versions.
+- Use standard leading YAML skill frontmatter with nonempty `name` matching its directory and a nonempty activation `description`. Metadata values are strings. The two distributed operational skills declare MIT and exactly `compatibility: Requires Node.js >= 22.`. Asset assembly stamps `metadata.generatedBy` and `metadata.generatorVersion` from the package's actual name/version; maintained sources stay unchanged. Do not invent per-skill versions.
 - Adopt the current beta contract directly without compatibility readers, conversions, transition workflows, or old-client protection. Replace disposable managed outputs from desired sources.
 
 ## Discovery and links

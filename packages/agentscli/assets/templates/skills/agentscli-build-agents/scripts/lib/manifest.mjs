@@ -15,7 +15,6 @@ export const CONFIG_PATH = '.agentscli/config.yml',
   MANIFEST = 'agentscli-compose.yml';
 export const PRODUCT_SKILLS = [
   'agentscli-write-conventions',
-  'agentscli-edit-agents',
   'agentscli-build-agents',
 ];
 export function language(value = 'en') {

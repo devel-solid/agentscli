@@ -6,11 +6,7 @@ import * as nodeFs from 'node:fs';
 import { parseDocument, visit } from 'yaml';
 
 const names = {
-  agentscli: [
-    'agentscli-write-conventions',
-    'agentscli-edit-agents',
-    'agentscli-build-agents',
-  ],
+  agentscli: ['agentscli-write-conventions', 'agentscli-build-agents'],
 };
 export function inspectMetadata(pkg, name) {
   if (
@@ -207,6 +203,12 @@ export function inspectArchive(bytes, expected, prepared) {
   // npm bin-links supplies executable permissions and platform shims at install.
   // A native Windows npm tarball may record 0644 even for a declared bin.
   const prefix = 'package/dist/assets/skills/';
+  for (const path of files.keys()) {
+    if (!path.startsWith(prefix)) continue;
+    const parts = path.slice(prefix.length).split('/');
+    if (parts.length < 2 || !names[name].includes(parts[0]))
+      throw new Error(`Incorrect operational skill inventory: ${path}`);
+  }
   const actual = [...files.keys()]
     .filter(
       (path) =>
@@ -249,7 +251,6 @@ export function inspectArchive(bytes, expected, prepared) {
   }
   const support = {
     'agentscli-write-conventions': ['scripts/check.mjs'],
-    'agentscli-edit-agents': ['scripts/check.mjs'],
     'agentscli-build-agents': [
       'scripts/build-agents.mjs',
       'scripts/lib/index.mjs',
@@ -277,14 +278,10 @@ export function inspectArchive(bytes, expected, prepared) {
     ['en', 'project-context'],
     ['pt-br', 'contexto-do-projeto'],
   ]) {
-    const main = files.get(
-      `package/dist/assets/templates/${language}/AGENTS.tpl.md`,
-    );
     const source = files.get(
       `package/dist/assets/templates/${language}/conventions/${convention}.tpl.md`,
     );
-    if (!main || !source)
-      throw new Error(`Missing locale templates: ${language}`);
+    if (!source) throw new Error(`Missing locale templates: ${language}`);
     const parsed = header(source.bytes.toString('utf8'));
     if (
       !parsed.value ||
@@ -294,16 +291,12 @@ export function inspectArchive(bytes, expected, prepared) {
       (parsed.body.match(/^#\s+[^\n]+$/gmu) ?? []).length !== 1
     )
       throw new Error(`Invalid locale convention: ${language}`);
-    if (
-      (
-        main.bytes
-          .toString('utf8')
-          .match(/^<!-- agentscli:conventions -->$/gmu) ?? []
-      ).length !== 1
-    )
-      throw new Error(`Invalid locale discovery marker: ${language}`);
   }
   for (const path of files.keys()) {
+    if (basename(path) === 'AGENTS.tpl.md')
+      throw new Error(
+        `Unsupported root instruction template in archive: ${path}`,
+      );
     if (
       /^package\/(?:tests|openspec|\.agents|src)\//u.test(path) ||
       path === 'package/agentscli.yml' ||

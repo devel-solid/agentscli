@@ -7,7 +7,7 @@ description: Maintain this tool monorepo's handwritten root AGENTS.md and conven
 
 Discover the repository root and run this skill's `node scripts/check.mjs --repo-root <root>` before and after editing. It verifies real tool workspace identities, direct-authoring context, the root entrypoint, and discovery targets. Do not create consumer configuration or initialize to resolve a missing context.
 
-Edit only the handwritten English root AGENTS.md. Keep concise purpose, essential orientation, verified commands, and convention discovery with consultation conditions. Preserve customized sections and unrelated decisions; generated client headings/markers are not required here.
+Edit only the handwritten English root AGENTS.md. Keep concise purpose, essential orientation, verified commands, and convention discovery with consultation conditions. Preserve customized sections and unrelated decisions; generated client document structure is not required here.
 
 Detailed self-contained topic rules belong to conventions, handled by agentscli-adm-write-conventions. Execution procedures belong to their responsible skills. Mention skills by identity and discover their entrypoints, without hardcoded foreign skill paths.
 

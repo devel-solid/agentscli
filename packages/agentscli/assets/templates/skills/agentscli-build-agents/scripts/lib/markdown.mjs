@@ -8,9 +8,12 @@ import {
 } from './manifest.mjs';
 export const CARD_START = '<!-- AGENT-CARD START -->';
 export const CARD_END = '<!-- AGENT-CARD END -->';
-export const INSERTION = '<!-- agentscli:conventions -->';
 export const GENERATED = '<!-- agentscli:generated -->';
 export const normalizeText = (text) => text.replace(/\r\n?/gu, '\n');
+export const inlineTrigger = (text) =>
+  normalizeText(text)
+    .trim()
+    .replace(/\s*\n\s*/gu, ' ');
 export function decode(bytes, path) {
   try {
     return normalizeText(
@@ -44,7 +47,7 @@ function structure(input, path) {
         node.position.start.offset,
         node.position.end.offset,
       );
-      if ([CARD_START, CARD_END, INSERTION].includes(value.trim()))
+      if ([CARD_START, CARD_END].includes(value.trim()))
         html.push([node.position.start.offset, node.position.end.offset]);
     }
     for (const child of node.children ?? []) visit(child);
@@ -83,21 +86,6 @@ function structure(input, path) {
     title,
     lines,
     markers,
-  };
-}
-export function validateTemplate(text, path) {
-  const parsed = structure(text, path),
-    found = parsed.markers(INSERTION);
-  if (found.length !== 1)
-    throw new EngineError(
-      'TEMPLATE_MARKER',
-      `${path}:1: Expected exactly one full-line ${INSERTION} outside examples.`,
-      2,
-      path,
-    );
-  return {
-    text: parsed.text,
-    insertion: found[0],
   };
 }
 export function validateConventionFilename(title, path) {
@@ -218,6 +206,17 @@ export function validateConvention(input, path) {
     throw new EngineError(
       'SOURCE_TRIGGER',
       `${path}: trigger must be nonempty text.`,
+      2,
+      path,
+    );
+  if (
+    activeNodes('Discovery: ' + inlineTrigger(header.fields.trigger)).some(
+      (node) => node.type === 'html' && /<!--/u.test(node.value),
+    )
+  )
+    throw new EngineError(
+      'SOURCE_TRIGGER',
+      `${path}: trigger cannot contain HTML comments.`,
       2,
       path,
     );

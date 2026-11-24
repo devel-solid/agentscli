@@ -254,11 +254,29 @@ test('root discovery permits convention links but rejects missing and escaping t
   assert.throws(
     () =>
       checkEntrypoint(
-        '<!-- agentscli:generated -->\n# AGENTS.md',
+        '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md',
         root,
         memory({}),
       ),
     /handwritten/,
+  );
+  assert.throws(
+    () =>
+      checkEntrypoint(
+        '---\ngeneratedBy: "@devel-solid/agentscli"\ngeneratedBy: other\n---\n\n# AGENTS.md',
+        root,
+        memory({}),
+      ),
+    /DUPLICATE_KEY/,
+  );
+  assert.throws(
+    () =>
+      checkEntrypoint(
+        '---\ngeneratedBy: "@devel-solid/agentscli"',
+        root,
+        memory({}),
+      ),
+    /Unclosed/,
   );
 });
 
@@ -405,21 +423,12 @@ function consumerArchive() {
     { name: 'package/LICENSE', body: 'MIT' },
     { name: 'package/dist/cli.js', body: '#!/usr/bin/env node\n', mode: 0o755 },
   ];
-  for (const id of [
-    'agentscli-write-conventions',
-    'agentscli-edit-agents',
-    'agentscli-build-agents',
-  ]) {
+  for (const id of ['agentscli-write-conventions', 'agentscli-build-agents']) {
     entries.push({
       name: `package/dist/assets/skills/${id}/SKILL.md`,
       body: `---\nname: ${id}\ndescription: Perform the operation.\nlicense: MIT\ncompatibility: Requires Node.js >= 22.\nmetadata:\n  generatedBy: "${pkg.name}"\n  generatorVersion: ${pkg.version}\n---\n# Operation\n`,
     });
   }
-  for (const language of ['en', 'pt-br'])
-    entries.push({
-      name: `package/dist/assets/templates/${language}/AGENTS.tpl.md`,
-      body: '# Project\n<!-- agentscli:conventions -->\n',
-    });
   return { pkg, entries };
 }
 
@@ -431,7 +440,6 @@ test('release inspection rejects metadata-only skill trees and incomplete locale
   );
   for (const path of [
     'agentscli-write-conventions/scripts/check.mjs',
-    'agentscli-edit-agents/scripts/check.mjs',
     'agentscli-build-agents/scripts/build-agents.mjs',
     'agentscli-build-agents/scripts/lib/index.mjs',
   ])
@@ -456,6 +464,53 @@ test('release inspection rejects metadata-only skill trees and incomplete locale
   const artifact = inspectArchive(tar(entries), pkg, prepared);
   assert.equal(artifact.version, '0.4.0');
   assert.match(artifact.integrity, /^sha512-/);
+  assert.throws(
+    () =>
+      inspectArchive(
+        tar([
+          ...entries,
+          {
+            name: 'package/dist/assets/skills/agentscli-edit-agents/SKILL.md',
+            body: '# Obsolete',
+          },
+        ]),
+        pkg,
+      ),
+    /Incorrect operational skill inventory/,
+  );
+  for (const path of [
+    'agentscli-edit-agents/scripts/check.mjs',
+    'unknown-skill/scripts/check.mjs',
+    'unowned.mjs',
+  ])
+    assert.throws(
+      () =>
+        inspectArchive(
+          tar([
+            ...entries,
+            {
+              name: `package/dist/assets/skills/${path}`,
+              body: 'export const orphan = true;\n',
+            },
+          ]),
+          pkg,
+        ),
+      /Incorrect operational skill inventory/,
+    );
+  assert.throws(
+    () =>
+      inspectArchive(
+        tar([
+          ...entries,
+          {
+            name: 'package/dist/assets/templates/en/AGENTS.tpl.md',
+            body: '# Obsolete',
+          },
+        ]),
+        pkg,
+      ),
+    /Unsupported root instruction template/,
+  );
   const windowsBinMode = entries.map((entry) =>
     entry.name === 'package/dist/cli.js' ? { ...entry, mode: 0o644 } : entry,
   );
