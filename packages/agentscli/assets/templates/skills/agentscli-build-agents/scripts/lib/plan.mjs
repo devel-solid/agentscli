@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { EngineError, CONVENTION_ROOT, PRODUCT_SKILLS } from './contracts.mjs';
 import { decode, frontmatter } from './markdown.mjs';
 import { containedPath, portableKey, uniquePaths } from './paths.mjs';
-import { assertClientContext, disk, inspect, walk } from './io.mjs';
+import { assertProjectTarget, disk, inspect, walk } from './io.mjs';
 import { render } from './render.mjs';
 import { validateResources } from './content.mjs';
 const compareKeys = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
@@ -141,7 +141,7 @@ function effectBuilder(io, root) {
   return { effects, compare, tree };
 }
 export function plan(io, root, command, resources) {
-  assertClientContext(io, root);
+  assertProjectTarget(io, root);
   const applying = command === 'apply';
   const { effects, compare, tree } = effectBuilder(io, root);
   if (applying) {
@@ -157,7 +157,7 @@ export function plan(io, root, command, resources) {
     )
       throw new EngineError(
         'PACKAGE_RESOURCE',
-        'Expected exactly two consumer operational skill assets.',
+        'Expected exactly two operational skill assets.',
         3,
       );
   }

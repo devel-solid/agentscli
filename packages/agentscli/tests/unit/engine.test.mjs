@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { memory } from './memory.mjs';
 import {
   EngineError,
@@ -314,7 +314,7 @@ test('unrelated authored files are never read or changed', async () => {
   const files = {
     'project.yml': 'invalid: [yaml\n',
     'notes/testing.md': '# Authored text outside convention discovery.\n',
-    'docs/conventions/testing.md': '# Unrelated instructions.\n',
+    'docs/testing.md': '# Unrelated instructions.\n',
   };
   const fs = client({
     ...files,
@@ -598,46 +598,69 @@ test('nested convention body links resolve at their final path and trigger links
     assert.equal(rejected.text(path), text);
   }
 });
-test('tool package identity, verified workspaces, and ancestors guard contexts', async () => {
-  for (const files of [
-    {
-      'package.json': JSON.stringify({
-        name: '@devel-solid/agentscli',
-        bin: { agentscli: 'dist/cli.js' },
-      }),
-    },
-    {
-      'package.json': JSON.stringify({
-        private: true,
-        workspaces: ['packages/agentscli'],
-      }),
-      'packages/agentscli/package.json': JSON.stringify({
-        name: '@devel-solid/agentscli',
-        bin: { agentscli: 'dist/cli.js' },
-      }),
-    },
-  ]) {
-    const fs = client(files);
-    assert.equal((await invoke(fs)).exitCode, 2);
-    assert.equal(fs.writes.length, 0);
-  }
-  const fs = client({
-    'package.json': '{"private":true,"workspaces":["packages/*"]}',
-  });
-  assert.equal((await invoke(fs, 'validate')).exitCode, 0);
-  const parent = client();
-  parent.nodes.set(join(dirname(parent.root), 'package.json'), {
-    kind: 'file',
-    nlink: 1,
-    data: bytes(
-      JSON.stringify({
-        name: '@devel-solid/agentscli',
-        bin: { agentscli: 'dist/cli.js' },
-      }),
+test('source workspaces apply and synchronize their own authored conventions', async () => {
+  const authored = convention().replaceAll('\n', '\r\n');
+  const files = {
+    'package.json': JSON.stringify({
+      name: 'agentscli-monorepo',
+      private: true,
+      workspaces: ['packages/agentscli'],
+    }),
+    'packages/agentscli/package.json': JSON.stringify({
+      name: '@devel-solid/agentscli',
+      bin: { agentscli: 'dist/cli.js' },
+    }),
+    '.agentscli/conventions/testing.md': authored,
+    '.agents/skills/agentscli-publish-packages/SKILL.md': skill(
+      'agentscli-publish-packages',
     ),
-  });
-  assert.equal((await invoke(parent)).exitCode, 2);
+  };
+  const fs = client(files);
+  assert.equal((await invoke(fs, 'validate')).exitCode, 0);
+  assert.equal(fs.writes.length, 0);
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
+  assert.equal((await invoke(fs)).result.changes.length, 0);
+  for (const [path, content] of Object.entries(files))
+    assert.deepEqual(
+      fs.io.read(join(fs.root, path)),
+      typeof content === 'string' ? bytes(content) : content,
+    );
+  fs.put(
+    '.agentscli/conventions/testing.md',
+    convention('Testing', 'Read when checking changes.'),
+  );
+  assert.equal((await invoke(fs, 'sync')).exitCode, 0);
+  assert.match(fs.text('AGENTS.md'), /Read when checking changes/);
 });
+
+test('installed package targets and descendants are protected before mutation', async () => {
+  const identity = JSON.stringify({
+    name: '@devel-solid/agentscli',
+    bin: { agentscli: 'dist/cli.js' },
+  });
+  for (const location of [
+    'node_modules/@devel-solid/agentscli',
+    'node_modules/agentscli',
+  ]) {
+    const fs = client({ [`${location}/package.json`]: identity });
+    fs.put(`${location}/nested/project.txt`, 'Preserved');
+    for (const target of [location, `${location}/nested`])
+      for (const command of ['apply', 'sync', 'validate']) {
+        const response = await execute(
+          command,
+          { repoRoot: join(fs.root, target) },
+          { io: fs.io, resources },
+        );
+        assert.equal(response.exitCode, 2);
+        assert.equal(response.result.diagnostics[0].code, 'PACKAGE_TARGET');
+        assert.equal(fs.writes.length, 0);
+      }
+    assert.equal((await invoke(fs)).exitCode, 0);
+    assert.equal(fs.text(`${location}/nested/project.txt`), 'Preserved');
+  }
+});
+
 test('safe path preflight rejects symlinks, hardlinks, and portable aliases before mutation', async () => {
   for (const overrides of [{ kind: 'link' }, { nlink: 2 }]) {
     const fs = client();

@@ -35,11 +35,11 @@ export function collectResources(root, io = fs) {
   }
   if (io.readdirSync(resolve(root, 'assets/templates')).join('\n') !== 'skills')
     throw new Error(
-      'Expected only consumer skill sources in assets/templates.',
+      'Expected only operational skill sources in assets/templates.',
     );
   const names = io.readdirSync(resolve(root, 'assets/templates/skills')).sort();
   if (names.join('\n') !== [...PRODUCT_SKILLS].sort().join('\n'))
-    throw new Error('Expected exactly the two consumer skill directories.');
+    throw new Error('Expected exactly the two operational skill directories.');
   for (const name of PRODUCT_SKILLS)
     collect(`assets/templates/skills/${name}`, `skills/${name}`);
   uniquePaths(resources.map((r) => r.destination));
@@ -64,7 +64,7 @@ export function stampSkill(content, pkg, path) {
     !validPackageVersion(pkg.version)
   )
     throw new Error(
-      'Generator must use the actual consumer package name and semantic version.',
+      'Generator must use the actual package name and semantic version.',
     );
   if (
     header.fields.metadata !== undefined &&
@@ -108,10 +108,12 @@ function packageOf(input) {
     directory = parent;
   }
 }
-export async function packageAssets(root) {
+export async function packageAssets(
+  root,
+  { output = resolve(root, 'dist/assets') } = {},
+) {
   const resources = collectResources(root),
-    pkg = JSON.parse(fs.readFileSync(resolve(root, 'package.json'), 'utf8')),
-    output = resolve(root, 'dist/assets');
+    pkg = JSON.parse(fs.readFileSync(resolve(root, 'package.json'), 'utf8'));
   for (const { destination, content } of resources) {
     // Unbundled source modules are not an extra operational runtime installation.
     if (
@@ -129,6 +131,7 @@ export async function packageAssets(root) {
       destination === 'skills/agentscli-write-conventions/scripts/check.mjs'
     ) {
       const bundle = await build({
+        absWorkingDir: root,
         entryPoints: [resolve(root, 'assets/templates', destination)],
         bundle: true,
         platform: 'node',
@@ -145,7 +148,7 @@ export async function packageAssets(root) {
       const licenses = new Map();
       for (const input of Object.keys(bundle.metafile.inputs))
         if (input.replaceAll('\\', '/').includes('node_modules/')) {
-          const owner = packageOf(input);
+          const owner = packageOf(resolve(root, input));
           if (owner) licenses.set(owner.pkg.name, owner);
         }
       for (const [name, owner] of [...licenses].sort(([a], [b]) =>

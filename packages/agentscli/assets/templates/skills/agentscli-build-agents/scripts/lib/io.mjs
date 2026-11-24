@@ -1,5 +1,5 @@
 import * as fs from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { EngineError } from './contracts.mjs';
 import { containedPath, portableKey, relativePath } from './paths.mjs';
@@ -82,35 +82,27 @@ function toolPackage(value, name, bin) {
       (typeof value.bin === 'string' && name.split('/').at(-1) === bin))
   );
 }
-export function assertClientContext(io, root) {
+export function assertProjectTarget(io, root) {
   let current = root;
   while (true) {
-    const pkg = packageIdentity(io, current, 'package.json');
-    let internal = toolPackage(pkg, '@devel-solid/agentscli', 'agentscli');
-    const declared = Array.isArray(pkg?.workspaces)
-      ? pkg.workspaces
-      : pkg?.workspaces?.packages;
+    const parent = dirname(current);
+    const installationParent = basename(parent).startsWith('@')
+      ? dirname(parent)
+      : parent;
     if (
-      pkg?.private === true &&
-      Array.isArray(declared) &&
-      ['packages/agentscli'].every(
-        (p) => declared.includes(p) || declared.includes('packages/*'),
-      )
-    ) {
-      internal ||= toolPackage(
-        packageIdentity(io, current, 'packages/agentscli/package.json'),
+      basename(installationParent).toLowerCase() === 'node_modules' &&
+      toolPackage(
+        packageIdentity(io, current, 'package.json'),
         '@devel-solid/agentscli',
         'agentscli',
-      );
-    }
-    if (internal)
+      )
+    )
       throw new EngineError(
-        'INTERNAL_CONTEXT',
-        'The CLI source repository or installed tool package cannot consume client resources.',
+        'PACKAGE_TARGET',
+        'Project resources cannot target an installed agentscli package or its descendants.',
         2,
         current,
       );
-    const parent = dirname(current);
     if (parent === current) break;
     current = parent;
   }

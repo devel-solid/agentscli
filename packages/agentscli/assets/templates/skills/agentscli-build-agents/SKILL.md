@@ -1,12 +1,12 @@
 ---
 name: agentscli-build-agents
-description: Validate authored conventions and update the AGENTS.md index in an existing agentscli consumer. Use for offline checks, generation previews, synchronization, and freshness checks.
+description: Validate authored conventions and update the AGENTS.md index in an agentscli project. Use for offline checks, generation previews, synchronization, and freshness checks.
 license: MIT
 ---
 
 # Build project instructions
 
-Identify the consumer root. Use the shipped [private script](scripts/build-agents.mjs); Node and versioned project files are sufficient, with no installed CLI, compiler, Git, or network:
+Identify the project root. Use the shipped [private script](scripts/build-agents.mjs); Node and versioned project files are sufficient, with no installed CLI, compiler, Git, or network:
 
 ```sh
 node <this-skill>/scripts/build-agents.mjs validate --repo-root <root> --json

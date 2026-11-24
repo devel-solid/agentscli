@@ -2,7 +2,7 @@ import { containedPath } from './paths.mjs';
 import { EngineError } from './contracts.mjs';
 import {
   checkRoot,
-  assertClientContext,
+  assertProjectTarget,
   disk,
   inspect,
   removeFile,
@@ -66,7 +66,7 @@ export async function execute(command, options, dependencies = {}) {
       );
     const io = dependencies.io ?? disk,
       root = checkRoot(io, options.repoRoot);
-    assertClientContext(io, root);
+    assertProjectTarget(io, root);
     const resources =
       command === 'apply'
         ? (dependencies.resources ?? loadResources())

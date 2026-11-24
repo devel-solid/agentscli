@@ -12,12 +12,13 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
+    "dogfood": "npm run build && node packages/agentscli/dist/cli.js apply --repo-root .",
     "typecheck": "npm run typecheck --workspaces",
-    "format": "prettier --write package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format --workspaces",
-    "format:check": "prettier --check package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format:check --workspaces",
+    "format": "prettier --write package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit .agentscli/conventions README.md .github/workflows/node.yml \".agents/skills/agentscli-publish-packages/**/*\" && npm run format --workspaces",
+    "format:check": "prettier --check package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit .agentscli/conventions README.md .github/workflows/node.yml \".agents/skills/agentscli-publish-packages/**/*\" && npm run format:check --workspaces",
     "test": "npm run test --workspaces && node scripts/test-root.mjs",
-    "check:skills": "node scripts/check-admin.mjs",
-    "check": "npm run typecheck && npm run format:check && npm test && npm run check:skills",
+    "check:resources": "node scripts/check-resources.mjs",
+    "check": "npm run typecheck && npm run format:check && npm test && npm run check:resources",
     "setup": "node scripts/setup.mjs"
   },
   "engines": {

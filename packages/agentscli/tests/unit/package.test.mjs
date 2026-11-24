@@ -132,7 +132,7 @@ test('packaging rejects sources outside the two operational skills', () => {
     add(`assets/templates/${path}`, 'Unexpected package resource\n');
     assert.throws(
       () => collectResources(root, io),
-      /only consumer skill sources/,
+      /only operational skill sources/,
     );
   }
 });

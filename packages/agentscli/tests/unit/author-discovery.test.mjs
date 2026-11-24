@@ -188,7 +188,7 @@ test(`conventions preserves unrelated authored files during validation`, async (
   assert.equal(state.writes.length, 0);
 });
 
-test(`conventions rejects tool source context even with a verified local build skill`, async () => {
+test(`conventions validates the tool workspace through its installed build skill`, async () => {
   const state = fixture({
     'package.json': JSON.stringify({
       name: 'agentscli-monorepo',
@@ -201,7 +201,6 @@ test(`conventions rejects tool source context even with a verified local build s
     }),
   });
   const response = await validateWithEngine(state);
-  assert.equal(response.exitCode, 2);
-  assert.equal(response.result.diagnostics[0].code, 'INTERNAL_CONTEXT');
+  assert.equal(response.exitCode, 0, JSON.stringify(response.result));
   assert.equal(state.writes.length, 0);
 });
