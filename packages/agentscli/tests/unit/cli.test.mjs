@@ -16,10 +16,10 @@ function engineResult(command, exitCode = 0, changes = []) {
   };
 }
 
-test('dispatch forwards root, normalized language, and read-only apply preview', async () => {
+test('dispatch forwards root and read-only apply preview', async () => {
   const calls = [];
   const response = await runCli(
-    ['--repo-root', 'client', 'apply', '--lang=PT-BR', '--dry-run', '--json'],
+    ['--repo-root', 'client', 'apply', '--dry-run', '--json'],
     {
       cwd: resolve('workspace'),
       execute: async (...args) => {
@@ -27,7 +27,7 @@ test('dispatch forwards root, normalized language, and read-only apply preview',
         return engineResult('apply', 0, [
           {
             action: 'update',
-            path: '.agentscli/config.yml',
+            path: 'AGENTS.md',
             status: 'pending',
           },
         ]);
@@ -39,7 +39,6 @@ test('dispatch forwards root, normalized language, and read-only apply preview',
       'apply',
       {
         repoRoot: resolve('workspace/client'),
-        language: 'pt-br',
         dryRun: true,
       },
     ],
@@ -79,6 +78,8 @@ test('removed, misplaced, duplicate, and incompatible options never dispatch', a
     ['apply', '--templates-dir', 'custom'],
     ['apply', '--conventions-dir', 'custom'],
     ['sync', '--dry-run', '--check'],
+    ['apply', '--lang', 'en'],
+    ['apply', '--lang=pt-br'],
     ['apply', '--lang'],
     ['apply', '--repo-root='],
     ['apply', '--lang='],
@@ -130,18 +131,18 @@ test('help and standalone version use no runtime or project writes', async () =>
   assert.equal(JSON.parse(help.stdout).command, 'help');
   assert.match(JSON.parse(help.stdout).text, /Git state/);
   assert.match(JSON.parse(help.stdout).text, /apply --migrate/);
-  assert.match(JSON.parse(help.stdout).text, /configured language/);
+  assert.doesNotMatch(JSON.parse(help.stdout).text, /--lang/);
   assert.doesNotMatch(
     helpText('0.1.0'),
     /agentscli release|--base|--frozen|--offline/,
   );
 });
 
-test('migration remains apply and forwards language, preview, and common options', async () => {
+test('migration remains apply and forwards preview, and common options', async () => {
   const root = resolve('migration-client');
   for (const args of [
-    ['apply', '--migrate', '--lang', 'PT-BR', '--dry-run', '--json'],
-    ['--migrate', '--dry-run', '--lang=PT-BR', '--json', 'apply'],
+    ['apply', '--migrate', '--dry-run', '--json'],
+    ['--migrate', '--dry-run', '--json', 'apply'],
   ]) {
     const calls = [];
     const response = await runCli(args, {
@@ -158,10 +159,7 @@ test('migration remains apply and forwards language, preview, and common options
       },
     });
     assert.deepEqual(calls, [
-      [
-        'apply',
-        { repoRoot: root, language: 'pt-br', dryRun: true, migrate: true },
-      ],
+      ['apply', { repoRoot: root, dryRun: true, migrate: true }],
     ]);
     assert.equal(response.exitCode, 0);
     assert.equal(response.stderr, '');

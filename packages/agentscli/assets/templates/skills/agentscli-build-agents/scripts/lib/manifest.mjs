@@ -8,8 +8,7 @@ export class EngineError extends Error {
     this.path = path;
   }
 }
-export const CONFIG_PATH = '.agentscli/config.yml',
-  TEMPLATE_ROOT = '.agentscli/templates',
+export const TEMPLATE_ROOT = '.agentscli/templates',
   CONVENTION_ROOT = `${TEMPLATE_ROOT}/conventions`,
   OUTPUT_ROOT = '.agentscli/conventions',
   MANIFEST = 'agentscli-compose.yml';
@@ -17,16 +16,7 @@ export const PRODUCT_SKILLS = [
   'agentscli-write-conventions',
   'agentscli-build-agents',
 ];
-export function language(value = 'en') {
-  if (
-    typeof value !== 'string' ||
-    !['en', 'pt-br'].includes(value.toLowerCase())
-  )
-    throw new EngineError('LANGUAGE', 'Supported languages are en and pt-br.');
-  return value.toLowerCase();
-}
-export const defaultManifest = (value) => ({ language: language(value) });
-export function parseYaml(text, path = CONFIG_PATH) {
+export function parseYaml(text, path) {
   const document = parseDocument(text, {
     uniqueKeys: true,
     strict: true,
@@ -59,7 +49,7 @@ export function parseYaml(text, path = CONFIG_PATH) {
   return value;
 }
 export const stringifyYaml = (value) => stringify(value);
-export function exactKeys(value, required, optional = [], path = CONFIG_PATH) {
+export function exactKeys(value, required, optional = [], path) {
   if (
     !value ||
     typeof value !== 'object' ||
@@ -119,35 +109,15 @@ export function validPackageVersion(value) {
         .every((v) => !/^\d+$/u.test(v) || v === '0' || !v.startsWith('0')))
   );
 }
-export function parseManifest(text) {
-  const fields = parseYaml(text, CONFIG_PATH);
-  exactKeys(fields, ['language'], [], CONFIG_PATH);
-  if (!['en', 'pt-br'].includes(fields.language))
-    throw new EngineError(
-      'LANGUAGE',
-      'Stored language must be lowercase en or pt-br.',
-      2,
-      CONFIG_PATH,
-    );
-  return {
-    language: fields.language,
-  };
-}
 export function parseLegacyManifest(text) {
+  // Existing legacy metadata may contain language; only resource roots matter.
   const fields = parseYaml(text, MANIFEST);
   exactKeys(
     fields,
-    ['language', 'templates_dir', 'conventions_dir'],
-    [],
+    ['templates_dir', 'conventions_dir'],
+    ['language'],
     MANIFEST,
   );
-  if (!['en', 'pt-br'].includes(fields.language))
-    throw new EngineError(
-      'LANGUAGE',
-      'Stored language must be lowercase en or pt-br.',
-      2,
-      MANIFEST,
-    );
   const a = rootDirectory(fields.templates_dir),
     b = rootDirectory(fields.conventions_dir);
   if (
@@ -161,7 +131,7 @@ export function parseLegacyManifest(text) {
       2,
       MANIFEST,
     );
-  return { language: fields.language, templates_dir: a, conventions_dir: b };
+  return { templates_dir: a, conventions_dir: b };
 }
 function rootDirectory(value) {
   const normalized = relativePath(value);
@@ -185,4 +155,3 @@ function rootDirectory(value) {
     );
   return normalized;
 }
-export const serializeManifest = (manifest) => stringify(manifest);

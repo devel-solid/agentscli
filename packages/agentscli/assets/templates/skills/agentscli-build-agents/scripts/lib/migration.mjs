@@ -1,14 +1,10 @@
 import { join, dirname, sep } from 'node:path';
 import {
-  CONFIG_PATH,
   CONVENTION_ROOT,
   EngineError,
   MANIFEST,
   OUTPUT_ROOT,
-  language,
   parseLegacyManifest,
-  parseManifest,
-  serializeManifest,
 } from './manifest.mjs';
 import { assertClientContext, inspect, walk } from './io.mjs';
 import {
@@ -106,18 +102,10 @@ function prospectiveFiles(io, root, files) {
     ],
   };
 }
-export function planMigration(io, root, resources, selectedLanguage) {
+export function planMigration(io, root, resources) {
   assertClientContext(io, root);
   const legacyBytes = snapshot(io, root, MANIFEST);
-  const configBytes = snapshot(io, root, CONFIG_PATH);
   if (!legacyBytes) {
-    if (!configBytes)
-      throw new EngineError(
-        'MIGRATION_MISSING',
-        'No supported client configuration exists. Use agentscli apply for first setup.',
-        2,
-        CONFIG_PATH,
-      );
     const converted = new Map();
     for (const path of walk(io, root, CONVENTION_ROOT).filter((p) =>
       p.endsWith('.tpl.md'),
@@ -139,7 +127,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
         return io.read(path);
       },
     };
-    const effects = plan(overlay, root, 'apply', resources, selectedLanguage);
+    const effects = plan(overlay, root, 'apply', resources);
     // Keep legacy cards until managed effects finish, so interrupted conversion
     // remains explicitly recognizable without an ownership journal.
     return [
@@ -153,19 +141,6 @@ export function planMigration(io, root, resources, selectedLanguage) {
     ];
   }
   const legacy = parseLegacyManifest(decode(legacyBytes, MANIFEST));
-  const selected =
-    selectedLanguage === undefined
-      ? legacy.language
-      : language(selectedLanguage);
-  const cleaning = !!configBytes;
-  if (
-    configBytes &&
-    parseManifest(decode(configBytes, CONFIG_PATH)).language !== selected
-  )
-    conflict(
-      CONFIG_PATH,
-      'Language differs from the migration options. Retry with the same --lang selection.',
-    );
   const oldMain = `${legacy.templates_dir}/AGENTS.tpl.md`;
   const oldSources = ordered(
     walk(io, root, legacy.templates_dir).filter(
@@ -182,6 +157,9 @@ export function planMigration(io, root, resources, selectedLanguage) {
   const toNewOutput = (source) =>
     `${OUTPUT_ROOT}/${source.slice(CONVENTION_ROOT.length + 1, -7)}.md`;
   const existingNewSources = newSources(io, root);
+  const cleaning = existingNewSources.some(
+    (source) => !oldSources.includes(toOldSource(source)),
+  );
   const inventory = cleaning ? existingNewSources.map(toOldSource) : oldSources;
   const mappings = new Map();
   for (const source of inventory) {
@@ -251,12 +229,10 @@ export function planMigration(io, root, resources, selectedLanguage) {
     })),
     skills: [],
   });
-  const config =
-    configBytes ?? bytes(serializeManifest({ language: selected }));
   const projected = prospectiveFiles(
     withoutLegacy(io, root),
     root,
-    new Map([...transferred, [CONFIG_PATH, config]]),
+    transferred,
   );
   const normalEffects = plan(projected, root, 'apply', resources);
   const documents = render(
@@ -267,7 +243,6 @@ export function planMigration(io, root, resources, selectedLanguage) {
           ? 1
           : 0,
     ),
-    selected,
   );
   const newDocuments = new Map(
     [...documents].map(([path, text]) => [path, bytes(text)]),
@@ -277,7 +252,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
     output: toOldOutput(source),
     text: decode(original.get(source), source),
   }));
-  const oldDocuments = render(oldConventions, legacy.language, {
+  const oldDocuments = render(oldConventions, {
     legacyLayout: true,
   });
   oldDocuments.delete('AGENTS.md');
@@ -379,33 +354,18 @@ export function planMigration(io, root, resources, selectedLanguage) {
         3,
         CONVENTION_ROOT,
       );
-    const configured = prospectiveFiles(
-      withoutLegacy(current, currentRoot),
-      currentRoot,
-      new Map([[CONFIG_PATH, config]]),
-    );
-    if (plan(configured, currentRoot, 'apply', resources).length)
+    if (
+      plan(withoutLegacy(current, currentRoot), currentRoot, 'apply', resources)
+        .length
+    )
       throw new EngineError(
         'MIGRATION_CHANGED',
         'Prepared client no longer matches the migration plan.',
         3,
-        CONFIG_PATH,
+        CONVENTION_ROOT,
       );
   };
-  if (!cleaning)
-    effects.push({
-      path: CONFIG_PATH,
-      action: 'create',
-      content: config,
-      precondition: (current, currentRoot) => {
-        verify(current, currentRoot, inputs);
-        verifyPrepared(current, currentRoot);
-      },
-    });
-  const published = new Map([
-    [CONFIG_PATH, config],
-    [MANIFEST, legacyBytes],
-  ]);
+  const published = new Map([[MANIFEST, legacyBytes]]);
   const cleanupGuard = (current, currentRoot) => {
     verify(current, currentRoot, published);
     verifyPrepared(current, currentRoot);

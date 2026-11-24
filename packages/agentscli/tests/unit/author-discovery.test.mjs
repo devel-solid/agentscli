@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { memory } from './memory.mjs';
 import * as author from '../../assets/templates/skills/agentscli-write-conventions/scripts/check.mjs';
+import { execute } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/runtime.mjs';
 const entry =
   '---\nname: agentscli-build-agents\ndescription: Build requested instructions.\nlicense: MIT\ncompatibility: Requires Node.js >= 22.\nmetadata:\n  generatedBy: "@devel-solid/agentscli"\n  generatorVersion: "0.4.0"\n---\n# Build\n';
 const base = '.agents/skills/agentscli-build-agents';
 function fixture(files = {}) {
   const state = memory({
-    '.agentscli/config.yml': 'language: en\n',
     [`${base}/SKILL.md`]: entry,
     [`${base}/scripts/lib/index.mjs`]: 'export const local = true;\n',
     ...files,
@@ -123,4 +123,55 @@ test(`conventions loads only the verified local engine and requests read-only va
   });
   assert.equal(response.exitCode, 0);
   assert.deepEqual(calls, [['validate', { repoRoot: fs.root }]]);
+});
+
+function validateWithEngine(state) {
+  return author.check(['--repo-root', state.root], {
+    fs: state.fs,
+    load: async () => ({
+      execute: (command, options) =>
+        execute(command, options, { io: state.io }),
+    }),
+  });
+}
+
+test(`conventions can validate an empty client and its first authored convention without configuration`, async () => {
+  const state = fixture();
+  let response = await validateWithEngine(state);
+  assert.equal(response.exitCode, 0, JSON.stringify(response.result));
+  assert.equal(state.writes.length, 0);
+  state.put(
+    '.agentscli/templates/conventions/regras-do-projeto.tpl.md',
+    '---\ntrigger: Ao alterar o projeto.\n---\n# Regras do projeto\n\nPreserve as decisões existentes.\n',
+  );
+  response = await validateWithEngine(state);
+  assert.equal(response.exitCode, 0, JSON.stringify(response.result));
+  assert.equal(state.writes.length, 0);
+});
+
+test(`conventions ignores obsolete client configuration and preserves it during validation`, async () => {
+  const obsolete = 'this: [is not valid YAML';
+  const state = fixture({ '.agentscli/config.yml': obsolete });
+  const response = await validateWithEngine(state);
+  assert.equal(response.exitCode, 0, JSON.stringify(response.result));
+  assert.equal(state.text('.agentscli/config.yml'), obsolete);
+  assert.equal(state.writes.length, 0);
+});
+
+test(`conventions rejects tool source context even with a verified local build skill`, async () => {
+  const state = fixture({
+    'package.json': JSON.stringify({
+      name: 'agentscli-monorepo',
+      private: true,
+      workspaces: ['packages/agentscli'],
+    }),
+    'packages/agentscli/package.json': JSON.stringify({
+      name: '@devel-solid/agentscli',
+      bin: { agentscli: 'dist/cli.js' },
+    }),
+  });
+  const response = await validateWithEngine(state);
+  assert.equal(response.exitCode, 2);
+  assert.equal(response.result.diagnostics[0].code, 'INTERNAL_CONTEXT');
+  assert.equal(state.writes.length, 0);
 });

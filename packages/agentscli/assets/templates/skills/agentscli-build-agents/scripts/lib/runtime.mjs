@@ -76,8 +76,8 @@ export async function execute(command, options, dependencies = {}) {
         ? (dependencies.resources ?? loadResources())
         : undefined;
     const effects = options.migrate
-      ? planMigration(io, root, resources, options.language)
-      : plan(io, root, command, resources, options.language);
+      ? planMigration(io, root, resources)
+      : plan(io, root, command, resources);
     if (command === 'validate') return { exitCode: 0, result };
     if (options.dryRun || options.check) {
       result.changes = effects.map(({ path, action }) => ({

@@ -9,16 +9,6 @@ import {
 import { PRODUCT_SKILLS } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
 import { frontmatter } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
 
-const starterConventions = [
-  ['en', 'project-context', 'Project context', 'Replace this comment'],
-  [
-    'pt-br',
-    'contexto-do-projeto',
-    'Contexto do projeto',
-    'Substitua este comentário',
-  ],
-];
-
 function resourceIO(overrides = {}) {
   const root = resolve('unit-resources');
   const files = new Map();
@@ -32,12 +22,6 @@ function resourceIO(overrides = {}) {
       `---\nname: ${name}\ndescription: Write useful project instructions.\n---\nBody\n`,
     );
     add(`${path}/references/example.md`, 'Support content\n');
-  }
-  for (const [language, basename, title, hint] of starterConventions) {
-    add(
-      `assets/templates/${language}/conventions/${basename}.tpl.md`,
-      `---\ntrigger: Read before working.\n---\n\n# ${title}\n\n<!-- ${hint}. -->\n`,
-    );
   }
   const writes = [];
   const io = {
@@ -77,10 +61,10 @@ function resourceIO(overrides = {}) {
   return { root, io, add, writes };
 }
 
-test('whole skill trees and both document locales map without duplicated sources', () => {
+test('whole skill trees map without requiring initial convention sources', () => {
   const { root, io } = resourceIO();
   const resources = collectResources(root, io);
-  assert.equal(resources.length, 6);
+  assert.equal(resources.length, 4);
   assert.equal(
     resources
       .find(
@@ -91,15 +75,7 @@ test('whole skill trees and both document locales map without duplicated sources
       .content.toString(),
     'Support content\n',
   );
-  assert.ok(
-    resources
-      .filter((item) => item.destination.startsWith('templates/'))
-      .every((item) =>
-        /^templates\/(en|pt-br)\/conventions\/.+\.tpl\.md$/u.test(
-          item.destination,
-        ),
-      ),
-  );
+  assert.ok(resources.every((item) => item.destination.startsWith('skills/')));
   assert.ok(resources.every((item) => !item.destination.includes('release')));
   assert.deepEqual(
     [
@@ -111,32 +87,6 @@ test('whole skill trees and both document locales map without duplicated sources
     ].sort(),
     [...PRODUCT_SKILLS].sort(),
   );
-  for (const [language, basename, title, hint] of starterConventions) {
-    const resource = resources.find(
-      (item) =>
-        item.destination ===
-        `templates/${language}/conventions/${basename}.tpl.md`,
-    );
-    assert.ok(resource);
-    assert.ok(resource.content.toString().startsWith('---\ntrigger:'));
-    assert.ok(resource.content.toString().includes(hint));
-    assert.equal(
-      resource.content.toString(),
-      io.readFileSync(
-        resolve(
-          root,
-          `assets/templates/${language}/conventions/${basename}.tpl.md`,
-        ),
-        'utf8',
-      ),
-    );
-    assert.ok(
-      !resources.some(
-        (item) =>
-          item.destination === `templates/${language}/${basename}.tpl.md`,
-      ),
-    );
-  }
 });
 
 test('entrypoint metadata must match the directory and include a description', () => {
@@ -173,7 +123,7 @@ test('packaging rejects linked sources, hardlinks, unsafe aliases and missing sk
   }
   io.lstatSync = original;
   add(
-    'assets/templates/pt-br/conventions/CONTEXTO-DO-PROJETO.tpl.md',
+    'assets/templates/skills/agentscli-build-agents/references/EXAMPLE.md',
     '# Collision\n',
   );
   assert.throws(
@@ -181,13 +131,16 @@ test('packaging rejects linked sources, hardlinks, unsafe aliases and missing sk
     /Equivalent|overlapping|alias/,
   );
 });
-test('locale assets reject files outside convention templates', () => {
-  for (const path of ['instructions.tpl.md', 'conventions/readme.txt']) {
+test('packaging rejects sources outside the two operational skills', () => {
+  for (const path of [
+    'starter/conventions/project.tpl.md',
+    'instructions.tpl.md',
+  ]) {
     const { root, io, add } = resourceIO();
-    add(`assets/templates/en/${path}`, '# Unexpected locale resource\n');
+    add(`assets/templates/${path}`, '# Unexpected template resource\n');
     assert.throws(
       () => collectResources(root, io),
-      /only convention templates/,
+      /only consumer skill sources/,
     );
   }
 });

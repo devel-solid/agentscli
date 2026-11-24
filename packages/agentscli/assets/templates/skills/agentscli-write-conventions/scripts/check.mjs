@@ -12,7 +12,7 @@ function yaml(text) {
     prettyErrors: false,
   });
   if (document.errors.length || document.warnings.length)
-    throw new Error('Invalid YAML metadata/configuration.');
+    throw new Error('Invalid YAML metadata.');
   visit(document, (_key, node) => {
     if (isAlias(node) || node?.tag)
       throw new Error('Aliases and explicit YAML tags are not supported.');
@@ -59,9 +59,7 @@ function safe(file, fs, kind) {
       (leaf && (kind === 'file' ? !stat.isFile() : !stat.isDirectory())) ||
       (stat.isFile() && stat.nlink > 1)
     )
-      throw new Error(
-        'Unsafe linked, aliased, or nonregular skill/configuration path.',
-      );
+      throw new Error('Unsafe linked, aliased, or nonregular skill path.');
     if (i) {
       const actual = path.slice(chain[i - 1].length).replace(/^[/\\]/u, '');
       if (
@@ -69,9 +67,7 @@ function safe(file, fs, kind) {
           .readdirSync(chain[i - 1])
           .some((name) => fold(name) === fold(actual) && name !== actual)
       )
-        throw new Error(
-          'Portable path alias in skill/configuration discovery.',
-        );
+        throw new Error('Portable path alias in skill discovery.');
     }
   }
   return absolute;
@@ -115,19 +111,6 @@ export async function check(
     )
       throw new Error('Use --repo-root <directory> and optional --json.');
     const root = safe(resolve(values['repo-root'] ?? '.'), fs, 'directory');
-    const config = yaml(
-      fs.readFileSync(
-        safe(join(root, '.agentscli', 'config.yml'), fs, 'file'),
-        'utf8',
-      ),
-    );
-    if (
-      !['en', 'pt-br'].includes(config.language) ||
-      Object.keys(config).some((key) => key !== 'language')
-    )
-      throw new Error(
-        'A valid consumer configuration is required before authoring.',
-      );
     for (let current = root; ; current = dirname(current)) {
       for (const marker of ['agentscli-compose.yml']) {
         try {

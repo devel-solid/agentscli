@@ -1,7 +1,7 @@
 import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { basename, resolve } from 'node:path';
-import { regular, checkPath, header } from './lib.mjs';
+import { regular, checkPath } from './lib.mjs';
 import * as nodeFs from 'node:fs';
 import { parseDocument, visit } from 'yaml';
 
@@ -274,25 +274,9 @@ export function inspectArchive(bytes, expected, prepared) {
           `Archive bytes differ from the reviewed prepared package: ${file}`,
         );
   }
-  for (const [language, convention] of [
-    ['en', 'project-context'],
-    ['pt-br', 'contexto-do-projeto'],
-  ]) {
-    const source = files.get(
-      `package/dist/assets/templates/${language}/conventions/${convention}.tpl.md`,
-    );
-    if (!source) throw new Error(`Missing locale templates: ${language}`);
-    const parsed = header(source.bytes.toString('utf8'));
-    if (
-      !parsed.value ||
-      Object.keys(parsed.value).join(',') !== 'trigger' ||
-      typeof parsed.value.trigger !== 'string' ||
-      !parsed.value.trigger.trim() ||
-      (parsed.body.match(/^#\s+[^\n]+$/gmu) ?? []).length !== 1
-    )
-      throw new Error(`Invalid locale convention: ${language}`);
-  }
   for (const path of files.keys()) {
+    if (path.startsWith('package/dist/assets/templates/'))
+      throw new Error(`Unsupported distributed convention template: ${path}`);
     if (basename(path) === 'AGENTS.tpl.md')
       throw new Error(
         `Unsupported root instruction template in archive: ${path}`,

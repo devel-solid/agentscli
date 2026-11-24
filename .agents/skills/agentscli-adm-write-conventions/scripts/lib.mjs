@@ -144,10 +144,7 @@ export function monorepo(start, io = fs) {
           typeof identities.get('@devel-solid/agentscli')?.bin?.agentscli ===
             'string'
         ) {
-          if (
-            io.existsSync(resolve(at, '.agentscli/config.yml')) ||
-            io.existsSync(resolve(at, 'agentscli-compose.yml'))
-          )
+          if (io.existsSync(resolve(at, 'agentscli-compose.yml')))
             throw new Error('Conflicting tool source/consumer role.');
           return at;
         }

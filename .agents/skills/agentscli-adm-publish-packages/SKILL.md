@@ -11,7 +11,7 @@ Derive package identity/version, executable, registry, Git remote, and tag from 
 
 Assess completed impact and choose an unused semantic version. Major zero means beta; production starts at 1.0.0. Beta contract changes replace the old contract directly without transition periods, migration, or backward-compatibility machinery, and do not require promotion to production. Account for public command removals and managed replacement. Prepare metadata with native npm version --no-git-tag-version in the workspace and update the root lockfile.
 
-Run focused units and the root check gate, then build and inspect npm pack previews and actual archives in ignored storage. Check each archive using this skill's checker with --archive <tarball>. Verify identity/version/license/bin, two complete skill closures, exact compatibility and actual generator stamps, consumer convention locales, runtime/README/license, and exclusions. Rebuild when candidate inputs change.
+Run focused units and the root check gate, then build and inspect npm pack previews and actual archives in ignored storage. Check each archive using this skill's checker with --archive <tarball>. Verify identity/version/license/bin, two complete skill closures, exact compatibility and actual generator stamps, absence of distributed convention templates, runtime/README/license, and exclusions. Rebuild when candidate inputs change.
 
 Present exact reviewed source commit or pending diff, versions/tags, destinations, tarballs, and SHA-512 integrity before external delivery. Reuse existing scoped authorization; request only missing authorization or concrete account/destination information. Local readiness is not publication.
 

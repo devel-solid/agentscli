@@ -33,13 +33,15 @@ export function collectResources(root, io = fs) {
       resources.push({ destination, content: io.readFileSync(absolute) });
     else throw new Error(`Nonregular resource ${source}.`);
   }
+  if (io.readdirSync(resolve(root, 'assets/templates')).join('\n') !== 'skills')
+    throw new Error(
+      'Expected only consumer skill sources in assets/templates.',
+    );
   const names = io.readdirSync(resolve(root, 'assets/templates/skills')).sort();
   if (names.join('\n') !== [...PRODUCT_SKILLS].sort().join('\n'))
     throw new Error('Expected exactly the two consumer skill directories.');
   for (const name of PRODUCT_SKILLS)
     collect(`assets/templates/skills/${name}`, `skills/${name}`);
-  for (const lang of ['en', 'pt-br'])
-    collect(`assets/templates/${lang}`, `templates/${lang}`);
   uniquePaths(resources.map((r) => r.destination));
   const skills = PRODUCT_SKILLS.map((id) => ({
     id,
@@ -52,29 +54,6 @@ export function collectResources(root, io = fs) {
     ),
   }));
   validateResources({ skills });
-  for (const lang of ['en', 'pt-br']) {
-    const prefix = `templates/${lang}/`;
-    const locale = resources.filter((r) => r.destination.startsWith(prefix));
-    if (
-      !locale.length ||
-      locale.some(
-        (r) =>
-          !r.destination.startsWith(prefix + 'conventions/') ||
-          !r.destination.endsWith('.tpl.md'),
-      )
-    )
-      throw new Error(`Expected only convention templates in locale ${lang}.`);
-    validateResources({
-      conventions: locale
-        .filter((r) => r.destination.startsWith(prefix + 'conventions/'))
-        .map((r) => ({
-          id: r.destination.slice((prefix + 'conventions/').length, -7),
-          source: 'local',
-          path: r.destination,
-          text: Buffer.from(r.content).toString('utf8'),
-        })),
-    });
-  }
   return resources;
 }
 export function stampSkill(content, pkg, path) {
@@ -154,16 +133,8 @@ export async function packageAssets(root) {
       destination === 'skills/agentscli-build-agents/scripts/lib/index.mjs' ||
       destination === 'skills/agentscli-write-conventions/scripts/check.mjs'
     ) {
-      const source = resolve(
-        root,
-        'assets/templates',
-        destination.replace(/^templates\//u, ''),
-      );
-      const actual = destination.startsWith('templates/')
-        ? source
-        : resolve(root, 'assets/templates', destination);
       const bundle = await build({
-        entryPoints: [actual],
+        entryPoints: [resolve(root, 'assets/templates', destination)],
         bundle: true,
         platform: 'node',
         format: 'esm',

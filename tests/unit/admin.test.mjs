@@ -218,14 +218,26 @@ test('tool context checks its workspace identity and rejects unrelated private p
       ),
     /Expected/,
   );
-  assert.throws(
-    () =>
-      monorepo(
+  for (const contract of [{ monorepo }, editContract, publishContract]) {
+    assert.equal(
+      contract.monorepo(
         root,
-        memory({ ...entries, '.agentscli/config.yml': 'schemaVersion: 1' }),
+        memory({
+          ...entries,
+          '.agentscli/config.yml': 'unreadable legacy data',
+        }),
       ),
-    /Conflicting/,
-  );
+      root,
+    );
+    assert.throws(
+      () =>
+        contract.monorepo(
+          root,
+          memory({ ...entries, 'agentscli-compose.yml': '' }),
+        ),
+      /Conflicting/,
+    );
+  }
   const invalid = {
     ...entries,
     'packages/agentscli/package.json': JSON.stringify({
@@ -432,7 +444,7 @@ function consumerArchive() {
   return { pkg, entries };
 }
 
-test('release inspection rejects metadata-only skill trees and incomplete locales, then compares every prepared byte', () => {
+test('release inspection requires complete skill trees and compares every prepared byte without starter conventions', () => {
   const { pkg, entries } = consumerArchive();
   assert.throws(
     () => inspectArchive(tar(entries), pkg),
@@ -446,15 +458,6 @@ test('release inspection rejects metadata-only skill trees and incomplete locale
     entries.push({
       name: `package/dist/assets/skills/${path}`,
       body: 'export const valid = true;\n',
-    });
-  assert.throws(() => inspectArchive(tar(entries), pkg), /Missing locale/);
-  for (const [language, convention, title] of [
-    ['en', 'project-context', 'Project context'],
-    ['pt-br', 'contexto-do-projeto', 'Contexto do projeto'],
-  ])
-    entries.push({
-      name: `package/dist/assets/templates/${language}/conventions/${convention}.tpl.md`,
-      body: `---\ntrigger: Read before working.\n---\n# ${title}\n`,
     });
   const prepared = new Map(
     entries
@@ -503,13 +506,13 @@ test('release inspection rejects metadata-only skill trees and incomplete locale
         tar([
           ...entries,
           {
-            name: 'package/dist/assets/templates/en/AGENTS.tpl.md',
+            name: 'package/dist/assets/templates/conventions/project.tpl.md',
             body: '# Obsolete',
           },
         ]),
         pkg,
       ),
-    /Unsupported root instruction template/,
+    /Unsupported distributed convention template/,
   );
   const windowsBinMode = entries.map((entry) =>
     entry.name === 'package/dist/cli.js' ? { ...entry, mode: 0o644 } : entry,

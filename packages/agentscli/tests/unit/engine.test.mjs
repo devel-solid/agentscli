@@ -5,13 +5,12 @@ import { memory } from './memory.mjs';
 import {
   EngineError,
   PRODUCT_SKILLS,
-  parseManifest,
   parseYaml,
-  serializeManifest,
   parseLegacyManifest,
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
 import {
   validateConvention,
+  validateConventionFilename,
   convertLegacyConvention,
   decode,
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
@@ -40,18 +39,6 @@ export const skill = (name, extra = '') =>
     `---\nname: ${name}\ndescription: A useful skill.\n${extra}---\n\n# Procedure\n`,
   );
 export const resources = {
-  templates: {
-    en: {
-      'conventions/project-context.tpl.md': bytes(
-        convention('Project context'),
-      ),
-    },
-    'pt-br': {
-      'conventions/contexto-do-projeto.tpl.md': bytes(
-        convention('Contexto do projeto'),
-      ),
-    },
-  },
   skills: Object.fromEntries(
     PRODUCT_SKILLS.map((id) => [
       id,
@@ -62,28 +49,20 @@ export const resources = {
     ]),
   ),
 };
-export const client = (files) =>
-  memory({
-    '.agentscli/config.yml': 'language: en\n',
-    ...files,
-  });
+export const client = (files) => memory(files);
 export const invoke = (fs, command = 'apply', options = {}) =>
   execute(command, { repoRoot: fs.root, ...options }, { io: fs.io, resources });
 
-test('strict config permits language and rejects extra fields and YAML aliases', () => {
-  const config = { language: 'pt-br' };
-  assert.deepEqual(parseManifest(serializeManifest(config)), config);
+test('generic YAML rejects duplicate keys, aliases and explicit tags', () => {
   for (const text of [
     '[]',
-    'language: en\nlanguage: en',
-    'language: EN',
-    'language: en\nroots: {}',
-    'language: &a [*a]',
+    'a: 1\na: 2',
+    'a: &a {b: 1}\nb: *a',
+    'a: !!str text',
   ])
-    assert.throws(() => parseManifest(text));
-  assert.throws(() => parseYaml('a: &a {b: 1}\nb: *a'));
-  assert.throws(() => parseYaml('a: !!str text'));
+    assert.throws(() => parseYaml(text));
 });
+
 test('legacy roots remain separately strict and portable paths reject aliases', () => {
   assert.equal(
     parseLegacyManifest(
@@ -133,6 +112,29 @@ test('conventions require only trigger and exactly one live H1; examples remain 
     'Read testing.',
   );
 });
+test('convention filenames normalize Unicode titles without limiting their language', () => {
+  for (const [title, basename] of [
+    ['Regras \u00c1geis!', 'regras-ageis'],
+    ['Regras A\u0301geis!', 'regras-ageis'],
+    [
+      '\u039a\u0391\u039d\u038c\u039d\u0395\u03a3 \uff11\uff12',
+      '\u03ba\u03b1\u03bd\u03bf\u03bd\u03b5\u03c2-12',
+    ],
+    ['\u958b\u767a\u898f\u7d04', '\u958b\u767a\u898f\u7d04'],
+    ['\ud55c\uae00 \uaddc\uce59', '\ud55c\uae00-\uaddc\uce59'],
+  ]) {
+    validateConventionFilename(title, `${basename}.tpl.md`);
+    assert.throws(
+      () => validateConventionFilename(title, 'different.tpl.md'),
+      /Expected filename/,
+    );
+  }
+  assert.throws(
+    () => validateConventionFilename('!!!', 'empty.tpl.md'),
+    /containing letters or numbers/,
+  );
+});
+
 test('skill frontmatter validates required fields and keeps ordinary metadata and support', () => {
   const files = {
     'SKILL.md': skill('review', 'metadata:\n  owner: team\n'),
@@ -295,21 +297,67 @@ test('apply previews without writes then replaces managed drift while preserving
     undefined,
   );
 });
-test('apply preserves existing language and templates; explicit language changes notices without translation', async () => {
+test('apply ignores obsolete configuration and preserves authored text in any language', async () => {
+  const source =
+    convention('Regras gerais', 'Leia ao revisar.') +
+    '\n\u65e5\u672c\u8a9e\u306e\u672c\u6587\u3002\n';
+  const obsolete = 'invalid: [yaml\nlanguage: arbitrary\n';
   const fs = client({
-    '.agentscli/config.yml': 'language: pt-br\n',
-    '.agentscli/templates/conventions/testing.tpl.md': convention(),
+    '.agentscli/config.yml': obsolete,
+    '.agentscli/templates/conventions/regras-gerais.tpl.md': source,
   });
   assert.equal((await invoke(fs)).exitCode, 0);
-  assert.match(fs.text('.agentscli/config.yml'), /pt-br/);
-  assert.match(fs.text('.agentscli/conventions/testing.md'), /Arquivo gerado/);
-  assert.equal((await invoke(fs, 'apply', { language: 'en' })).exitCode, 0);
-  assert.match(fs.text('.agentscli/conventions/testing.md'), /Generated file/);
+  assert.equal(fs.text('.agentscli/config.yml'), obsolete);
   assert.equal(
-    fs.text('.agentscli/templates/conventions/testing.tpl.md'),
-    convention(),
+    fs.text('.agentscli/templates/conventions/regras-gerais.tpl.md'),
+    source,
   );
+  assert.equal(
+    fs.text('.agentscli/conventions/regras-gerais.md'),
+    '<!-- agentscli:generated -->\n\n\n# Regras gerais\n\nKeep useful rules.\n\n\u65e5\u672c\u8a9e\u306e\u672c\u6587\u3002\n',
+  );
+  assert.match(fs.text('AGENTS.md'), /Regras gerais.*Leia ao revisar/);
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
+  const originalRead = fs.io.read;
+  fs.io.read = (path) => {
+    assert.notEqual(path, join(fs.root, '.agentscli/config.yml'));
+    return originalRead(path);
+  };
+  for (const command of ['apply', 'validate', 'sync'])
+    assert.equal((await invoke(fs, command)).exitCode, 0);
 });
+
+test('generation preserves a non-Latin title, trigger and body with deterministic links', async () => {
+  const title = '\u958b\u767a\u898f\u7d04';
+  const trigger = '\u958b\u767a\u6642\u306b\u8aad\u3080\u3002';
+  const body = `\n# ${title}\n\n\u898f\u7d04\u3092\u5b88\u308b\u3002\n`;
+  const source = `---\ntrigger: ${trigger}\n---\n${body}`;
+  const path = `.agentscli/templates/conventions/${title}.tpl.md`;
+  const fs = client({ [path]: source });
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal(fs.text(path), source);
+  assert.equal(
+    fs.text(`.agentscli/conventions/${title}.md`),
+    `<!-- agentscli:generated -->\n\n${body}`,
+  );
+  assert.equal(
+    fs.text('AGENTS.md'),
+    `${INDEX_HEADER}\n- [${title}](.agentscli/conventions/${encodeURIComponent(title)}.md): ${trigger}\n`,
+  );
+  assert.equal((await invoke(fs)).result.changes.length, 0);
+});
+
+test('first apply generates an empty index without configuration or starter conventions', async () => {
+  const fs = client();
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
+  assert.equal(fs.io.info(join(fs.root, '.agentscli/config.yml')), undefined);
+  assert.equal(fs.io.info(join(fs.root, '.agentscli/templates')), undefined);
+  fs.put('.agentscli/templates/conventions/testing.tpl.md', convention());
+  assert.equal((await invoke(fs, 'sync')).exitCode, 0);
+  assert.match(fs.text('AGENTS.md'), /Testing/);
+});
+
 test('private validate/check are offline, write-free, and do not need unrelated operational skills', async () => {
   const fs = client();
   assert.equal((await invoke(fs, 'validate')).exitCode, 0);
@@ -642,7 +690,7 @@ test('apply replaces proven managed file and directory topologies without adopti
   assert.equal(fs.text('.agents/skills/unrelated/support'), 'authored');
 });
 
-test('index bytes are fixed, sorted, escaped and independent of source order or locale', () => {
+test('index bytes are fixed, sorted, escaped and independent of source order', () => {
   const inputs = [
     {
       source: '.agentscli/templates/conventions/z/seguranca-dados.tpl.md',
@@ -662,13 +710,10 @@ test('index bytes are fixed, sorted, escaped and independent of source order or 
     '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md\n\n' +
     '- [Testes](.agentscli/conventions/testes.md): consultar ao criar ou alterar testes.\n' +
     '- [Segurança \\[dados\\]](.agentscli/conventions/z%20pasta/%28dados%29/seguranca-dados.md): Consultar ao manipular dados **sensíveis**.\n';
-  assert.equal(render(inputs, 'en').get('AGENTS.md'), expected);
-  assert.equal(
-    render([...inputs].reverse(), 'pt-br').get('AGENTS.md'),
-    expected,
-  );
+  assert.equal(render(inputs).get('AGENTS.md'), expected);
+  assert.equal(render([...inputs].reverse()).get('AGENTS.md'), expected);
   assert.doesNotMatch(expected, /<!--/u);
-  assert.equal(render([], 'en').get('AGENTS.md'), INDEX_HEADER);
+  assert.equal(render([]).get('AGENTS.md'), INDEX_HEADER);
 });
 
 test('empty client generation needs no main template and never restores deleted conventions', async () => {
@@ -776,16 +821,13 @@ test('normalized discovery triggers retain cross-resource link validation', asyn
 });
 
 test('multiline setext convention titles occupy one index line', () => {
-  const document = render(
-    [
-      {
-        source: '.agentscli/templates/conventions/testing-policy.tpl.md',
-        output: '.agentscli/conventions/testing-policy.md',
-        text: '---\ntrigger: Read before testing.\n---\n\nTesting\npolicy\n======\n\nKeep useful rules.\n',
-      },
-    ],
-    'en',
-  ).get('AGENTS.md');
+  const document = render([
+    {
+      source: '.agentscli/templates/conventions/testing-policy.tpl.md',
+      output: '.agentscli/conventions/testing-policy.md',
+      text: '---\ntrigger: Read before testing.\n---\n\nTesting\npolicy\n======\n\nKeep useful rules.\n',
+    },
+  ]).get('AGENTS.md');
   assert.equal(
     document,
     '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md\n\n- [Testing policy](.agentscli/conventions/testing-policy.md): Read before testing.\n',

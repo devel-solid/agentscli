@@ -2,15 +2,11 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import {
   EngineError,
-  CONFIG_PATH,
   TEMPLATE_ROOT,
   CONVENTION_ROOT,
   OUTPUT_ROOT,
   MANIFEST,
   PRODUCT_SKILLS,
-  defaultManifest,
-  parseManifest,
-  serializeManifest,
 } from './manifest.mjs';
 import { decode, frontmatter, GENERATED } from './markdown.mjs';
 import { containedPath, portableKey, uniquePaths } from './paths.mjs';
@@ -53,7 +49,6 @@ export function loadResources() {
     );
   }
   return {
-    templates: { en: tree('templates/en'), 'pt-br': tree('templates/pt-br') },
     skills: Object.fromEntries(
       PRODUCT_SKILLS.map((name) => [name, tree(`skills/${name}`)]),
     ),
@@ -154,7 +149,7 @@ function effectBuilder(io, root) {
   };
   return { effects, compare, remove, tree };
 }
-export function plan(io, root, command, resources, selectedLanguage) {
+export function plan(io, root, command, resources) {
   assertClientContext(io, root);
   if (inspect(io, root, MANIFEST, 'file'))
     throw new EngineError(
@@ -164,15 +159,6 @@ export function plan(io, root, command, resources, selectedLanguage) {
       MANIFEST,
     );
   const applying = command === 'apply';
-  const stored = inspect(io, root, CONFIG_PATH, 'file')
-    ? parseManifest(decode(read(io, root, CONFIG_PATH), CONFIG_PATH))
-    : undefined;
-  if (!applying && !stored) read(io, root, CONFIG_PATH);
-  const manifest =
-    selectedLanguage === undefined
-      ? (stored ?? defaultManifest())
-      : { ...stored, ...defaultManifest(selectedLanguage) };
-  parseManifest(serializeManifest(manifest));
   inspect(io, root, TEMPLATE_ROOT, 'directory');
   inspect(io, root, OUTPUT_ROOT, 'directory');
   const builder = effectBuilder(io, root),
@@ -180,7 +166,6 @@ export function plan(io, root, command, resources, selectedLanguage) {
   const virtual = new Map();
   for (const path of walk(io, root, CONVENTION_ROOT))
     if (path.endsWith('.tpl.md')) virtual.set(path, read(io, root, path));
-  const initialized = !!stored || virtual.size > 0;
   if (applying) {
     if (!resources)
       throw new EngineError(
@@ -197,29 +182,8 @@ export function plan(io, root, command, resources, selectedLanguage) {
         'Expected exactly two consumer operational skill assets.',
         3,
       );
-    const defaults = resources.templates[manifest.language];
-    if (
-      !defaults ||
-      Object.keys(defaults).some(
-        (path) => !path.startsWith('conventions/') || !path.endsWith('.tpl.md'),
-      )
-    )
-      throw new EngineError(
-        'PACKAGE_RESOURCE',
-        'Expected convention template assets only.',
-        3,
-      );
-    for (const [relative, content] of Object.entries(defaults).sort(
-      ([a], [b]) => compareKeys(a, b),
-    )) {
-      const path = `${TEMPLATE_ROOT}/${relative}`;
-      if (!initialized && !virtual.has(path)) {
-        inspect(io, root, path, 'file');
-        virtual.set(path, content);
-        compare(path, content);
-      }
-    }
   }
+
   const localConventions = [...virtual]
     .sort(([a], [b]) => compareKeys(portableKey(a), portableKey(b)))
     .map(([path, content]) => ({
@@ -284,7 +248,6 @@ export function plan(io, root, command, resources, selectedLanguage) {
       output: c.output,
       text: c.text,
     })),
-    manifest.language,
   );
   for (const [path, text] of documents) {
     const existing = inspect(io, root, path, 'file');
@@ -309,8 +272,6 @@ export function plan(io, root, command, resources, selectedLanguage) {
     tree('.agents/skills/agentscli-update-agents', {});
     tree('.agents/skills/agentscli-edit-agents', {});
   }
-  if (applying && (!stored || stored.language !== manifest.language))
-    compare(CONFIG_PATH, bytes(serializeManifest(manifest)));
   uniquePaths(
     effects
       .filter((e) => !e.directory && e.action !== 'delete')

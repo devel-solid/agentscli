@@ -92,13 +92,14 @@ export function validateConventionFilename(title, path) {
   const basename = title
     .normalize('NFKD')
     .replace(/\p{M}/gu, '')
-    .replace(/[A-Z]/gu, (letter) => letter.toLowerCase())
-    .replace(/[^a-z0-9]+/gu, '-')
-    .replace(/^-|-$/gu, '');
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-|-$/gu, '')
+    .normalize('NFC');
   if (!basename)
     throw new EngineError(
       'SOURCE_FILENAME',
-      `${path}: H1 ${JSON.stringify(title)} cannot form a filename. Use a title with letters or digits that normalize to ASCII.`,
+      `${path}: H1 ${JSON.stringify(title)} cannot form a filename. Use a title containing letters or numbers.`,
       2,
       path,
     );

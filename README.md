@@ -27,8 +27,6 @@ Package versions with major zero are beta; production begins at `1.0.0`. Beta co
 packages/
   agentscli/
     assets/templates/
-      en/
-      pt-br/
       skills/
         agentscli-write-conventions/
         agentscli-build-agents/
@@ -37,6 +35,8 @@ packages/
 These five operational skills are independent and each has one responsibility. The three administrative skills stay internal; builds distribute exactly two consumer skills. OpenSpec is development-only. A source/distribution manifest is unnecessary: the package owns its fixed asset roots. No skill source or custom implementation is shared between environments.
 
 Conventions are self-contained rules with no links to other conventions or skills. Consumer convention templates have a nonempty `trigger` in leading YAML frontmatter and a canonical H1/filename. Client AGENTS.md is a mechanical convention index with the product's `generatedBy` frontmatter and fixed title; it has no template or additional project prose. Skills carry their own execution guidance and mention other skills by identity instead of linking or hardcoding their locations. Their own bundled support and project work inputs remain usable. The two distributed skills receive MIT, `compatibility: Requires Node.js >= 22.`, and the package's actual name/version during assembly; maintained sources stay unchanged.
+
+Clients author their own conventions. First apply installs the two skills and generates an empty index when no conventions exist. There is no language option or client configuration file; authored titles, triggers, and bodies determine their own language.
 
 ## Development
 

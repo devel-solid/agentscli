@@ -6,13 +6,6 @@ import {
   validateConventionFilename,
 } from './markdown.mjs';
 import { portableKey } from './paths.mjs';
-function notice(source, language) {
-  const message =
-    language === 'pt-br'
-      ? `Arquivo gerado. Edite o template ${source}; alterações diretas serão sobrescritas.`
-      : `Generated file. Edit the template ${source}; direct changes will be overwritten.`;
-  return `${GENERATED}\n<!-- ${message} -->\n\n`;
-}
 function link(path) {
   return path
     .split('/')
@@ -25,7 +18,7 @@ function link(path) {
 }
 export const INDEX_HEADER =
   '---\ngeneratedBy: "@devel-solid/agentscli"\n---\n\n# AGENTS.md\n';
-export function render(conventions, language, { legacyLayout = false } = {}) {
+export function render(conventions, { legacyLayout = false } = {}) {
   const outputs = new Map();
   const ordered = [...conventions].sort((a, b) => {
     const left = portableKey(a.output),
@@ -38,7 +31,7 @@ export function render(conventions, language, { legacyLayout = false } = {}) {
       ? validateLegacyConvention(input.text, authoredSource)
       : validateConvention(input.text, authoredSource);
     if (!legacyLayout) validateConventionFilename(parsed.title, authoredSource);
-    outputs.set(input.output, notice(input.source, language) + parsed.body);
+    outputs.set(input.output, `${GENERATED}\n\n${parsed.body}`);
     const title = parsed.title
       .replace(/\s+/gu, ' ')
       .replace(/[\\`*{}\[\]<>()!_#|~]/gu, '\\$&');

@@ -7,7 +7,6 @@ import type { execute } from '#engine';
 type Command = 'apply';
 interface ExecuteOptions {
   repoRoot: string;
-  language?: string;
   dryRun?: boolean;
   check?: boolean;
   migrate?: boolean;
@@ -32,17 +31,16 @@ export function helpText(packageVersion = version): string {
   return `agentscli ${packageVersion} — project instructions from editable templates
 
 Usage:
-  agentscli apply [--migrate] [--lang en|pt-br] [--dry-run]
+  agentscli apply [--migrate] [--dry-run]
   agentscli --help
   agentscli --version
 
 Common options: --repo-root <directory>, --json.
 
 apply creates missing setup and replaces managed documents and the two operational
-skill trees, removing obsolete managed files. Authored templates, configured language,
-Git state and unrelated files stay preserved.
---lang explicitly selects a language; default first use is en. --dry-run previews
-without writes. Customize convention templates in .agentscli/templates; generated
+skill trees, removing obsolete managed files. Authored templates, Git state and unrelated
+files stay preserved. --dry-run previews without writes. Create convention templates
+in .agentscli/templates with agentscli-write-conventions; generated
 root AGENTS.md and .agentscli/conventions are replaceable. Version .agentscli and
 operational skills. Validation and offline synchronization belong to the private
 scripts of agentscli-build-agents, discoverable through project skills.
@@ -76,7 +74,6 @@ export function parseArguments(
       json: { type: 'boolean' },
       help: { type: 'boolean' },
       version: { type: 'boolean' },
-      lang: { type: 'string' },
       migrate: { type: 'boolean' },
       'dry-run': { type: 'boolean' },
     },
@@ -101,14 +98,14 @@ export function parseArguments(
   if (!command && !values.help)
     throw new Error('Choose apply. Use agentscli --help.');
   const allowed: Record<string, string[]> = {
-    apply: ['lang', 'dry-run', 'migrate'],
+    apply: ['dry-run', 'migrate'],
   };
   for (const name of seen) {
     if (['repo-root', 'json', 'help'].includes(name)) continue;
     if (!command || !allowed[command]!.includes(name))
       throw new Error(`--${name} does not apply to ${command ?? 'help'}.`);
   }
-  for (const name of ['repo-root', 'lang'] as const) {
+  for (const name of ['repo-root'] as const) {
     if (values[name] !== undefined && !values[name]!.trim())
       throw new Error(`Provide a nonempty value for --${name}.`);
   }
@@ -119,9 +116,6 @@ export function parseArguments(
     json,
     options: {
       repoRoot: resolve(cwd, values['repo-root'] ?? '.'),
-      ...(values.lang === undefined
-        ? {}
-        : { language: values.lang.toLowerCase() }),
       ...(values['dry-run'] ? { dryRun: true } : {}),
       ...(values.migrate ? { migrate: true } : {}),
     },

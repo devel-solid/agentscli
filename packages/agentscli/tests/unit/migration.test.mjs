@@ -26,18 +26,6 @@ const skills = Object.fromEntries(
   ]),
 );
 const resources = {
-  templates: {
-    en: {
-      'conventions/project-context.tpl.md': bytes(
-        convention.replace('# Unit', '# Project context'),
-      ),
-    },
-    'pt-br': {
-      'conventions/contexto-do-projeto.tpl.md': bytes(
-        convention.replace('# Unit', '# Contexto do projeto'),
-      ),
-    },
-  },
   skills,
 };
 
@@ -112,7 +100,6 @@ function memory(files = {}) {
   };
 }
 function legacy({
-  language = 'en',
   templates = 'templates',
   outputs = 'docs/conventions',
   sources = { 'testing/unit.tpl.md': convention },
@@ -126,11 +113,10 @@ function legacy({
         output: `${outputs}/${relative.slice(0, -7)}.md`,
         text,
       })),
-    language,
     { legacyLayout: true },
   );
   return memory({
-    'agentscli-compose.yml': `language: ${language}\ntemplates_dir: ${templates}\nconventions_dir: ${outputs}\n`,
+    'agentscli-compose.yml': `templates_dir: ${templates}\nconventions_dir: ${outputs}\n`,
     [`${templates}/AGENTS.tpl.md`]: retiredMain,
     ...Object.fromEntries(
       Object.entries(sources).map(([path, text]) => [
@@ -158,7 +144,6 @@ test('fixed-layout card migration preserves regular skill metadata and local ski
     '.agents/skills/tool-metadata.bin': new Uint8Array([0, 255, 13, 10]),
   };
   const fs = memory({
-    '.agentscli/config.yml': 'language: en\n',
     '.agentscli/templates/conventions/unit.tpl.md': convention,
     ...metadata,
     '.agents/skills/review/SKILL.md':
@@ -203,9 +188,8 @@ test('migration preserves retired main sources without reading or transferring t
 
 test('migration previews the same ordered transfers, full skills and bounded cleanup without writes', async () => {
   const policy = convention.replace('# Unit', '# Policy details');
-  for (const language of ['en', 'pt-br']) {
+  {
     const fs = legacy({
-      language,
       templates: 'rules/sources',
       outputs: 'rules/final',
       sources: { 'conventions/policy-details.tpl.md': policy },
@@ -234,7 +218,7 @@ test('migration previews the same ordered transfers, full skills and bounded cle
       applied.result.changes.map(({ path, action }) => ({ path, action })),
       preview.result.changes.map(({ path, action }) => ({ path, action })),
     );
-    assert.equal(fs.text('.agentscli/config.yml'), `language: ${language}\n`);
+    assert.equal(exists(fs, '.agentscli/config.yml'), false);
     assert.equal(
       fs.text(
         '.agentscli/templates/conventions/conventions/policy-details.tpl.md',
@@ -253,11 +237,30 @@ test('migration previews the same ordered transfers, full skills and bounded cle
     ])
       assert.ok(exists(fs, path));
     assert.ok(!exists(fs, 'agentscli-compose.yml'));
-    const noop = await invoke(fs, {
-      language: language === 'en' ? 'pt-br' : 'en',
-    });
+    const noop = await invoke(fs);
     assertSuccess(noop);
     assert.equal(noop.result.changes.length, 0);
+  }
+});
+
+test('legacy migration ignores obsolete configuration and opaque language metadata', async () => {
+  const obsolete = 'invalid: [yaml\nlanguage: unknown\n';
+  for (const metadata of ['', 'language: {arbitrary: [1, true]}\n']) {
+    const fs = legacy({ extras: { '.agentscli/config.yml': obsolete } });
+    fs.put(
+      'agentscli-compose.yml',
+      metadata +
+        'templates_dir: templates\nconventions_dir: docs/conventions\n',
+    );
+    const originalRead = fs.io.read;
+    fs.io.read = (path) => {
+      assert.notEqual(path, join(fs.root, '.agentscli/config.yml'));
+      return originalRead(path);
+    };
+    assertSuccess(await invoke(fs));
+    assertSuccess(await invoke(fs));
+    fs.io.read = originalRead;
+    assert.equal(fs.text('.agentscli/config.yml'), obsolete);
   }
 });
 
@@ -351,7 +354,7 @@ test('migration rejects unsupported, unsafe and conflicting contexts before writ
   assert.equal((await invoke(internal)).exitCode, 2);
   assert.equal(internal.writes.length, 0);
   const noClient = memory();
-  assert.equal((await invoke(noClient)).exitCode, 2);
+  assertSuccess(await invoke(noClient));
   assert.equal(noClient.writes.length, 0);
 });
 
@@ -422,13 +425,6 @@ test('every meaningful migration write/deletion interruption converges with unch
       ),
     );
     assert.ok(exists(fs, 'agentscli-compose.yml'), target);
-    if (!exists(fs, '.agentscli/config.yml'))
-      for (const path of [
-        'templates/AGENTS.tpl.md',
-        'templates/testing/unit.tpl.md',
-        'docs/conventions/testing/unit.md',
-      ])
-        assert.ok(exists(fs, path), `${target}: ${path}`);
     assertSuccess(await invoke(fs));
     assert.ok(!exists(fs, 'agentscli-compose.yml'), target);
     assertSuccess(
@@ -441,7 +437,7 @@ test('every meaningful migration write/deletion interruption converges with unch
   }
 });
 
-test('published cleanup retries verify language, sources and full skill inventory', async () => {
+test('prepared cleanup retries verify sources and full skill inventory', async () => {
   for (const mutation of [
     (fs) =>
       fs.put(
@@ -456,7 +452,7 @@ test('published cleanup retries verify language, sources and full skill inventor
     const fs = legacy();
     const unlink = fs.io.unlink;
     fs.io.unlink = (path) => {
-      if (path === join(fs.root, 'docs/conventions/testing/unit.md'))
+      if (path === join(fs.root, 'agentscli-compose.yml'))
         throw new Error('Stop cleanup.');
       unlink(path);
     };
@@ -467,52 +463,33 @@ test('published cleanup retries verify language, sources and full skill inventor
     assert.equal((await invoke(fs)).exitCode, 2);
     assert.equal(fs.writes.length, count);
   }
-  const fs = legacy();
-  const unlink = fs.io.unlink;
-  fs.io.unlink = () => {
-    throw new Error('Stop.');
-  };
-  assert.equal((await invoke(fs, { language: 'pt-br' })).exitCode, 3);
-  fs.io.unlink = unlink;
-  const count = fs.writes.length;
-  assert.equal((await invoke(fs)).exitCode, 2);
-  assert.equal(fs.writes.length, count);
-  assertSuccess(await invoke(fs, { language: 'pt-br' }));
 });
 
-test('migration checks prepared destinations before configuration and source deletion', async () => {
-  for (const stage of ['publication', 'cleanup']) {
-    const fs = legacy();
-    const rename = fs.io.rename;
-    let changed = false;
-    fs.io.rename = (from, to) => {
-      rename(from, to);
-      if (
-        !changed &&
-        to ===
-          join(
-            fs.root,
-            stage === 'publication'
-              ? '.agents/skills/agentscli-write-conventions/references/rule.md'
-              : '.agentscli/config.yml',
-          )
-      ) {
-        changed = true;
-        fs.put(
-          '.agentscli/templates/conventions/testing/unit.tpl.md',
-          convertLegacyConvention(convention, 'unit.tpl.md') +
-            'Concurrent edit.\n',
-        );
-      }
-    };
-    const result = await invoke(fs);
-    assert.equal(result.exitCode, 3);
-    assert.ok(exists(fs, 'templates/AGENTS.tpl.md'));
-    assert.ok(exists(fs, 'docs/conventions/testing/unit.md'));
-    assert.ok(exists(fs, 'agentscli-compose.yml'));
-    if (stage === 'publication')
-      assert.ok(!exists(fs, '.agentscli/config.yml'));
-  }
+test('migration verifies prepared destinations before deleting any source', async () => {
+  const fs = legacy();
+  const rename = fs.io.rename;
+  fs.io.rename = (from, to) => {
+    rename(from, to);
+    if (
+      to ===
+      join(
+        fs.root,
+        '.agents/skills/agentscli-write-conventions/references/rule.md',
+      )
+    )
+      fs.put(
+        '.agentscli/templates/conventions/testing/unit.tpl.md',
+        convertLegacyConvention(convention, 'unit.tpl.md') +
+          'Concurrent edit.\n',
+      );
+  };
+  assert.equal((await invoke(fs)).exitCode, 3);
+  for (const path of [
+    'templates/testing/unit.tpl.md',
+    'docs/conventions/testing/unit.md',
+    'agentscli-compose.yml',
+  ])
+    assert.ok(exists(fs, path));
 });
 
 test('changed old source is preserved at its deletion boundary', async () => {
@@ -609,7 +586,7 @@ test('fixed-layout card migration previews, preserves authored body, and is a co
     /Keep this literal\./,
   );
   assert.equal(fs.text('.agentscli/config.yml'), 'language: pt-br\n');
-  const noop = await invoke(fs, { language: 'en' });
+  const noop = await invoke(fs);
   assertSuccess(noop);
   assert.equal(noop.result.changes.length, 0);
   assert.equal(fs.text('.agentscli/config.yml'), 'language: pt-br\n');
@@ -622,7 +599,6 @@ test('fixed-layout conversion never runs implicitly and rejects ambiguous metada
     '---\ntrigger: Read.\nunknown: true\n---\n# Unit\n',
   ]) {
     const fs = memory({
-      '.agentscli/config.yml': 'language: en\n',
       '.agentscli/templates/conventions/unit.tpl.md': source,
     });
     assert.equal(
@@ -641,7 +617,6 @@ test('fixed-layout conversion never runs implicitly and rejects ambiguous metada
 test('fixed-layout migration retains discoverable old cards until its final authored replacement', async () => {
   const seed = () =>
     memory({
-      '.agentscli/config.yml': 'language: en\n',
       '.agentscli/templates/conventions/unit.tpl.md': convention,
     });
   const initial = seed(),
