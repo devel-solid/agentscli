@@ -16,21 +16,21 @@ The exploration found no support files in the four owned skill trees. Counts inc
 
 `src/manifest.ts` fixes the client layout and language-only configuration. Existing Markdown parsing, planning, and package tests cover markers, source/output ownership, context rejection, and complete skill-tree delivery. This change does not need a runtime implementation or a new test suite.
 
-The SGO convention is reusable in substance. Its generated notices, Portuguese prose, links to SGO-specific conventions, and blanket wording about external relative paths are not directly portable. The current source package and installed global command are both `0.3.0`; these observations must be refreshed before delivery.
+The source skill-authoring guidance is reusable in substance. Its generated notices, Portuguese prose, links to consumer-specific conventions, and blanket wording about external relative paths are not directly portable. The current source package and installed global command are both `0.3.0`; these observations must be refreshed before delivery.
 
 ## Goals / Non-Goals
 
-**Goals:** preserve decisions while reducing reading; keep distributed skills independently usable; distinguish movable resources from fixed contracts; provide durable authoring guidance; and make the released artifact reach the existing local installation and SGO client.
+**Goals:** preserve decisions while reducing reading; keep distributed skills independently usable; distinguish movable resources from fixed contracts; provide durable authoring guidance; and make the released artifact reach the existing local installation and consumer.
 
-**Non-Goals:** changing CLI commands, layout, markers, dependencies, or document templates; adding a shared skill runtime or validation infrastructure; publishing the internal convention as a client default; modifying OpenSpec skills; refactoring SGO-owned skills again; or implementing this change during proposal creation.
+**Non-Goals:** changing CLI commands, layout, markers, dependencies, or document templates; adding a shared skill runtime or validation infrastructure; publishing the internal convention as a client default; modifying OpenSpec skills; refactoring consumer-owned skills again; or implementing this change during proposal creation.
 
 ## Decisions
 
-### Adapt the SGO convention while preserving its substantive guidance
+### Adapt the source skill-authoring guidance while preserving its substantive guidance
 
 Create `docs/conventions/skill-authoring.md` with H1 `Skill authoring` through `agentscli-write-conventions`, and add its task trigger in the handwritten `AGENTS.md` through `agentscli-update-agents`. Translate the source convention's rules and five example pairs, remove generated framing, and adapt internal references to `development.md` and `instruction-safety.md` only where relevant. Keep the convention free of external links and bibliography.
 
-Clarify that fixed public contract paths are allowed: removing `.agentscli/templates/AGENTS.tpl.md` would hide an actual input contract. Mutable internal locations instead come from current project instructions and their maintained links. This preserves the SGO convention's intent without importing an incompatible blanket prohibition. Byte-for-byte copying was rejected because its language, formatting, and references would be wrong here; inventing a separate policy would discard reusable guidance.
+Clarify that fixed public contract paths are allowed: removing `.agentscli/templates/AGENTS.tpl.md` would hide an actual input contract. Mutable internal locations instead come from current project instructions and their maintained links. This preserves the source guidance's intent without importing an incompatible blanket prohibition. Byte-for-byte copying was rejected because its language, formatting, and references would be wrong here; inventing a separate policy would discard reusable guidance.
 
 ### Keep four short, self-contained entrypoints
 
@@ -65,19 +65,19 @@ Record the reviewed source identity, archive contents, SHA-512 integrity, and in
 
 ## Risks / Trade-offs
 
-- Removing a condition can broaden a rule, as happened during the SGO refactor -> compare the decisions and exceptions before and after, not just word counts.
+- Removing a condition can broaden a rule, during skill refactoring -> compare the decisions and exceptions before and after, not just word counts.
 - Excessive abstraction can hide fixed inputs -> retain verified contract literals and review them against their actual readers.
 - Deduplication can make a distributed skill depend on repository-only instructions -> keep each packaged tree independently usable and inspect the archive.
-- The SGO sync can also regenerate documents or overwrite local managed-skill edits -> inspect the target's current instructions, status, configuration, and exact preview before mutation; preserve unrelated work and resolve unexpected effects within scope first.
-- Native authentication, registry availability, global-install permissions, or target-checkout permissions can block delivery -> report the actual blocking operation and keep the corresponding tasks open; do not mark a prepared artifact as published or a package update as a completed SGO rollout.
+- The consumer sync can also regenerate documents or overwrite local managed-skill edits -> inspect the target's current instructions, status, configuration, and exact preview before mutation; preserve unrelated work and resolve unexpected effects within scope first.
+- Native authentication, registry availability, global-install permissions, or target-checkout permissions can block delivery -> report the actual blocking operation and keep the corresponding tasks open; do not mark a prepared artifact as published or a package update as a completed consumer rollout.
 
 ## Migration Plan
 
 1. Complete the convention, entrypoint refactors, semantic review, and package readiness in the source repository. Do not run client init or sync there.
 2. Prepare the available patch version and final artifact, then perform the authorized source commit/tag/push and publication. Verify the public source/tag and registry integrity against the artifact; inspect remote state before retrying an ambiguous response.
 3. Update the existing global `@devel-solid/agentscli` installation to that exact published version using native npm. Verify the resolved executable and version. This is the requested real installation update, not an installation test environment.
-4. Locate SGO Prototype through available project metadata and its instructions, rather than storing a machine path in maintained guidance. Read its applicable conventions and inspect existing work and `.agentscli/config.yml` before the client operation. The SGO update is a target-client delivery operation requiring the permissions applicable there, not authorization to edit its application from this repository.
-5. Run the installed command against the explicit SGO root: `validate`, `sync --dry-run`, authorized `sync`, then `sync --check`. The expected writes are the three managed agentscli trees. If preview includes unexpected generated-document changes or a conflict, resolve the scope before applying; do not invent a skill-only flag or bypass the planner by hand-copying files.
-6. Confirm the installed version, managed skill contents, clean freshness result, and preservation of SGO-owned/OpenSpec skills, authored templates, and unrelated work. No SGO commit or application build is implied. Completion requires publication, global update, and client refresh actually verified; unfinished delivery remains open.
+4. Locate the target consumer through available project metadata and its instructions, rather than storing a machine path in maintained guidance. Read its applicable conventions and inspect existing work and `.agentscli/config.yml` before the client operation. The consumer update is a target-client delivery operation requiring the permissions applicable there, not authorization to edit its application from this repository.
+5. Run the installed command against the explicit consumer root: `validate`, `sync --dry-run`, authorized `sync`, then `sync --check`. The expected writes are the three managed agentscli trees. If preview includes unexpected generated-document changes or a conflict, resolve the scope before applying; do not invent a skill-only flag or bypass the planner by hand-copying files.
+6. Confirm the installed version, managed skill contents, clean freshness result, and preservation of consumer-owned/OpenSpec skills, authored templates, and unrelated work. No consumer commit or application build is implied. Completion requires publication, global update, and client refresh actually verified; unfinished delivery remains open.
 
 Published identities are immutable: correct a published defect with a new patch. For partial client operations, inspect completed/remaining effects and retry the same supported operation/options. Do not add rollback journals, overwrite tags, or reset either checkout.

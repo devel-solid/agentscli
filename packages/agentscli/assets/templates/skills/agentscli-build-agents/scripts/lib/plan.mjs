@@ -269,13 +269,17 @@ export function plan(
   if (inspect(io, root, '.agents/skills', 'directory'))
     for (const id of io.names(containedPath(root, '.agents/skills')).sort()) {
       const directory = `.agents/skills/${id}`;
-      inspect(io, root, directory, 'directory');
-      if (
+      const managed =
         PRODUCT_SKILLS.includes(id) ||
         id === 'agentscli-update-agents' ||
-        managedOld.has(id)
-      )
-        continue;
+        managedOld.has(id);
+      const entry = inspect(
+        io,
+        root,
+        directory,
+        managed ? 'directory' : undefined,
+      );
+      if (entry?.kind !== 'directory' || managed) continue;
       const files = Object.fromEntries(
         walk(io, root, directory).map((p) => [
           p.slice(directory.length + 1),

@@ -54,14 +54,14 @@ All selected resources SHALL come from one exact full commit object ID. A reques
 
 ### Requirement: Every dependency requires explicit selection
 
-Selected shared skills SHALL declare dependencies through metadata.requires and their included requires.yml. Each typed id/source reference SHALL use hub and belong to the same revision; every shared dependency must already be explicitly selected. Local skills may reference local or selected hub resources. Missing/wrong-source/transitive requirements SHALL fail before writes without extending selection, fetching, or solving versions. Conventions SHALL be self-contained dependency-free resources.
+Selected shared skills SHALL declare dependencies through metadata.agentscli and included agentscli-skill.yml with optional requires, a skill-only id/source list. Shared references SHALL use hub at the same revision and already be selected. Local skills SHALL reference local or selected hub skills. Missing/wrong-source/transitive requirements SHALL fail before writes without extending selection or fetching. Conventions SHALL remain dependency-free and never satisfy a skill dependency.
 
 #### Scenario: A selected review skill requires an unselected convention
-- **WHEN** code-review requires id: testing with source: hub and only the skill is selected
-- **THEN** acquisition fails with the declaring skill/type/id/source and imports neither resource even if a local testing convention exists
+- **WHEN** code-review encodes a convention dependency or its declared skill identity exists only as a convention
+- **THEN** acquisition rejects the declaration or missing skill rather than accepting the convention or importing additional resources
 
 #### Scenario: A dependency itself requires another skill
-- **WHEN** the explicit lists omit that further dependency
+- **WHEN** the explicit skill list omits that further dependency
 - **THEN** the entire selection fails validation rather than automatically adding it
 
 ### Requirement: Consumers retain the hub manifest content version
@@ -255,11 +255,11 @@ Hub scripts SHALL report the candidate commit and completed/pending effects when
 
 ### Requirement: Local skill requirements constrain hub lifecycle plans
 
-Consumer checks SHALL resolve authored local skill references against local project inputs or selected accepted hub sources exactly as source specifies. Proposed updates/switches/detach SHALL validate those requirements before writes; missing required hub resources SHALL block cleanup. Shared skills SHALL NOT depend on local resources, even if present. Skills use both resource types; conventions declare neither. No global/personal skill lookup or origin fallback SHALL occur.
+Consumer checks SHALL resolve authored local skill references against local project inputs or selected accepted hub sources exactly as source specifies. Proposed updates/switches/detach SHALL validate those requirements before writes; missing required hub resources SHALL block cleanup. Shared skills SHALL NOT depend on local resources, even if present. Only skills satisfy dependencies; convention selection remains independent. No global/personal skill lookup or origin fallback SHALL occur.
 
 #### Scenario: A local skill requires a shared convention
-- **WHEN** requires.yml declares its id with source: hub and that convention is not selected
-- **THEN** validation fails rather than selecting it or substituting a local same-ID resource
+- **WHEN** agentscli-skill.yml declares a required hub skill ID but only a shared or local convention has that ID
+- **THEN** validation reports the missing skill rather than accepting or selecting the convention
 
 #### Scenario: Detach would break a local skill
 - **WHEN** a local authored skill still declares a hub dependency in the proposed detached state
@@ -270,5 +270,5 @@ Consumer checks SHALL resolve authored local skill references against local proj
 - **THEN** authoring/acquisition rejects the nonportable declaration before import or publication
 
 #### Scenario: An installed dependency file was edited
-- **WHEN** the accepted shared source requires.yml is valid but its installed managed copy differs or is missing
+- **WHEN** the accepted shared source agentscli-skill.yml is valid but its installed managed copy differs or is missing
 - **THEN** generation replaces the installed drift from accepted sources without accepting that output as a new declaration

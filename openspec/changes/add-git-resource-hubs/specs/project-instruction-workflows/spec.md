@@ -271,7 +271,11 @@ Apply/private sync SHALL replace expected managed outputs and remove obsolete re
 
 ### Requirement: Legacy clients require explicit migration
 
-Only apply --migrate SHALL convert supported legacy custom roots or fixed-layout local AGENT-CARD templates. Supported custom-root manifests remain exactly language/templates_dir/conventions_dir, preserving language unless explicit. Malformed/older composition schemas, unsafe overlaps, contradictory formats, convention requires, and convention-to-convention or convention-to-skill links SHALL block before writes. Ordinary apply/private scripts SHALL diagnose old cards and direct this explicit workflow.
+Only apply --migrate SHALL convert supported legacy custom roots or fixed-layout local AGENT-CARD templates. Supported custom-root manifests remain exactly language/templates_dir/conventions_dir, preserving language unless explicit. Malformed/older composition schemas, unsafe overlaps, contradictory formats, convention requires, and convention-to-convention or convention-to-skill links SHALL block before writes.
+
+#### Scenario: Ordinary operations encounter old discovery cards
+- **WHEN** ordinary apply or private build scripts encounter local AGENT-CARD templates
+- **THEN** they diagnose the old cards and direct the explicit apply --migrate workflow without implicitly converting them
 
 #### Scenario: A custom-root client migrates
 - **WHEN** the legacy manifest names rules/sources and rules/final with language pt-br
@@ -387,7 +391,11 @@ Explicit migration SHALL preserve ordinary link targets outside convention and s
 
 ### Requirement: Migration preserves sources and rejects content conflicts
 
-Explicit migration SHALL transfer supported legacy roots without losing relative convention paths and convert operational AGENT-CARD text to trigger frontmatter. It SHALL also convert old cards in fixed-layout local templates. Preserve authored Markdown/language except that metadata conversion and safe required link edits. Different occupied targets, manual outputs, unsupported/contradictory formats, and forbidden convention links SHALL block all writes; deterministic equivalent results support retry.
+Explicit migration SHALL transfer supported legacy roots without losing relative convention paths and convert operational AGENT-CARD text to trigger frontmatter. Preserve authored Markdown/language except that metadata conversion and safe required link edits. Different occupied targets, manual outputs, unsupported/contradictory formats, and forbidden convention links SHALL block all writes; deterministic equivalent results support retry.
+
+#### Scenario: Old cards use the current fixed layout
+- **WHEN** local templates already occupy the fixed layout but retain operational AGENT-CARD metadata
+- **THEN** explicit apply --migrate converts those cards to trigger frontmatter while preserving their authored rules
 
 #### Scenario: Nested legacy sources migrate
 - **WHEN** rules/sources/testing/unit.tpl.md belongs to a supported legacy root

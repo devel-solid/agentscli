@@ -80,7 +80,7 @@ Shareable conventions SHALL be discovered recursively as `conventions/**/*.tpl.m
 
 ### Requirement: Hub resource formats are mechanically validated
 
-Shared convention templates SHALL use trigger-only YAML frontmatter, UTF-8, one H1, and a canonical basename; they SHALL be self-contained and contain no requires or links to other conventions or skills. Skill entrypoints SHALL keep standard matching name/description frontmatter and optional string metadata.requires: requires.yml. Validate complete trees, referenced dependency files, safe identities/paths, aliases, and portable collisions deterministically.
+Shared convention templates SHALL use trigger-only YAML frontmatter, UTF-8, one H1, and a canonical basename; they SHALL be self-contained and contain no requires or links to other conventions or skills. Skill entrypoints SHALL keep standard matching name/description frontmatter and optional string metadata.agentscli: agentscli-skill.yml. Validate complete trees, referenced dependency files, safe identities/paths, aliases, and portable collisions deterministically.
 
 #### Scenario: A convention filename disagrees with its heading
 - **WHEN** `conventions/unit.tpl.md` has the H1 `Unit testing`
@@ -100,19 +100,19 @@ Shared convention templates SHALL use trigger-only YAML frontmatter, UTF-8, one 
 
 ### Requirement: Dependencies are declared as typed resource identities
 
-Only skills SHALL declare dependencies through optional string metadata.requires: requires.yml and a contained sibling YAML file with conventions/skills arrays. Each reference SHALL contain exactly string id and source: local or hub. Shared skills SHALL use hub only and require same-hub resources. Missing/malformed/unsafe files, keys, origins, or duplicate references SHALL fail. Conventions SHALL have no requires. Examples SHALL NOT declare dependencies.
+Only skills SHALL declare dependencies through optional string metadata.agentscli: agentscli-skill.yml, pointing to a contained sibling mapping with optional requires as a skill-only reference list. Each entry SHALL contain exactly string id and source: local or hub. Shared skills SHALL require same-hub skills only. Invalid configuration, origins, duplicate references, obsolete declarations, or missing targets SHALL fail. Conventions SHALL have no dependencies.
 
 #### Scenario: A skill depends on a convention
-- **WHEN** a shared SKILL.md points metadata.requires to requires.yml whose conventions list contains id: testing and source: hub
-- **THEN** validation reads that YAML as the skill's dependency on the same hub's testing convention without a root skill requires field or encoded JSON value
+- **WHEN** shared skill configuration encodes a convention dependency or the former conventions/skills mapping
+- **THEN** validation rejects that unsupported structure rather than accepting a same-name convention as a skill
 
 #### Scenario: A dependency example appears in a code block
 - **WHEN** an entrypoint teaches dependency syntax in a fenced Markdown example
 - **THEN** the example neither declares dependencies nor substitutes for the real metadata pointer and referenced YAML file
 
 #### Scenario: A dependency is renamed without updating its consumers
-- **WHEN** a declaration still refers to an absent resource ID
-- **THEN** validation reports the referring resource and missing dependency before any sharing operation succeeds
+- **WHEN** a declaration still refers to an absent skill ID
+- **THEN** validation reports the referring skill and missing dependency before any sharing operation succeeds
 
 ### Requirement: Portable references retain their consuming context
 
@@ -121,12 +121,12 @@ Conventions SHALL be self-contained and link to no convention/skill. Trigger/bod
 #### Scenario: A skill is moved with its complete support tree
 - **WHEN** a complete skill directory is installed or moved within an applicable project context
 - **THEN** its own support links still resolve without the hub checkout
-- **AND** external convention/skill dependencies use identity-based discovery rather than links or assumed sibling paths
+- **AND** external skill dependencies use identity-based discovery rather than links or assumed sibling paths
 
 #### Scenario: A semantic dependency is described only in prose
 - **WHEN** a convention relies on another convention through prose or a supported link
 - **THEN** authoring review requires self-contained rules and deterministic checks reject the convention-to-convention or convention-to-skill link
-- **AND** a skill's actual required resources belong in its source-aware requires.yml rather than an undeclared prose-only dependency
+- **AND** a skill's actual required resources belong in its source-aware agentscli-skill.yml rather than an undeclared prose-only dependency
 
 ### Requirement: Hub authoring skills ship their required validation code
 

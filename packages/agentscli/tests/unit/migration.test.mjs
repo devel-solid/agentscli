@@ -159,6 +159,44 @@ const exists = (fs, path) => !!fs.io.info(join(fs.root, path));
 const assertSuccess = (result) =>
   assert.equal(result.exitCode, 0, JSON.stringify(result.result.diagnostics));
 
+test('fixed-layout card migration preserves regular skill metadata and discovers local dependencies', async () => {
+  const metadata = {
+    '.agents/skills/.openspec-target': bytes('codex\n'),
+    '.agents/skills/tool-metadata.bin': new Uint8Array([0, 255, 13, 10]),
+  };
+  const fs = memory({
+    '.agentscli/config.yml': 'language: en\n',
+    '.agentscli/templates/AGENTS.tpl.md': main,
+    '.agentscli/templates/conventions/unit.tpl.md': convention,
+    ...metadata,
+    '.agents/skills/review/SKILL.md':
+      '---\nname: review\ndescription: Review changes.\n---\n',
+    '.agents/skills/check/SKILL.md':
+      '---\nname: check\ndescription: Check changes.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n',
+    '.agents/skills/check/agentscli-skill.yml':
+      'requires:\n  - id: review\n    source: local\n',
+  });
+  const preview = await invoke(fs, { dryRun: true });
+  assertSuccess(preview);
+  assert.equal(fs.writes.length, 0);
+  assert.ok(
+    preview.result.changes.every(({ path }) => !Object.hasOwn(metadata, path)),
+  );
+  assertSuccess(await invoke(fs));
+  assert.equal(
+    fs.text('.agentscli/templates/conventions/unit.tpl.md'),
+    convertLegacyConvention(convention, 'unit.tpl.md'),
+  );
+  for (const [path, content] of Object.entries(metadata))
+    assert.deepEqual(fs.io.read(join(fs.root, path)), content);
+  const before = fs.writes.length;
+  assertSuccess(await invoke(fs));
+  assert.equal(fs.writes.length, before);
+  assertSuccess(
+    await execute('sync', { repoRoot: fs.root, check: true }, { io: fs.io }),
+  );
+});
+
 test('affected HTML is rejected before migration writes even with quotes or entities', async () => {
   for (const html of [
     '<a title=">" href="docs/conventions/testing/unit.md">Unit</a>',

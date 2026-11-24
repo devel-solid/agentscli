@@ -42,7 +42,7 @@ All boxes describe future implementation. This planning request performs none of
 ## 6. General verification and scope review
 
 - [x] 6.1 Run the relevant focused units and npm run check on a package-declared Node line; verify passing unit/type/format results and confirm no subprocess, integration, installed-package, network, Git, disposable-project, or historical-matrix tests were added.
-- [x] 6.2 Review requirement-to-unit/manual-review coverage and the final diff; verify changes match these three delta capabilities, all acceptance scenarios are addressed, and SGO, real clients, source handwritten instructions, internal manifest, dependencies/lockfile pins, release-publication, archived changes, version metadata, and external Git/npm state are untouched.
+- [x] 6.2 Review requirement-to-unit/manual-review coverage and the final diff; verify changes match these three delta capabilities, all acceptance scenarios are addressed, and real clients, source handwritten instructions, internal manifest, dependencies/lockfile pins, release-publication, archived changes, version metadata, and external Git/npm state are untouched.
 
 ## Workflow follow-up
 

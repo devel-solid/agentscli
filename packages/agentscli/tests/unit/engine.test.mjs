@@ -518,6 +518,138 @@ test('private validate/check are offline, write-free, and do not need unrelated 
     false,
   );
 });
+
+test('skill discovery preserves regular metadata across apply and private generation', async () => {
+  const metadata = {
+    '.agents/skills/.openspec-target': bytes('codex\n'),
+    '.agents/skills/tool-metadata.bin': new Uint8Array([0, 255, 13, 10]),
+  };
+  const fs = client({
+    ...metadata,
+    '.agents/skills/review/SKILL.md': skill('review'),
+    '.agents/skills/check/SKILL.md': skill(
+      'check',
+      'metadata:\n  agentscli: agentscli-skill.yml\n',
+    ),
+    '.agents/skills/check/agentscli-skill.yml':
+      'requires:\n  - id: review\n    source: local\n',
+  });
+  for (const [command, options] of [
+    ['apply', { dryRun: true }],
+    ['validate', {}],
+    ['sync', { dryRun: true }],
+    ['sync', { check: true }],
+  ]) {
+    const response = await invoke(fs, command, options);
+    assert.equal(response.exitCode, options.check ? 1 : 0);
+    assert.equal(fs.writes.length, 0);
+    assert.ok(
+      response.result.changes.every(
+        ({ path }) => !Object.hasOwn(metadata, path),
+      ),
+    );
+  }
+  assert.equal((await invoke(fs)).exitCode, 0);
+  fs.put('.agentscli/templates/conventions/testing.tpl.md', convention());
+  const before = fs.writes.length;
+  assert.equal((await invoke(fs, 'sync', { dryRun: true })).exitCode, 0);
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 1);
+  assert.equal(fs.writes.length, before);
+  assert.equal((await invoke(fs, 'sync')).exitCode, 0);
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
+  for (const [path, content] of Object.entries(metadata))
+    assert.deepEqual(fs.io.read(join(fs.root, path)), content);
+  assert.deepEqual(
+    fs.io.read(join(fs.root, '.agents/skills/review/SKILL.md')),
+    skill('review'),
+  );
+});
+
+test('regular metadata does not bypass custom skill content or dependency validation', async () => {
+  for (const files of [
+    { 'SKILL.md': 'Missing required skill metadata.\n' },
+    {
+      'SKILL.md': skill('review'),
+      'references/rule.md': '[Foreign](../../other/SKILL.md)\n',
+    },
+    {
+      'SKILL.md': skill(
+        'review',
+        'metadata:\n  agentscli: agentscli-skill.yml\n',
+      ),
+      'agentscli-skill.yml': 'requires:\n  - id: missing\n    source: local\n',
+    },
+  ]) {
+    const fs = client({
+      '.agents/skills/.openspec-target': 'codex\n',
+      ...Object.fromEntries(
+        Object.entries(files).map(([path, content]) => [
+          `.agents/skills/review/${path}`,
+          content,
+        ]),
+      ),
+    });
+    for (const [command, options] of [
+      ['apply', { dryRun: true }],
+      ['apply', {}],
+      ['validate', {}],
+      ['sync', { dryRun: true }],
+      ['sync', { check: true }],
+    ]) {
+      assert.equal((await invoke(fs, command, options)).exitCode, 2);
+      assert.equal(fs.writes.length, 0);
+    }
+  }
+});
+
+test('skill metadata and discovered support retain safe-path inspection before classification', async () => {
+  for (const path of [
+    '.agents/skills/.openspec-target',
+    '.agents/skills/review/references/note.md',
+  ])
+    // Windows junctions and symbolic links have the same injected link kind.
+    for (const overrides of [
+      { kind: 'link' },
+      { nlink: 2 },
+      { kind: 'other' },
+    ]) {
+      const fs = client({ '.agents/skills/review/SKILL.md': skill('review') });
+      fs.put(path, 'unsafe', overrides);
+      for (const command of ['apply', 'validate', 'sync']) {
+        const response = await invoke(fs, command);
+        assert.equal(response.exitCode, 2);
+        assert.equal(response.result.diagnostics[0].code, 'PATH_UNSAFE');
+        assert.equal(fs.writes.length, 0);
+      }
+    }
+  const fs = client({
+    '.agents/skills/.openspec-target': 'codex\n',
+    '.agents/skills/.OPENSPEC-TARGET': 'alias\n',
+  });
+  const response = await invoke(fs);
+  assert.equal(response.exitCode, 2);
+  assert.equal(response.result.diagnostics[0].code, 'PATH_ALIAS');
+  assert.equal(fs.writes.length, 0);
+});
+
+test('regular files cannot occupy packaged or retired managed skill directories', async () => {
+  for (const id of [...PRODUCT_SKILLS, 'agentscli-update-agents']) {
+    const path = `.agents/skills/${id}`;
+    const fs = client({ [path]: 'Protected authored file.\n' });
+    for (const [command, options] of [
+      ['apply', { dryRun: true }],
+      ['apply', {}],
+      ['validate', {}],
+      ['sync', { check: true }],
+    ]) {
+      const response = await invoke(fs, command, options);
+      assert.equal(response.exitCode, 2);
+      assert.equal(response.result.diagnostics[0].code, 'PATH_TYPE');
+      assert.equal(fs.writes.length, 0);
+      assert.equal(fs.text(path), 'Protected authored file.\n');
+    }
+  }
+});
 test('manual root AGENTS, invalid authored input, and legacy state block all writes', async () => {
   for (const files of [
     { 'AGENTS.md': '# Handwritten\n' },

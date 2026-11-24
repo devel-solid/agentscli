@@ -87,60 +87,88 @@ Exactly the four consumer and five hub operational SKILL.md files SHALL declare 
 - **THEN** this generated-installation requirement does not stamp them or impose the nine product skills' license/compatibility/provenance fields
 - **AND** imported frontmatter remains authored source content subject only to existing accepted-representation rules
 
-### Requirement: Skill requirements use a standard frontmatter pointer and native YAML
+### Requirement: Skills use one optional general configuration document
 
-Declared skill dependencies SHALL use string metadata.requires: requires.yml, pointing to a contained sibling file with exactly conventions/skills arrays of id/source objects. Missing pointer means no declaration; empty lists are valid. Source SHALL be local or hub. Invalid UTF-8/YAML, duplicate/unknown keys, aliases, unsafe IDs/files, missing targets, root skill requires, or non-string/encoded dependency metadata SHALL fail deterministic checks. Include the file with the complete skill tree.
+A skill SHALL declare optional configuration through string `metadata.agentscli: agentscli-skill.yml` in standard SKILL.md frontmatter. The pointer SHALL identify one regular contained sibling YAML mapping. Initially only optional `requires` is supported. Without the pointer there SHALL be no declared configuration; an unreferenced reserved configuration file SHALL fail validation.
 
-#### Scenario: A local operational skill needs another local skill
-- **WHEN** metadata.requires points to requires.yml declaring id: agentscli-build-agents with source: local in its skills list
-- **THEN** the checker resolves that project-local dependency and standard frontmatter values remain strings
+#### Scenario: A skill declares another skill
 
-#### Scenario: A dependency file is missing or unsafe
-- **WHEN** the pointer names anything except its regular contained sibling requires.yml, or that file is absent, aliased, or malformed
-- **THEN** validation identifies the declaring SKILL.md/file and fails before edits/import/publication
+- **WHEN** the pointer references a sibling file containing `requires` as a list of skill references
+- **THEN** all applicable authoring, generation, import, and publication checks read that file as the skill's configuration
+- **AND** the frontmatter metadata remains a mapping of strings to strings
 
-#### Scenario: A skill has no requirements
-- **WHEN** metadata.requires is absent or its valid referenced file has two empty lists
-- **THEN** the skill declares no dependencies without requiring omission of an explicit empty declaration
+#### Scenario: No additional configuration is needed
 
-#### Scenario: Dependency metadata and support are packaged
-- **WHEN** one of the nine operational trees or a shared skill tree is assembled/copied
-- **THEN** its declared requires.yml accompanies its own SKILL.md and is checked from canonical assets/accepted sources without restamping shared provenance
+- **WHEN** a skill has neither the pointer nor a reserved configuration file
+- **THEN** validation accepts it without creating an empty file or inferring dependencies
 
-#### Scenario: Managed output damage must be repaired
-- **WHEN** apply has valid desired package assets but an installed operational dependency file is missing or edited
-- **THEN** preflight uses the desired package declarations/map and replaces the damaged output rather than blocking first installation or repair on its old contents
+#### Scenario: An explicit empty configuration is provided
+
+- **WHEN** the pointer references an empty YAML mapping or a mapping containing `requires: []`
+- **THEN** the skill declares no dependencies
+- **AND** a blank document or `requires: null` fails rather than acquiring an implicit meaning
+
+#### Scenario: Configuration is missing or unsafe
+
+- **WHEN** the pointer differs from `agentscli-skill.yml`, its target is absent or unsafe, or the reserved sibling file exists without the pointer
+- **THEN** validation reports the declaring skill and offending field or file before writes
+
+#### Scenario: Unsupported structure is supplied
+
+- **WHEN** configuration has malformed UTF-8/YAML, duplicate or unknown keys, aliases, explicit tags, a nonmapping root, encoded structured text, or a nonlist `requires`
+- **THEN** deterministic validation rejects it
+- **AND** future supported contexts must be defined as sections in this same document rather than additional configuration files
+
+### Requirement: Skill dependencies reference only skills
+
+Each `requires` entry SHALL contain exactly string `id` and `source`, with source `local` or `hub`. Resolution SHALL target skills exclusively, using the declared identity and origin. Invalid or duplicate references and missing targets SHALL fail before writes. Conventions SHALL never satisfy a skill dependency or declare their own dependencies.
+
+#### Scenario: A convention has the required identity
+
+- **WHEN** a declaration names `inspect-tests` but only a convention with that identity exists
+- **THEN** validation reports a missing skill dependency rather than accepting the convention
+
+#### Scenario: A convention dependency is encoded explicitly
+
+- **WHEN** configuration uses `conventions`, a typed convention reference, extra entry fields, or the old conventions/skills mapping
+- **THEN** validation rejects the unsupported structure even if its lists are empty
+
+#### Scenario: Origins distinguish same-name skills
+
+- **WHEN** a local skill declares a hub skill and only a same-name local skill exists
+- **THEN** validation rejects the unresolved hub dependency without origin fallback or global lookup
 
 ### Requirement: Skills carry their own activation and execution guidance
 
-Each owned skill SHALL describe its own task and activation conditions in standard description and keep its procedure in its own body/support. Conventions SHALL NOT act as skill entrypoints, link to skill trees, or redirect execution to skills. Convention maintenance SHALL route misplaced procedural content to the responsible skill-authoring workflow without expanding editing scope. Skills may still declare convention/skill dependencies through metadata.requires and requires.yml.
+Each owned skill SHALL describe its task/activation in standard description and keep procedures in its own body/support. Conventions SHALL NOT act as skill entrypoints, link to skill trees, or redirect execution. Misplaced procedures SHALL route to scoped skill authorship. Only skills SHALL satisfy dependencies through metadata.agentscli and agentscli-skill.yml; project sources SHALL remain work inputs rather than supplying missing procedures.
 
 #### Scenario: A procedure was written as a convention
 - **WHEN** review finds convention text whose purpose is to select/invoke a skill or teach that skill's procedure
 - **THEN** the maintainer identifies the misplaced content and the separately scoped skill author maintains it in the skill, preserving its independent description trigger
 
 #### Scenario: A skill requires project rules
-- **WHEN** the skill declares a convention in its requires.yml
-- **THEN** that dependency direction remains valid and does not authorize a reverse convention link to the skill
+- **WHEN** a skill reads project conventions or edits one as its work input
+- **THEN** it does not declare a convention dependency or rely on the convention for missing execution guidance
+- **AND** required procedures remain in its own entrypoint/support or responsible declared skill dependencies
 
 ### Requirement: Skills discover external resources instead of linking their locations
 
-Skill entrypoints/support instructions SHALL NOT directly link conventions or other skill trees, or hardcode their paths/URIs in workflow instructions. They may mention skill identities and declare id/source dependencies; the agent SHALL discover actual project targets before use. Links to own requires.yml/scripts/references/assets remain allowed. Deterministic authoring/asset/import checks SHALL reject cross-resource targets, including aliases, while preserving valid own-support links.
+Skill entrypoints/support instructions SHALL NOT directly link conventions or other skill trees, or hardcode their paths/URIs in workflow instructions. They may mention skill identities and declare id/source dependencies; the agent SHALL discover actual project targets before use. Links to own agentscli-skill.yml/scripts/references/assets remain allowed. Deterministic authoring/asset/import checks SHALL reject cross-resource targets, including aliases, while preserving valid own-support links.
 
 #### Scenario: A skill links to a convention
 - **WHEN** an active supported link points to a local/shared convention source or generated output
 - **THEN** validation rejects the direct link and guidance uses the convention identity plus project discovery instead
 
 #### Scenario: A skill links to another skill or its support
-- **WHEN** a link in SKILL.md or its support instructions targets another skill's entrypoint, directory, script, reference, or requires.yml
+- **WHEN** a link in SKILL.md or its support instructions targets another skill's entrypoint, directory, script, reference, or agentscli-skill.yml
 - **THEN** deterministic checking reports the source/target and rejects the link even when that skill is a declared dependency
 
 #### Scenario: A skill mentions another skill
-- **WHEN** its instructions name agentscli-build-agents and requires.yml declares that required local skill
+- **WHEN** its instructions name agentscli-build-agents and agentscli-skill.yml declares that required local skill
 - **THEN** the agent discovers its actual project entrypoint and reads its own invocation guidance without a fixed sibling path or implicit installation
 
 #### Scenario: Own support is linked
-- **WHEN** a skill points to its own requires.yml, script, reference, asset, or internal anchor
+- **WHEN** a skill points to its own agentscli-skill.yml, script, reference, asset, or internal anchor
 - **THEN** that link remains valid and moving the complete directory preserves its local support references
 
 #### Scenario: A command example bypasses Markdown link syntax
@@ -151,20 +179,51 @@ Skill entrypoints/support instructions SHALL NOT directly link conventions or ot
 
 ### Requirement: Support content is selective and distribution remains self-contained
 
-Each independent operational skill SHALL keep useful common-path guidance in its own entrypoint and work with its own shipped custom support plus authoritative commands for its environment. Shareable hub resource skills SHALL declare cross-resource dependencies and require explicit consumer selection. Neither category SHALL rely on unshipped siblings, repository-only instructions, or machine-specific paths. Resource sharing SHALL NOT merge the 12 operational skills across environments.
+Skills SHALL keep common-path guidance in their entrypoint and link substantial operation-specific content only when it has a concrete purpose, with a clear consultation condition. Every skill SHALL carry its required operation instructions in its own entrypoint or bundled support, with only other skills as declared resource dependencies. Deduplication SHALL NOT introduce a required reference to conventions or unshipped external instruction files.
 
 #### Scenario: A short skill needs no supporting resource
+
 - **WHEN** its useful instructions already fit a concise entrypoint
 - **THEN** no router, placeholder reference, or additional support tree is required
 
 #### Scenario: The new authoring convention is not installed in a client
-- **WHEN** a client uses a packaged product skill
-- **THEN** the skill can complete its task without relying on repository-only conventions
+
+- **WHEN** a client uses any of the four distributed consumer skills
+- **THEN** the skill can complete its task without relying on this repository's authoring convention
+
+#### Scenario: A skill's own support is needed
+
+- **WHEN** its procedure uses its own scripts, references, assets, or general configuration
+- **THEN** those resources remain inside its complete skill distribution and own relative links remain valid
+
+#### Scenario: Project files are operation inputs
+
+- **WHEN** a skill edits a convention, reads package metadata, or generates from project configuration and templates
+- **THEN** it can read those files as work inputs without declaring them as instruction dependencies
+- **AND** its procedure and required execution guidance remain within its own skill or declared skill dependencies
+
+#### Scenario: A convention supplies a missing procedure
+
+- **WHEN** review finds that executing a skill requires consulting a convention to learn its operation
+- **THEN** the required procedure is maintained within the responsible skill and its convention dependency is removed
+- **AND** project conventions remain general guidance without becoming skill entrypoints
+
+#### Scenario: Resources are directly linked
+
+- **WHEN** a skill entrypoint or support links directly to a convention or another skill's tree, including an executable fixed-path example
+- **THEN** mechanical checks reject that target even if the other skill is a declared dependency
+- **AND** the skill discovers required skills by identity while conventions remain self-contained without resource links
+
+#### Scenario: Mechanical checks pass but instructions are incomplete
+
+- **WHEN** schema, identity, path, link, and dependency checks pass
+- **THEN** semantic review still assesses instruction completeness, activation, and one-responsibility boundaries
+- **AND** passing structural checks alone does not prove self-containment
 
 #### Scenario: A shared skill references another resource
-- **WHEN** a shared skill mentions another resource required for its procedure
-- **THEN** it declares the typed id/source in requires.yml, requires explicit consumer selection, and discovers the target from the project
-- **AND** it does not create a direct link or hardcode a path into the convention or other skill
+- **WHEN** a shared skill needs another skill for its procedure
+- **THEN** it declares the skill-only id/source in agentscli-skill.yml, requires explicit consumer selection, and discovers the target from the project
+- **AND** project conventions may remain work inputs without becoming declared dependencies or supplying missing procedures
 
 #### Scenario: A skill-local script uses shared validation logic
 - **WHEN** its complete directory is distributed or moved

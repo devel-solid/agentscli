@@ -10,7 +10,7 @@ Today `src/manifest.ts` stores language and two configurable roots; init deliber
 
 **Goals:** One predictable client layout, stable language preference, an explicit conservative migration, and convergence after individual file failures while retaining the existing safety and offline execution boundaries.
 
-**Non-Goals:** A fourth public command, custom-layout options, translation, a general-purpose document mover, a permanent legacy generation mode, a new dependency, recovery metadata, modification of SGO or other real clients, and release/versioning work. This proposal authorizes only planning artifacts; implementation remains a separate workflow.
+**Non-Goals:** A fourth public command, custom-layout options, translation, a general-purpose document mover, a permanent legacy generation mode, a new dependency, recovery metadata, modification of consumer projects, and release/versioning work. This proposal authorizes only planning artifacts; implementation remains a separate workflow.
 
 ## Decisions
 

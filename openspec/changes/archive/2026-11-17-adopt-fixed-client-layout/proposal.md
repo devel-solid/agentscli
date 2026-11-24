@@ -32,6 +32,6 @@ Implementation affects `src/manifest.ts`, `src/plan.ts`, `src/runtime.ts`, `src/
 
 Move the default context template into `conventions/` in both `assets/templates/en/` and `assets/templates/pt-br/`. Update the canonical two shared skills, the client-only build skill, CLI help, README, and resource-packaging units; continue deriving compiled assets from their current canonical sources.
 
-This change intentionally supersedes the current client-manifest, configuration-replacement, and whole-template-root discovery requirements through deltas for the three capabilities above. Keep `release-publication`, archived changes, the internal distribution manifest, and this repository's handwritten instructions unchanged. SGO is motivation only; modifying or migrating any real client is outside this change's execution scope.
+This change intentionally supersedes the current client-manifest, configuration-replacement, and whole-template-root discovery requirements through deltas for the three capabilities above. Keep `release-publication`, archived changes, the internal distribution manifest, and this repository's handwritten instructions unchanged. Modifying or migrating consumer projects is outside this change's execution scope.
 
 Creating this proposal changes planning artifacts only. Later implementation requires a separate request. Package version selection, version changes, installation, commits, tags, pushes, and publication are separate authorized work; no release is performed or required to finish these planning artifacts.

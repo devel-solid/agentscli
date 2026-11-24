@@ -38,7 +38,7 @@ All conventions SHALL be self-contained, declare no requires, and link to no oth
 #### Scenario: A convention links directly to a skill
 - **WHEN** an active supported link in a convention trigger/body resolves to a skill entrypoint, directory, or support file in a local/shared/source/installed tree
 - **THEN** its independent validator reports the location/skill target and blocks authoring/generation/import/publication preflight as applicable
-- **AND** a SKILL.md link, skill-directory link, or requires.yml/script support link cannot use the ordinary project-file exception
+- **AND** a SKILL.md link, skill-directory link, or agentscli-skill.yml/script support link cannot use the ordinary project-file exception
 
 #### Scenario: A convention redirects work to a skill
 - **WHEN** convention maintenance identifies a skill invocation or procedure reference in the prose

@@ -83,6 +83,25 @@ const invoke = (fs, command = 'sync', options = {}) =>
   execute(command, { repoRoot: fs.root, ...options }, { io: fs.io });
 const success = (response) =>
   assert.equal(response.exitCode, 0, JSON.stringify(response.result));
+
+test('accepted imported skill destinations reject regular files before replacement', async () => {
+  const fs = fixture();
+  const path = '.agents/skills/review';
+  fs.put(path, 'Unrelated file.\n');
+  for (const [command, options] of [
+    ['validate', {}],
+    ['sync', { dryRun: true }],
+    ['sync', { check: true }],
+    ['sync', {}],
+  ]) {
+    const response = await invoke(fs, command, options);
+    assert.equal(response.exitCode, 2);
+    assert.equal(response.result.diagnostics[0].code, 'PATH_TYPE');
+    assert.equal(fs.writes.length, 0);
+    assert.equal(fs.text(path), 'Unrelated file.\n');
+  }
+});
+
 test('offline rendering combines local and selected hub rules and preserves accepted source language', async () => {
   const fs = fixture({ crlf: true });
   success(await invoke(fs, 'validate'));

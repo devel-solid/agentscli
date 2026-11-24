@@ -16,7 +16,7 @@ The planner maps conventional source paths to generated paths, and the Markdown 
 - Run the check in the shared preflight used by init, validate, sync, check, and previews. Return an English diagnostic in text and JSON. Include the source path and expected name, or explain why a title produces no usable basename. Keep path safety and destination collision checks.
 - Apply strict validation to the proposed fixed-layout sources during explicit migration. Preserve the old rendering used to recognize existing generated files. If legacy sources fail the new rule, report the source to correct and give a write-free upgrade path. Review the existing rebase rules for managed references as part of migration verification.
 - Rename the English and Portuguese context assets and update the authoring guidance, client build guidance, examples, and unit fixtures. Do not recreate a removed convention during repeated init.
-- Prepare `0.3.0` as the candidate for the breaking beta release, subject to verifying unused npm and Git identities. Package and verify the exact release before publication through `agentscli-release`. Update the active local installation from the verified publication using its existing npm scope and confirm the resolved executable and version. Hand off the SGO migration to `alinhar-nomes-das-convencoes`.
+- Prepare `0.3.0` as the candidate for the breaking beta release, subject to verifying unused npm and Git identities. Package and verify the exact release before publication through `agentscli-release`. Update the active local installation from the verified publication using its existing npm scope and confirm the resolved executable and version. Keep consumer-specific migration outside this repository.
 
 ## Risks / Trade-offs
 

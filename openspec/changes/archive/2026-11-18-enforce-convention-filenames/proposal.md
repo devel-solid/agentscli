@@ -22,4 +22,4 @@ Convention filenames and displayed titles can drift because the planner derives 
 ## Impact
 
 - Shared input validation, bundled client resources, skills, README, and unit tests.
-- Clients with divergent filenames must align their authored templates and references before syncing with the new CLI. The SGO client migration is tracked separately as `alinhar-nomes-das-convencoes`.
+- Clients with divergent filenames must align their authored templates and references before syncing with the new CLI.

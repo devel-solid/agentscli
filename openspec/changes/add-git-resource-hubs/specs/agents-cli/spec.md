@@ -195,3 +195,26 @@ agentscli-build-agents SHALL own its real generation engine and complete runtime
 #### Scenario: Private generation is requested with invalid options
 - **WHEN** the script receives migration/language flags, repeated flags, validate --check, or incompatible preview/check options
 - **THEN** it returns usage exit 2 without writes or implicit initialization/migration
+
+### Requirement: Consumer skill discovery preserves unrelated regular files
+
+Consumer planning SHALL discover local skills from directories while preserving unrelated regular files in `.agents/skills`. Apply, explicit migration, and private validation/generation SHALL use safe-path inspection before classifying entries. Unsafe paths and occupied managed directory destinations SHALL still fail before writes.
+
+#### Scenario: Tool metadata coexists with directory-based skills
+- **WHEN** valid skill directories coexist with the regular `.openspec-target` file and another unrelated regular file
+- **THEN** consumer apply, migration, and private validation/generation discover the directory-based skills without consuming or modifying those files
+- **AND** previews and checks write nothing
+
+#### Scenario: A discovered skill contains invalid authored input
+- **WHEN** a directory-based skill has invalid metadata, forbidden resource links, or unresolved dependencies
+- **THEN** the operation still reports validation failure before writes
+- **AND** ignoring unrelated regular files does not bypass skill content validation
+
+#### Scenario: An unsafe entry resembles unrelated metadata
+- **WHEN** an immediate child or discovered skill path is a symbolic link, junction, hard link, special filesystem entry, or portable path alias
+- **THEN** preflight rejects the unsafe entry without writes rather than skipping its safety checks
+
+#### Scenario: A regular file occupies a managed directory destination
+- **WHEN** a regular file occupies a path required for a packaged or selected imported skill directory
+- **THEN** the operation reports the collision before writes
+- **AND** it does not adopt, overwrite, or delete that file

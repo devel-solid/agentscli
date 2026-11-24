@@ -10,4 +10,4 @@
 
 - [x] 2.1 Prepare the breaking beta version using `agentscli-release`. Verify Git and registry identity availability, package contents, executable, license, and SHA-512 integrity for the final tarball.
 - [x] 2.2 Publish the verified candidate to npm and publish the corresponding source commit and tag. Confirm the remote source identity and registry version and integrity.
-- [x] 2.3 Update the active local CLI from the published package and report the resolved executable and `agentscli --version`. Confirm the installed release is available to the SGO migration.
+- [x] 2.3 Update the active local CLI from the published package and report the resolved executable and `agentscli --version`. Confirm the installed release is available to the consumer migration.

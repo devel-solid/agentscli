@@ -39,7 +39,7 @@ This change SHALL include readiness and verified delivery of the initial hub CLI
 #### Scenario: The consumer already has later versions than the hub
 - **WHEN** package versions are selected
 - **THEN** agentscli receives a new available version based on its own current metadata while the initial hub package remains `0.1.0`
-- **AND** impact assessment/release notes include init-to-apply in both CLIs, removed consumer validate/sync, private script invocations, protected authored/state paths, trigger-only self-contained convention rules with explicit card conversion, skill requires.yml files, and replacement/removal of edited managed resources
+- **AND** impact assessment/release notes include init-to-apply in both CLIs, removed consumer validate/sync, private script invocations, protected authored/state paths, trigger-only self-contained convention rules with explicit card conversion, skill agentscli-skill.yml configuration files, and replacement/removal of edited managed resources
 
 #### Scenario: Only the planning workflow is running
 - **WHEN** these release tasks are generated
@@ -65,7 +65,7 @@ Each npm package SHALL contain compiled runtime, applicable templates, complete 
 - **AND** stale versions, cross-package versions, content versions used as generator versions, or unresolved placeholders block delivery
 
 #### Scenario: A declared skill dependency file is packaged
-- **WHEN** an operational skill's metadata.requires names requires.yml
+- **WHEN** an operational skill's metadata.agentscli names agentscli-skill.yml
 - **THEN** its archive contains the regular complete YAML file and deterministic checks validate id/source references against the correct desired package/project environment
 - **AND** archive examples/defaults use trigger-only self-contained conventions and standard skill metadata, not old card/dependency comments or encoded dependency values
 

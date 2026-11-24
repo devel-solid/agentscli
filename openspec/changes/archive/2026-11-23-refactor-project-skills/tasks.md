@@ -2,7 +2,7 @@
 
 ## 1. Establish repository skill-authoring guidance
 
-- [x] 1.1 Use `agentscli-write-conventions` to create handwritten English `docs/conventions/skill-authoring.md` from the SGO convention; verify preservation of its substantive rules and five positive/negative example pairs, valid local references, the fixed-contract exception, and absence of generated framing, external links, or bibliography.
+- [x] 1.1 Use `agentscli-write-conventions` to create handwritten English `docs/conventions/skill-authoring.md` from the source skill-authoring guidance; verify preservation of its substantive rules and five positive/negative example pairs, valid local references, the fixed-contract exception, and absence of generated framing, external links, or bibliography.
 - [x] 1.2 Use `agentscli-update-agents` to add the convention's discovery entry to handwritten `AGENTS.md`; verify the trigger covers creating, reviewing, and refactoring owned skills and supports, the link resolves, and the entrypoint does not duplicate the convention.
 
 ## 2. Refactor the four canonical skills
@@ -26,8 +26,8 @@
 - [x] 4.2 Publish the inspected tarball through native npm with public access; verify public package/version, visibility, license, and `dist.integrity` against the candidate, checking remote state before retrying any ambiguous response.
 - [x] 4.3 Update the existing global `@devel-solid/agentscli` installation to the exact verified published version; verify the resolved executable, `agentscli --version`, and global package metadata agree, without creating an installation test environment.
 
-## 5. Refresh the SGO Prototype client
+## 5. Refresh the target consumer client
 
-- [x] 5.1 Discover the intended SGO checkout, read its current instructions and applicable conventions, and inspect existing work, configuration, and managed skills using the target's available permissions; run the updated installed CLI's `validate` and `sync --dry-run` against that explicit root and verify the expected effects concern only the three managed agentscli trees. Resolve unexpected document drift or conflicts within scope before applying.
-- [x] 5.2 Apply the previewed update with the installed CLI's `sync` and run `sync --check` against the same SGO root; verify freshness and that the managed skill contents match the newly published package, reporting completed and remaining effects if the operation fails.
-- [x] 5.3 Inspect the target diff and report the actual source commit/tag, package/version/integrity, global executable version, managed-skill effects, and executed checks; verify SGO-owned skills, OpenSpec skills, authored templates, and unrelated work were preserved, and keep delivery tasks open for any unverified publication, installation, or client update.
+- [x] 5.1 Discover the intended consumer checkout, read its current instructions and applicable conventions, and inspect existing work, configuration, and managed skills using the target's available permissions; run the updated installed CLI's `validate` and `sync --dry-run` against that explicit root and verify the expected effects concern only the three managed agentscli trees. Resolve unexpected document drift or conflicts within scope before applying.
+- [x] 5.2 Apply the previewed update with the installed CLI's `sync` and run `sync --check` against the same consumer root; verify freshness and that the managed skill contents match the newly published package, reporting completed and remaining effects if the operation fails.
+- [x] 5.3 Inspect the target diff and report the actual source commit/tag, package/version/integrity, global executable version, managed-skill effects, and executed checks; verify consumer-owned skills, OpenSpec skills, authored templates, and unrelated work were preserved, and keep delivery tasks open for any unverified publication, installation, or client update.

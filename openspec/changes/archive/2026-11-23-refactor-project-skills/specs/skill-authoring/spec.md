@@ -8,13 +8,13 @@ Guide the creation and maintenance of concise agentscli skills whose discovery p
 
 ### Requirement: The repository exposes portable skill-authoring guidance
 
-The repository SHALL provide handwritten English `docs/conventions/skill-authoring.md`, discoverable from `AGENTS.md` when creating, reviewing, or refactoring owned skills and their support files. It SHALL preserve the reusable rules and positive/negative examples from the SGO convention, adapting project-specific framing and references without adding external links or a bibliography.
+The repository SHALL provide handwritten English `docs/conventions/skill-authoring.md`, discoverable from `AGENTS.md` when creating, reviewing, or refactoring owned skills and their support files. It SHALL preserve the reusable rules and positive/negative examples for owned skills, using repository-local framing and references without adding external links or a bibliography.
 
 #### Scenario: An agent starts maintaining an owned skill
 - **WHEN** the agent consults the root instructions for a skill-authoring task
 - **THEN** it finds the convention's applicability and link without loading the full guidance into `AGENTS.md`
 
-#### Scenario: SGO guidance is adapted for this repository
+#### Scenario: Reusable skill guidance is maintained locally
 - **WHEN** the handwritten convention is reviewed
 - **THEN** it retains the rules for scope, decision-relevant content, selective consultation, language, preservation, discovery, and verification
 - **AND** it retains positive/negative examples for discovery, secrets, concision, selective consultation, and precision, translated into English
