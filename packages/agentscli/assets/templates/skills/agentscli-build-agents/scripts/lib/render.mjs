@@ -1,5 +1,4 @@
 import {
-  GENERATED,
   inlineTrigger,
   validateConvention,
   validateConventionFilename,
@@ -20,19 +19,18 @@ export const INDEX_HEADER =
 export function render(conventions) {
   const outputs = new Map();
   const ordered = [...conventions].sort((a, b) => {
-    const left = portableKey(a.output),
-      right = portableKey(b.output);
+    const left = portableKey(a.path),
+      right = portableKey(b.path);
     return left < right ? -1 : left > right ? 1 : 0;
   });
   const entries = ordered.map((input) => {
-    const parsed = validateConvention(input.text, input.source);
-    validateConventionFilename(parsed.title, input.source);
-    outputs.set(input.output, `${GENERATED}\n\n${parsed.body}`);
+    const parsed = validateConvention(input.text, input.path);
+    validateConventionFilename(parsed.title, input.path);
     const title = parsed.title
       .replace(/\s+/gu, ' ')
       .replace(/[\\`*{}\[\]<>()!_#|~]/gu, '\\$&');
     const trigger = inlineTrigger(parsed.trigger);
-    return `- [${title}](${link(input.output)}): ${trigger}`;
+    return `- [${title}](${link(input.path)}): ${trigger}`;
   });
   outputs.set(
     'AGENTS.md',

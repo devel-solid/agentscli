@@ -204,6 +204,16 @@ export function inspectArchive(bytes, expected, prepared) {
   // A native Windows npm tarball may record 0644 even for a declared bin.
   const prefix = 'package/dist/assets/skills/';
   for (const path of files.keys()) {
+    if (
+      ![
+        'package/package.json',
+        'package/README.md',
+        'package/LICENSE',
+        `package/${pkg.bin[name]}`,
+      ].includes(path) &&
+      !path.startsWith(prefix)
+    )
+      throw new Error(`File outside the package delivery inventory: ${path}`);
     if (!path.startsWith(prefix)) continue;
     const parts = path.slice(prefix.length).split('/');
     if (parts.length < 2 || !names[name].includes(parts[0]))
@@ -273,17 +283,6 @@ export function inspectArchive(bytes, expected, prepared) {
         );
   }
   for (const path of files.keys()) {
-    if (path.startsWith('package/dist/assets/templates/'))
-      throw new Error(`Unsupported distributed convention template: ${path}`);
-    if (basename(path) === 'AGENTS.tpl.md')
-      throw new Error(
-        `Unsupported root instruction template in archive: ${path}`,
-      );
-    if (
-      /^package\/(?:tests|\.agents|src)\//u.test(path) ||
-      /agentscli-adm-/u.test(path)
-    )
-      throw new Error(`Repository-only material in archive: ${path}`);
     if (
       path.startsWith(prefix) &&
       /(?:\/node_modules\/|\.ts$|\.map$)/u.test(path)

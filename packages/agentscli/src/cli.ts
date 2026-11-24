@@ -26,7 +26,7 @@ const version = (
 ).version;
 
 export function helpText(packageVersion = version): string {
-  return `agentscli ${packageVersion} — project instructions from editable templates
+  return `agentscli ${packageVersion} — project instruction index from authored conventions
 
 Usage:
   agentscli apply [--dry-run]
@@ -35,11 +35,11 @@ Usage:
 
 Common options: --repo-root <directory>, --json.
 
-apply creates missing setup and replaces managed documents and the two operational
-skill trees, removing obsolete managed files. Authored templates, Git state and unrelated
-files stay preserved. --dry-run previews without writes. Create convention templates
-in .agentscli/templates/conventions with agentscli-write-conventions; generated
-root AGENTS.md and .agentscli/conventions are replaceable. Version .agentscli and
+apply updates root AGENTS.md and the two operational skill trees, removing obsolete
+managed skill files. Author conventions directly in .agentscli/conventions/**/*.md
+with agentscli-write-conventions. Their YAML trigger, H1, body and original bytes are
+preserved. Git state and unrelated files stay preserved. --dry-run previews without
+writes. Root AGENTS.md is a replaceable generated index. Version .agentscli and
 operational skills. Validation and offline synchronization belong to the private
 scripts of agentscli-build-agents, discoverable through project skills.
 After partial failure repeat the same authorized operation; there is no rollback.

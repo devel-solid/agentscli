@@ -100,7 +100,7 @@ function linkTarget(raw, base) {
 export function validateResourceLinks(
   text,
   path,
-  { kind, ownRoot, conventions = [], skillRoots = [], trigger = false } = {},
+  { kind, ownRoot, conventions = [], skillRoots = [] } = {},
 ) {
   const own = ownRoot && portableKey(ownRoot);
   const conventionTargets = new Set(conventions.map(portableKey));
@@ -111,16 +111,10 @@ export function validateResourceLinks(
     if (
       !ownConvention &&
       (conventionTargets.has(target) ||
-        /(?:^|\/)\.agentscli\/(?:templates\/conventions|conventions)\//u.test(
-          target,
-        ))
+        /(?:^|\/)conventions(?:\/|$)/u.test(target))
     )
       return true;
-    if (
-      /(?:^|\/)conventions\/[^/]+(?:\/[^/]+)*\.(?:tpl\.)?md$/u.test(target) &&
-      target !== portableKey(path)
-    )
-      return true;
+    if (/(?:^|\/)(?:\.agents\/skills|skills)\/*$/u.test(target)) return true;
     const explicit = [
       ...target.matchAll(/(?:^|\/)(?:\.agents\/skills|skills)\/([^/]+)/gu),
     ];
@@ -182,7 +176,7 @@ export function validateResourceLinks(
       text
         .replace(/<!--[\s\S]*?-->/gu, '')
         .match(
-          /(?:\.?\.?\/|\/)?(?:\.agents\/skills\/[^\s`<>"')]+|\.agentscli\/(?:templates\/conventions|conventions)\/[^\s`<>"')]+|\.\.\/[^\s`<>"')]+|(?:https?|skill|file):\/\/[^\s`<>"')]+)/giu,
+          /(?:\.?\.?\/|\/)?(?:(?:\.agents\/skills|\.agentscli\/conventions)(?:\/[^\s`<>"')]+)?(?=[\s`<>"')]|$)|\.\.\/[^\s`<>"')]+|(?:https?|skill|file):\/\/[^\s`<>"')]+)/giu,
         ) ?? [];
     for (const target of candidates)
       if (prohibited(linkTarget(target, path)))
@@ -194,9 +188,7 @@ export function validateResourceLinks(
   }
 }
 export function validateResources({ conventions = [], skills = [] }) {
-  const conventionPaths = conventions.flatMap((c) =>
-    [c.path, c.output].filter(Boolean),
-  );
+  const conventionPaths = conventions.map((c) => c.path);
   const skillRoots = skills.map((s) => s.path);
   const seenConventions = new Set(),
     seenSkills = new Set();
@@ -208,16 +200,13 @@ export function validateResources({ conventions = [], skills = [] }) {
       conventions: conventionPaths,
       skillRoots,
     };
-    validateResourceLinks(parsed.body, c.output ?? c.path, opts);
+    validateResourceLinks(parsed.body, c.path, opts);
     validateResourceLinks(
       'Discovery: ' + inlineTrigger(parsed.trigger),
       'AGENTS.md',
-      {
-        ...opts,
-        trigger: true,
-      },
+      opts,
     );
-    const key = `${c.source}:${portableKey(c.id)}`;
+    const key = portableKey(c.path);
     if (seenConventions.has(key))
       fail('RESOURCE_COLLISION', `Duplicate convention ${key}.`, c.path);
     seenConventions.add(key);

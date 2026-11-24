@@ -76,7 +76,6 @@ test('whole skill trees map without requiring initial convention sources', () =>
     'Support content\n',
   );
   assert.ok(resources.every((item) => item.destination.startsWith('skills/')));
-  assert.ok(resources.every((item) => !item.destination.includes('release')));
   assert.deepEqual(
     [
       ...new Set(
@@ -132,12 +131,9 @@ test('packaging rejects linked sources, hardlinks, unsafe aliases and missing sk
   );
 });
 test('packaging rejects sources outside the two operational skills', () => {
-  for (const path of [
-    'starter/conventions/project.tpl.md',
-    'instructions.tpl.md',
-  ]) {
+  for (const path of ['notes/guide.md', 'unowned.mjs']) {
     const { root, io, add } = resourceIO();
-    add(`assets/templates/${path}`, '# Unexpected template resource\n');
+    add(`assets/templates/${path}`, 'Unexpected package resource\n');
     assert.throws(
       () => collectResources(root, io),
       /only consumer skill sources/,

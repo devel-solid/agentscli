@@ -56,43 +56,18 @@ test('dispatch forwards root and read-only apply preview', async () => {
   ]);
 });
 
-test('removed, misplaced, duplicate, and incompatible options never dispatch', async () => {
+test('unknown, private, misplaced, duplicate, and incompatible options never dispatch', async () => {
   const invalid = [
     [],
-    ['release'],
-    ['init'],
+    ['unknown'],
     ['validate'],
     ['sync'],
-    ['apply', '--base'],
-    ['apply', '--starter', 'minimal'],
-    ['validate', '--offline'],
-    ['sync', '--frozen'],
-    ['sync', '--debug'],
-    ['sync', '--lang', 'en'],
-    ['validate', '--dry-run'],
+    ['apply', '--unknown'],
     ['apply', '--check'],
-    ['apply', '--migrate'],
-    ['--migrate', 'apply'],
-    ['apply', '--migrate=true'],
-    ['apply', '--migrate', '--json'],
-    ['apply', '--help', '--migrate'],
-    ['apply', '--migrate', '--check'],
-    ['sync', '--migrate'],
-    ['validate', '--migrate'],
-    ['apply', '--migrate', '--migrate'],
-    ['apply', '--templates-dir', 'custom'],
-    ['apply', '--conventions-dir', 'custom'],
-    ['sync', '--dry-run', '--check'],
-    ['apply', '--lang', 'en'],
-    ['apply', '--lang=pt-br'],
-    ['apply', '--lang'],
+    ['apply', '--dry-run=true'],
     ['apply', '--repo-root='],
-    ['apply', '--lang='],
-    ['apply', '--lang', 'en', '--lang', 'pt-br'],
-    ['sync', '--json', '--json'],
-    ['sync', '--dry-run=true'],
+    ['apply', '--json', '--json'],
     ['apply', 'extra'],
-    ['sync', '--version'],
     ['--help', '--check'],
     ['--version', '--help'],
     ['--version', '--json'],
@@ -128,18 +103,18 @@ test('help and standalone version use no runtime or project writes', async () =>
     assert.equal(response.exitCode, 0);
     assert.match(response.stdout, /agentscli 0\.1\.0/);
     assert.match(response.stdout, /agentscli apply/);
-    assert.match(response.stdout, /two operational\nskill trees/);
+    assert.match(response.stdout, /two operational skill trees/);
     assert.match(response.stdout, /repeat the same/);
     assert.equal(response.stderr, '');
   }
   const help = await runCli(['--help', '--json'], dependencies);
   assert.equal(JSON.parse(help.stdout).command, 'help');
   assert.match(JSON.parse(help.stdout).text, /Git state/);
-  assert.doesNotMatch(JSON.parse(help.stdout).text, /--lang|--migrate/);
-  assert.doesNotMatch(
+  assert.match(
     helpText('0.1.0'),
-    /agentscli release|--base|--frozen|--offline/,
+    /Author conventions directly in \.agentscli\/conventions\/\*\*\/\*\.md/,
   );
+  assert.match(helpText('0.1.0'), /original bytes are\npreserved/);
 });
 
 test('JSON preserves drift, validation, and operational exit codes in one document', async () => {
@@ -198,7 +173,7 @@ test('unexpected boundary exceptions become operational results and usage remain
   assert.deepEqual(JSON.parse(response.stdout).diagnostics, [
     { code: 'OPERATION_FAILED', message: 'Read failed.' },
   ]);
-  const usage = await runCli(['apply', '--offline', '--json']);
+  const usage = await runCli(['apply', '--unknown', '--json']);
   assert.equal(usage.exitCode, 2);
   assert.equal(JSON.parse(usage.stdout).diagnostics[0].code, 'USAGE');
   assert.equal(usage.stderr, '');

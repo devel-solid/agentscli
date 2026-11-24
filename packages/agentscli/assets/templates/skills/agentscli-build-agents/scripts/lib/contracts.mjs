@@ -8,9 +8,7 @@ export class EngineError extends Error {
     this.path = path;
   }
 }
-export const TEMPLATE_ROOT = '.agentscli/templates',
-  CONVENTION_ROOT = `${TEMPLATE_ROOT}/conventions`,
-  OUTPUT_ROOT = '.agentscli/conventions';
+export const CONVENTION_ROOT = '.agentscli/conventions';
 export const PRODUCT_SKILLS = [
   'agentscli-write-conventions',
   'agentscli-build-agents',

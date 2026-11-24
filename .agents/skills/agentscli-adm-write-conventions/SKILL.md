@@ -1,6 +1,6 @@
 ---
 name: agentscli-adm-write-conventions
-description: Create, review, and maintain this tool monorepo's handwritten conventions. Use for internal convention work, never consumer templates.
+description: Create, review, and maintain this tool monorepo's handwritten conventions. Use for internal convention work, never consumer conventions.
 ---
 
 # Maintain monorepo conventions

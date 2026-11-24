@@ -1,12 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import {
-  EngineError,
-  TEMPLATE_ROOT,
-  CONVENTION_ROOT,
-  OUTPUT_ROOT,
-  PRODUCT_SKILLS,
-} from './contracts.mjs';
+import { EngineError, CONVENTION_ROOT, PRODUCT_SKILLS } from './contracts.mjs';
 import { decode, frontmatter } from './markdown.mjs';
 import { containedPath, portableKey, uniquePaths } from './paths.mjs';
 import { assertClientContext, disk, inspect, walk } from './io.mjs';
@@ -55,7 +49,7 @@ export function read(io, root, path) {
   if (!inspect(io, root, path, 'file'))
     throw new EngineError(
       'SOURCE_MISSING',
-      `Missing source: ${path}. Use agentscli apply to restore setup.`,
+      `Missing source: ${path}. Verify project resources before retrying.`,
       2,
       path,
     );
@@ -144,18 +138,12 @@ function effectBuilder(io, root) {
     for (const [relative, content] of Object.entries(files))
       compare(`${directory}/${relative}`, content, prospective);
   };
-  return { effects, compare, remove, tree };
+  return { effects, compare, tree };
 }
 export function plan(io, root, command, resources) {
   assertClientContext(io, root);
   const applying = command === 'apply';
-  inspect(io, root, TEMPLATE_ROOT, 'directory');
-  inspect(io, root, OUTPUT_ROOT, 'directory');
-  const builder = effectBuilder(io, root),
-    { effects, compare, tree, remove } = builder;
-  const virtual = new Map();
-  for (const path of walk(io, root, CONVENTION_ROOT))
-    if (path.endsWith('.tpl.md')) virtual.set(path, read(io, root, path));
+  const { effects, compare, tree } = effectBuilder(io, root);
   if (applying) {
     if (!resources)
       throw new EngineError(
@@ -174,19 +162,14 @@ export function plan(io, root, command, resources) {
       );
   }
 
-  const localConventions = [...virtual]
-    .sort(([a], [b]) => compareKeys(portableKey(a), portableKey(b)))
-    .map(([path, content]) => ({
-      id: path.slice(CONVENTION_ROOT.length + 1, -7),
-      source: 'local',
+  const conventions = walk(io, root, CONVENTION_ROOT)
+    .filter((path) => path.endsWith('.md'))
+    .sort((a, b) => compareKeys(portableKey(a), portableKey(b)))
+    .map((path) => ({
       path,
-      output: `${OUTPUT_ROOT}/${path.slice(CONVENTION_ROOT.length + 1, -7)}.md`,
-      text: decode(content, path),
+      text: decode(read(io, root, path), path),
     }));
-  const conventions = localConventions.sort((a, b) =>
-    compareKeys(portableKey(a.output), portableKey(b.output)),
-  );
-  uniquePaths(conventions.map((c) => c.output));
+  uniquePaths(conventions.map((c) => c.path));
   const skills = [];
   if (inspect(io, root, '.agents/skills', 'directory'))
     for (const id of io.names(containedPath(root, '.agents/skills')).sort()) {
@@ -230,13 +213,7 @@ export function plan(io, root, command, resources) {
           },
         });
   validateResources({ conventions, skills });
-  const documents = render(
-    conventions.map((c) => ({
-      source: c.path,
-      output: c.output,
-      text: c.text,
-    })),
-  );
+  const documents = render(conventions);
   for (const [path, text] of documents) {
     const existing = inspect(io, root, path, 'file');
     if (
@@ -252,8 +229,6 @@ export function plan(io, root, command, resources) {
       );
     compare(path, bytes(text));
   }
-  for (const path of walk(io, root, OUTPUT_ROOT))
-    if (!documents.has(path)) remove(path);
   if (applying) {
     for (const id of PRODUCT_SKILLS)
       tree(`.agents/skills/${id}`, resources.skills[id]);

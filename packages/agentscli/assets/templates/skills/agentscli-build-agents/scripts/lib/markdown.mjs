@@ -1,7 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import { EngineError, parseYaml, exactKeys } from './contracts.mjs';
-export const GENERATED = '<!-- agentscli:generated -->';
 export const normalizeText = (text) => text.replace(/\r\n?/gu, '\n');
 export const inlineTrigger = (text) =>
   normalizeText(text)
@@ -70,7 +69,7 @@ export function validateConventionFilename(title, path) {
       2,
       path,
     );
-  const expected = `${basename}.tpl.md`;
+  const expected = `${basename}.md`;
   if (path.slice(path.lastIndexOf('/') + 1) !== expected)
     throw new EngineError(
       'SOURCE_FILENAME',
@@ -134,6 +133,6 @@ export function validateConvention(input, path) {
   return {
     title: parsed.title,
     trigger: header.fields.trigger,
-    body: parsed.text.trimEnd() + '\n',
+    body: parsed.text,
   };
 }

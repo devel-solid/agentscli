@@ -125,11 +125,8 @@ test(`conventions loads only the verified local engine and requests read-only va
   assert.deepEqual(calls, [['validate', { repoRoot: fs.root }]]);
 });
 
-test(`conventions ignores unrelated compose files in the root and its ancestors`, async () => {
-  for (const relative of [
-    'agentscli-compose.yml',
-    '../agentscli-compose.yml',
-  ]) {
+test(`conventions ignores unrelated files in the root and its ancestors`, async () => {
+  for (const relative of ['project-settings.yml', '../project-settings.yml']) {
     const content = 'this: [is not valid YAML',
       state = fixture({ [relative]: content }),
       file = join(state.root, relative),
@@ -174,7 +171,7 @@ test(`conventions can validate an empty client and its first authored convention
   assert.equal(response.exitCode, 0, JSON.stringify(response.result));
   assert.equal(state.writes.length, 0);
   state.put(
-    '.agentscli/templates/conventions/regras-do-projeto.tpl.md',
+    '.agentscli/conventions/regras-do-projeto.md',
     '---\ntrigger: Ao alterar o projeto.\n---\n# Regras do projeto\n\nPreserve as decisões existentes.\n',
   );
   response = await validateWithEngine(state);
@@ -182,12 +179,12 @@ test(`conventions can validate an empty client and its first authored convention
   assert.equal(state.writes.length, 0);
 });
 
-test(`conventions ignores obsolete client configuration and preserves it during validation`, async () => {
-  const obsolete = 'this: [is not valid YAML';
-  const state = fixture({ '.agentscli/config.yml': obsolete });
+test(`conventions preserves unrelated authored files during validation`, async () => {
+  const authored = 'this: [is not valid YAML';
+  const state = fixture({ 'notes/project.yml': authored });
   const response = await validateWithEngine(state);
   assert.equal(response.exitCode, 0, JSON.stringify(response.result));
-  assert.equal(state.text('.agentscli/config.yml'), obsolete);
+  assert.equal(state.text('notes/project.yml'), authored);
   assert.equal(state.writes.length, 0);
 });
 

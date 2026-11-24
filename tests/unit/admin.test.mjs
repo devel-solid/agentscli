@@ -153,6 +153,10 @@ test('administrative rule link checker recognizes encoded, reference, image and 
     '[Skill](../.agents/skills/agentscli-adm-edit-agents)',
     '[Support](../.agents/skills/agentscli-adm-edit-agents/references/guide.md)',
     '[Script](../.agents/skills/agentscli-adm-edit-agents/scripts/check.mjs)',
+    '[Conventions](../.agentscli/conventions)',
+    '[Conventions](../docs/conventions/)',
+    '[Skills](../.agents/skills)',
+    '[Skills](https://example.org/team/skills/)',
   ])
     assert.throws(
       () => checkConvention(`# Review\n\n${body}`, conventions[0], ctx),
@@ -308,12 +312,12 @@ test('convention discovery cannot be disabled by removing optional consultation 
   );
 });
 
-test('resource links normalize HTML entities, external resource URLs, case and source aliases', () => {
+test('resource links normalize HTML entities, external resource URLs and case', () => {
   for (const body of [
     '<a href="te&#115;ting.md">Testing</a>',
     '<a href=TESTING.md>Testing</a>',
     '[Skill](https://example.org/repo/skills/other/SKILL.md?x=1#heading)',
-    '[Convention](https://example.org/repo/conventions/testing.tpl.md)',
+    '[Convention](https://example.org/repo/conventions/testing.md)',
     '[Skill](skill://other)',
   ])
     assert.throws(
@@ -436,7 +440,7 @@ function consumerArchive() {
   return { pkg, entries };
 }
 
-test('release inspection requires complete skill trees and compares every prepared byte without starter conventions', () => {
+test('release inspection requires complete skill trees and compares every prepared byte', () => {
   const { pkg, entries } = consumerArchive();
   assert.throws(
     () => inspectArchive(tar(entries), pkg),
@@ -494,13 +498,13 @@ test('release inspection requires complete skill trees and compares every prepar
         tar([
           ...entries,
           {
-            name: 'package/dist/assets/templates/conventions/project.tpl.md',
+            name: 'package/dist/assets/extra.md',
             body: '# Obsolete',
           },
         ]),
         pkg,
       ),
-    /Unsupported distributed convention template/,
+    /File outside the package delivery inventory/,
   );
   const windowsBinMode = entries.map((entry) =>
     entry.name === 'package/dist/cli.js' ? { ...entry, mode: 0o644 } : entry,
@@ -537,7 +541,13 @@ test('release inspection requires complete skill trees and compares every prepar
   assert.throws(
     () =>
       inspectArchive(
-        tar([...entries, { name: 'package/dist/extra.js', body: 'extra' }]),
+        tar([
+          ...entries,
+          {
+            name: 'package/dist/assets/skills/agentscli-build-agents/scripts/extra.mjs',
+            body: 'extra',
+          },
+        ]),
         pkg,
         prepared,
       ),

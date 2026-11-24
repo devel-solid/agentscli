@@ -219,13 +219,9 @@ export function resourceTarget(
     }
   }
   const lexical = key(decoded.split(/[?#]/u)[0]);
-  if (/(?:^|\/)(?:\.agents\/skills|skills)\/[^/]+/u.test(lexical))
+  if (/(?:^|\/)(?:\.agents\/skills|skills)(?:\/|$)/u.test(lexical))
     return 'skill';
-  if (
-    /(?:^|\/)(?:\.agentscli\/(?:templates\/)?|docs\/)?conventions\/.+\.(?:tpl\.)?md$/u.test(
-      lexical,
-    )
-  )
+  if (/(?:^|\/)(?:\.agentscli\/|docs\/)?conventions(?:\/|$)/u.test(lexical))
     return 'convention';
   if (remote) {
     if (conventions.some((file) => lexical.endsWith('/' + key(basename(file)))))

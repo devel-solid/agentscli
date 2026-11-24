@@ -80,20 +80,19 @@ test('portable paths reject escapes, reserved names and aliases', () => {
 });
 test('conventions require only trigger and exactly one live H1; examples remain literal', () => {
   const text =
-    convention() + '\n```md\n# Example\n<!-- AGENT-CARD START -->\n```\n';
-  assert.equal(validateConvention(text, 'testing.tpl.md').title, 'Testing');
+    convention() + '\n```md\n# Example\ntrigger: literal example\n```\n';
+  assert.equal(validateConvention(text, 'testing.md').title, 'Testing');
   for (const text of [
     convention().replace('trigger:', 'unknown: true\ntrigger:'),
     convention().replace('Read before testing.', ''),
     convention() + '\n# Second\n',
     '# Testing\n',
   ])
-    assert.throws(() => validateConvention(text, 'testing.tpl.md'));
+    assert.throws(() => validateConvention(text, 'testing.md'));
   assert.throws(() => decode(new Uint8Array([0xff]), 'invalid'));
-  const old =
-    '# Testing\n<!-- AGENT-CARD START -->\nRead testing.\n<!-- AGENT-CARD END -->\nRule.\n';
+  const missing = '# Testing\n\nKeep useful rules.\n';
   assert.throws(
-    () => validateConvention(old, 'testing.tpl.md'),
+    () => validateConvention(missing, 'testing.md'),
     (error) =>
       error instanceof EngineError &&
       error.code === 'SOURCE_TRIGGER' &&
@@ -101,8 +100,8 @@ test('conventions require only trigger and exactly one live H1; examples remain 
   );
   assert.equal(
     validateConvention(
-      `---\ntrigger: Current metadata.\n---\n${old}`,
-      'testing.tpl.md',
+      `---\ntrigger: Current metadata.\n---\n${missing}`,
+      'testing.md',
     ).trigger,
     'Current metadata.',
   );
@@ -118,14 +117,14 @@ test('convention filenames normalize Unicode titles without limiting their langu
     ['\u958b\u767a\u898f\u7d04', '\u958b\u767a\u898f\u7d04'],
     ['\ud55c\uae00 \uaddc\uce59', '\ud55c\uae00-\uaddc\uce59'],
   ]) {
-    validateConventionFilename(title, `${basename}.tpl.md`);
+    validateConventionFilename(title, `${basename}.md`);
     assert.throws(
-      () => validateConventionFilename(title, 'different.tpl.md'),
+      () => validateConventionFilename(title, 'different.md'),
       /Expected filename/,
     );
   }
   assert.throws(
-    () => validateConventionFilename('!!!', 'empty.tpl.md'),
+    () => validateConventionFilename('!!!', 'empty.md'),
     /containing letters or numbers/,
   );
 });
@@ -166,16 +165,10 @@ test('standard skill frontmatter rejects extension keys and non-string optional 
 
 test('supported links reject cross-resource references, HTML, encoded aliases, and skill command paths', () => {
   const base = {
-    id: 'testing',
-    source: 'local',
-    path: '.agentscli/templates/conventions/testing.tpl.md',
-    output: '.agentscli/conventions/testing.md',
+    path: '.agentscli/conventions/testing.md',
   };
   const other = {
-    id: 'other',
-    source: 'local',
-    path: '.agentscli/templates/conventions/other.tpl.md',
-    output: '.agentscli/conventions/other.md',
+    path: '.agentscli/conventions/other.md',
     text: convention('Other'),
   };
   for (const link of [
@@ -184,6 +177,11 @@ test('supported links reject cross-resource references, HTML, encoded aliases, a
     '<a href="other.md">rule</a>',
     '![rule](%6fther.md)',
     '[skill](../../.agents/skills/review/SKILL.md)',
+    '[directory](/.agentscli/conventions/)',
+    '[directory](https://example.org/team/conventions)',
+    '[directory](https://example.org/team/conventions/team/)',
+    '[skills](/.agents/skills)',
+    '[skills](https://example.org/team/skills/)',
   ])
     assert.throws(
       () =>
@@ -198,7 +196,7 @@ test('supported links reject cross-resource references, HTML, encoded aliases, a
         ...base,
         text:
           convention() +
-          '[own](#testing) [ordinary](../../README.md)\n\n```md\n[example](other.md)\n```\n',
+          '[own](#testing) [self](testing.md) [ordinary](../../README.md) [report](https://example.org/conventions-report)\n\n```md\n[example](other.md)\n```\n',
       },
       other,
     ],
@@ -225,7 +223,7 @@ test('supported links reject cross-resource references, HTML, encoded aliases, a
   const own = {
     'SKILL.md': bytes(
       Buffer.from(skill('review')).toString() +
-        '[support](references/note.md)\n',
+        '[own](.) [support](references/note.md) [directory](references/) [report](https://example.org/conventions-report)\n',
     ),
     'references/note.md': bytes('Own rule.'),
   };
@@ -248,11 +246,9 @@ test('apply previews without writes then replaces managed drift while preserving
   assert.ok(preview.result.changes.length);
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal((await invoke(fs)).result.changes.length, 0);
-  fs.put(
-    '.agentscli/templates/conventions/custom.tpl.md',
-    convention('Custom'),
-  );
-  fs.put('.agentscli/conventions/extra.bin', 'obsolete');
+  fs.put('.agentscli/conventions/custom.md', convention('Custom'));
+  const attachment = new Uint8Array([0, 255, 13, 10]);
+  fs.put('.agentscli/conventions/notes/attachment.bin', attachment);
   fs.put('.agents/skills/agentscli-build-agents/unwanted.txt', 'obsolete');
   fs.put('.agents/skills/unrelated/SKILL.md', skill('unrelated'));
   fs.put(
@@ -261,13 +257,10 @@ test('apply previews without writes then replaces managed drift while preserving
   );
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.match(fs.text('AGENTS.md'), /Custom/);
-  assert.match(
-    fs.text('.agentscli/templates/conventions/custom.tpl.md'),
-    /trigger:/,
-  );
-  assert.equal(
-    fs.nodes.has(join(fs.root, '.agentscli/conventions/extra.bin')),
-    false,
+  assert.match(fs.text('.agentscli/conventions/custom.md'), /trigger:/);
+  assert.deepEqual(
+    fs.io.read(join(fs.root, '.agentscli/conventions/notes/attachment.bin')),
+    attachment,
   );
   assert.equal(
     fs.nodes.has(
@@ -277,45 +270,55 @@ test('apply previews without writes then replaces managed drift while preserving
   );
   assert.match(fs.text('.agents/skills/unrelated/SKILL.md'), /unrelated/);
 });
-test('apply ignores obsolete configuration and preserves authored text in any language', async () => {
-  const source =
-    convention('Regras gerais', 'Leia ao revisar.') +
-    '\n\u65e5\u672c\u8a9e\u306e\u672c\u6587\u3002\n';
-  const obsolete = 'invalid: [yaml\nlanguage: arbitrary\n';
-  const fs = client({
-    '.agentscli/config.yml': obsolete,
-    '.agentscli/templates/conventions/regras-gerais.tpl.md': source,
-  });
-  assert.equal((await invoke(fs)).exitCode, 0);
-  assert.equal(fs.text('.agentscli/config.yml'), obsolete);
-  assert.equal(
-    fs.text('.agentscli/templates/conventions/regras-gerais.tpl.md'),
-    source,
+test('repeated operations preserve authored convention bytes including BOM, CRLF and whitespace', async () => {
+  const path = '.agentscli/conventions/team/regras-gerais.md';
+  const authored = bytes(
+    '\ufeff---\r\ntrigger: "Leia ao revisar."\r\n---\r\n\r\n# Regras gerais\r\n\r\n日本語の本文。  \r\n\r\n',
   );
+  const fs = client({ [path]: authored });
+  for (let repeat = 0; repeat < 2; repeat++) {
+    for (const [command, options] of [
+      ['apply', { dryRun: true }],
+      ['validate', {}],
+      ['sync', { dryRun: true }],
+      ['apply', {}],
+      ['sync', {}],
+      ['sync', { check: true }],
+    ]) {
+      const before = fs.writes.length;
+      const response = await invoke(fs, command, options);
+      assert.equal(response.exitCode, 0, JSON.stringify(response.result));
+      assert.ok(
+        response.result.changes.every(({ path: target }) => target !== path),
+      );
+      assert.deepEqual(fs.io.read(join(fs.root, path)), authored);
+      assert.ok(
+        fs.writes
+          .slice(before)
+          .every(
+            ([, target]) =>
+              !target.startsWith(join(fs.root, '.agentscli/conventions')),
+          ),
+      );
+      if (options.dryRun || options.check || command === 'validate')
+        assert.equal(fs.writes.length, before);
+    }
+  }
   assert.equal(
-    fs.text('.agentscli/conventions/regras-gerais.md'),
-    '<!-- agentscli:generated -->\n\n\n# Regras gerais\n\nKeep useful rules.\n\n\u65e5\u672c\u8a9e\u306e\u672c\u6587\u3002\n',
+    fs.text('AGENTS.md'),
+    `${INDEX_HEADER}\n- [Regras gerais](.agentscli/conventions/team/regras-gerais.md): Leia ao revisar.\n`,
   );
-  assert.match(fs.text('AGENTS.md'), /Regras gerais.*Leia ao revisar/);
-  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
-  const originalRead = fs.io.read;
-  fs.io.read = (path) => {
-    assert.notEqual(path, join(fs.root, '.agentscli/config.yml'));
-    return originalRead(path);
-  };
-  for (const command of ['apply', 'validate', 'sync'])
-    assert.equal((await invoke(fs, command)).exitCode, 0);
 });
 
-test('unsupported configuration files are unrelated inputs and are never read or changed', async () => {
+test('unrelated authored files are never read or changed', async () => {
   const files = {
-    'agentscli-compose.yml': 'invalid: [yaml\nlanguage: anything\n',
-    'templates/testing.tpl.md': '# Authored text outside current sources.\n',
+    'project.yml': 'invalid: [yaml\n',
+    'notes/testing.md': '# Authored text outside convention discovery.\n',
     'docs/conventions/testing.md': '# Unrelated instructions.\n',
   };
   const fs = client({
     ...files,
-    '.agentscli/templates/conventions/testing.tpl.md': convention(),
+    '.agentscli/conventions/testing.md': convention(),
   });
   const originalRead = fs.io.read;
   fs.io.read = (path) => {
@@ -346,8 +349,8 @@ test('unsupported configuration files are unrelated inputs and are never read or
   assert.match(fs.text('AGENTS.md'), /Testing/);
 });
 
-test('former operational skill names have ordinary local ownership and validation', async () => {
-  for (const id of ['agentscli-update-agents', 'agentscli-edit-agents']) {
+test('local skills have protected ownership and full validation', async () => {
+  for (const id of ['review', 'test-helper']) {
     const base = `.agents/skills/${id}`;
     const files = {
       [`${base}/SKILL.md`]: skill(id),
@@ -388,14 +391,10 @@ test('generation preserves a non-Latin title, trigger and body with deterministi
   const trigger = '\u958b\u767a\u6642\u306b\u8aad\u3080\u3002';
   const body = `\n# ${title}\n\n\u898f\u7d04\u3092\u5b88\u308b\u3002\n`;
   const source = `---\ntrigger: ${trigger}\n---\n${body}`;
-  const path = `.agentscli/templates/conventions/${title}.tpl.md`;
+  const path = `.agentscli/conventions/${title}.md`;
   const fs = client({ [path]: source });
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal(fs.text(path), source);
-  assert.equal(
-    fs.text(`.agentscli/conventions/${title}.md`),
-    `<!-- agentscli:generated -->\n\n${body}`,
-  );
   assert.equal(
     fs.text('AGENTS.md'),
     `${INDEX_HEADER}\n- [${title}](.agentscli/conventions/${encodeURIComponent(title)}.md): ${trigger}\n`,
@@ -403,13 +402,11 @@ test('generation preserves a non-Latin title, trigger and body with deterministi
   assert.equal((await invoke(fs)).result.changes.length, 0);
 });
 
-test('first apply generates an empty index without configuration or starter conventions', async () => {
+test('first apply generates an empty index and sync indexes a first authored convention', async () => {
   const fs = client();
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
-  assert.equal(fs.io.info(join(fs.root, '.agentscli/config.yml')), undefined);
-  assert.equal(fs.io.info(join(fs.root, '.agentscli/templates')), undefined);
-  fs.put('.agentscli/templates/conventions/testing.tpl.md', convention());
+  fs.put('.agentscli/conventions/testing.md', convention());
   assert.equal((await invoke(fs, 'sync')).exitCode, 0);
   assert.match(fs.text('AGENTS.md'), /Testing/);
 });
@@ -457,7 +454,7 @@ test('skill discovery preserves regular metadata across apply and private genera
     );
   }
   assert.equal((await invoke(fs)).exitCode, 0);
-  fs.put('.agentscli/templates/conventions/testing.tpl.md', convention());
+  fs.put('.agentscli/conventions/testing.md', convention());
   const before = fs.writes.length;
   assert.equal((await invoke(fs, 'sync', { dryRun: true })).exitCode, 0);
   assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 1);
@@ -554,19 +551,54 @@ test('manual root AGENTS and invalid authored input block all writes', async () 
   for (const files of [
     { 'AGENTS.md': '# Handwritten\n' },
     {
-      '.agentscli/templates/conventions/testing.tpl.md': convention().replace(
+      '.agentscli/conventions/testing.md': convention().replace(
         'trigger:',
         'unknown: true\ntrigger:',
       ),
     },
   ]) {
     const fs = client(files);
-    const response = await invoke(fs);
-    assert.equal(response.exitCode, 2);
-    assert.equal(fs.writes.length, 0);
+    for (const [command, options] of [
+      ['apply', {}],
+      ['apply', { dryRun: true }],
+      ['validate', {}],
+      ['sync', {}],
+      ['sync', { check: true }],
+    ]) {
+      const response = await invoke(fs, command, options);
+      assert.equal(response.exitCode, 2);
+      assert.equal(fs.writes.length, 0);
+      for (const [path, content] of Object.entries(files))
+        assert.equal(fs.text(path), content);
+    }
   }
 });
-test('tool package identity, verified workspaces, and ancestors guard contexts without agentscli.yml', async () => {
+
+test('nested convention body links resolve at their final path and trigger links resolve in AGENTS', async () => {
+  const path = '.agentscli/conventions/team/testing.md';
+  const ownBody = '[Own](#testing) [Project](../../../README.md)\n';
+  const fs = client({ [path]: convention() + ownBody });
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.equal(fs.text(path), convention() + ownBody);
+  for (const text of [
+    convention() + '[Other](../other.md)\n',
+    convention(
+      'Testing',
+      '"[Other](.agentscli/conventions/other.md) before testing."',
+    ),
+  ]) {
+    const rejected = client({
+      [path]: text,
+      '.agentscli/conventions/other.md': convention('Other'),
+    });
+    const response = await invoke(rejected);
+    assert.equal(response.exitCode, 2);
+    assert.equal(response.result.diagnostics[0].code, 'RESOURCE_LINK');
+    assert.equal(rejected.writes.length, 0);
+    assert.equal(rejected.text(path), text);
+  }
+});
+test('tool package identity, verified workspaces, and ancestors guard contexts', async () => {
   for (const files of [
     {
       'package.json': JSON.stringify({
@@ -590,7 +622,6 @@ test('tool package identity, verified workspaces, and ancestors guard contexts w
     assert.equal(fs.writes.length, 0);
   }
   const fs = client({
-    'agentscli.yml': 'skills: []\n',
     'package.json': '{"private":true,"workspaces":["packages/*"]}',
   });
   assert.equal((await invoke(fs, 'validate')).exitCode, 0);
@@ -610,22 +641,28 @@ test('tool package identity, verified workspaces, and ancestors guard contexts w
 test('safe path preflight rejects symlinks, hardlinks, and portable aliases before mutation', async () => {
   for (const overrides of [{ kind: 'link' }, { nlink: 2 }]) {
     const fs = client();
-    fs.put(
-      '.agentscli/templates/conventions/testing.tpl.md',
-      convention(),
-      overrides,
-    );
+    fs.put('.agentscli/conventions/testing.md', convention(), overrides);
     assert.equal((await invoke(fs)).exitCode, 2);
     assert.equal(fs.writes.length, 0);
   }
   const fs = client({
-    '.agentscli/templates/Conventions/test.tpl.md': convention(),
+    '.agentscli/Conventions/testing.md': convention(),
   });
   assert.equal((await invoke(fs)).exitCode, 2);
   assert.equal(fs.writes.length, 0);
+  const collision = client({
+    '.agentscli/conventions/team/testing.md': convention(),
+    '.agentscli/conventions/TEAM/other.md': convention('Other'),
+  });
+  const response = await invoke(collision);
+  assert.equal(response.exitCode, 2);
+  assert.equal(response.result.diagnostics[0].code, 'PATH_ALIAS');
+  assert.equal(collision.writes.length, 0);
 });
 test('partial file failure report completed/pending effects and retry converges', async () => {
-  const fs = memory(),
+  const path = '.agentscli/conventions/testing.md';
+  const authored = bytes(convention().replaceAll('\n', '\r\n'));
+  const fs = memory({ [path]: authored }),
     original = fs.io.rename;
   let count = 0;
   fs.io.rename = (...args) => {
@@ -636,45 +673,45 @@ test('partial file failure report completed/pending effects and retry converges'
   assert.equal(failed.exitCode, 3);
   assert.ok(failed.result.changes.some((c) => c.status === 'completed'));
   assert.ok(failed.result.changes.some((c) => c.status === 'pending'));
+  assert.deepEqual(fs.io.read(join(fs.root, path)), authored);
   fs.io.rename = original;
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal((await invoke(fs)).result.changes.length, 0);
+  assert.deepEqual(fs.io.read(join(fs.root, path)), authored);
 });
 
-test('obsolete generated output deletion failures report progress and retry the current plan', async () => {
-  const fs = client();
+test('authored edits and deletions update only the index and are never recreated', async () => {
+  const path = '.agentscli/conventions/nested/testing.md';
+  const fs = client({ [path]: convention() });
   assert.equal((await invoke(fs)).exitCode, 0);
-  fs.put('.agentscli/templates/conventions/testing.tpl.md', convention());
-  const obsolete = '.agentscli/conventions/obsolete.md';
-  fs.put(obsolete, 'Replaceable output.\n');
-  const unlink = fs.io.unlink;
-  fs.io.unlink = (path) => {
-    if (path === join(fs.root, obsolete)) throw new Error('Deletion failed.');
-    unlink(path);
-  };
-  const failed = await invoke(fs);
-  assert.equal(failed.exitCode, 3);
-  assert.ok(failed.result.changes.some(({ status }) => status === 'completed'));
-  assert.ok(
-    failed.result.changes.some(
-      ({ path, status }) => path === obsolete && status === 'pending',
-    ),
+  const edited = bytes(
+    convention('Testing', 'Read before changing tests.') +
+      '\nAuthor keeps  trailing spaces.  \n',
   );
-  assert.ok(
-    failed.result.diagnostics.some(({ code }) => code === 'RETRY_OPERATION'),
-  );
-  assert.equal(fs.text(obsolete), 'Replaceable output.\n');
-  fs.io.unlink = unlink;
+  fs.put(path, edited);
+  let before = fs.writes.length;
+  assert.equal((await invoke(fs, 'validate')).exitCode, 0);
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 1);
+  assert.equal(fs.writes.length, before);
+  assert.equal((await invoke(fs, 'sync')).exitCode, 0);
+  assert.match(fs.text('AGENTS.md'), /Read before changing tests/);
+  assert.deepEqual(fs.io.read(join(fs.root, path)), edited);
+  fs.nodes.delete(join(fs.root, path));
+  before = fs.writes.length;
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 1);
+  assert.equal(fs.writes.length, before);
   assert.equal((await invoke(fs)).exitCode, 0);
-  assert.equal(fs.io.info(join(fs.root, obsolete)), undefined);
+  assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
+  assert.equal(fs.nodes.has(join(fs.root, path)), false);
+  assert.equal((await invoke(fs, 'sync')).result.changes.length, 0);
   assert.equal((await invoke(fs)).result.changes.length, 0);
 });
-test('private argument parser rejects aliases, repeated flags, migration, language, and invalid modes without writes', async () => {
+
+test('private argument parser rejects public commands, unknown flags and incompatible modes', async () => {
   for (const args of [
     ['apply'],
     ['validate', '--check'],
-    ['sync', '--migrate'],
-    ['sync', '--lang', 'en'],
+    ['sync', '--unknown'],
     ['sync', '--json', '--json'],
     ['sync', '--dry-run', '--check'],
   ])
@@ -704,7 +741,10 @@ test('skill resource aliases reject local paths, remote URLs, HTML entities, cas
     '[Other](https://example.org/team/tree/main/skills/other/)',
     '<a title=">" href="../&#111;ther/SKILL.md">Other</a>',
     '[Other](skill://other)',
-    '[Rule](https://example.org/team/blob/main/conventions/testing.tpl.md)',
+    '[Rule](https://example.org/team/blob/main/conventions/testing.md)',
+    '[Directory](https://example.org/team/conventions/team/)',
+    '[Skills](/.agents/skills)',
+    '[Skills](https://example.org/team/skills/)',
   ])
     assert.throws(
       () => validateResources({ skills: [make(text), other] }),
@@ -773,16 +813,14 @@ test('apply replaces proven managed file and directory topologies without adopti
 test('index bytes are fixed, sorted, escaped and independent of source order', () => {
   const inputs = [
     {
-      source: '.agentscli/templates/conventions/z/seguranca-dados.tpl.md',
-      output: '.agentscli/conventions/z pasta/(dados)/seguranca-dados.md',
+      path: '.agentscli/conventions/z pasta/(dados)/seguranca-dados.md',
       text: convention(
         'Segurança [dados]',
         '"Consultar ao manipular\\r\\ndados **sensíveis**."',
       ),
     },
     {
-      source: '.agentscli/templates/conventions/testes.tpl.md',
-      output: '.agentscli/conventions/testes.md',
+      path: '.agentscli/conventions/testes.md',
       text: convention('Testes', 'consultar ao criar ou alterar testes.'),
     },
   ];
@@ -792,40 +830,12 @@ test('index bytes are fixed, sorted, escaped and independent of source order', (
     '- [Segurança \\[dados\\]](.agentscli/conventions/z%20pasta/%28dados%29/seguranca-dados.md): Consultar ao manipular dados **sensíveis**.\n';
   assert.equal(render(inputs).get('AGENTS.md'), expected);
   assert.equal(render([...inputs].reverse()).get('AGENTS.md'), expected);
-  assert.doesNotMatch(expected, /<!--/u);
   assert.equal(render([]).get('AGENTS.md'), INDEX_HEADER);
-});
-
-test('empty client generation needs no main template and never restores deleted conventions', async () => {
-  const fs = client();
-  assert.equal((await invoke(fs)).exitCode, 0);
-  assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
-  assert.equal(
-    fs.io.info(join(fs.root, '.agentscli/templates/AGENTS.tpl.md')),
-    undefined,
-  );
-  assert.equal(
-    fs.io.info(join(fs.root, '.agentscli/templates/conventions')),
-    undefined,
-  );
-  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
-  assert.equal((await invoke(fs)).result.changes.length, 0);
-});
-
-test('retired authored main templates are preserved and have no effect on generated index', async () => {
-  const path = '.agentscli/templates/AGENTS.tpl.md';
-  const authored =
-    '# Local project\n\nDo not lose these authored instructions.\n';
-  const fs = client({ [path]: authored });
-  assert.equal((await invoke(fs)).exitCode, 0);
-  assert.equal(fs.text(path), authored);
-  assert.equal(fs.text('AGENTS.md'), INDEX_HEADER);
 });
 
 test('root ownership requires exact structural generatedBy frontmatter', async () => {
   for (const root of [
     '# Handwritten\n',
-    '<!-- agentscli:generated -->\n# Former output\n',
     '---\ngeneratedBy: another-generator\n---\n# Other output\n',
     '---\ngeneratedBy: ["@devel-solid/agentscli"]\n---\n',
     '---\ngeneratedBy: "@devel-solid/agentscli"\ngeneratedBy: "@devel-solid/agentscli"\n---\n',
@@ -866,7 +876,7 @@ test('comment-bearing discovery triggers are rejected before any planned writes'
     'texto\n<!-- hidden -->',
   ]) {
     const fs = client({
-      '.agentscli/templates/conventions/testing.tpl.md': convention(
+      '.agentscli/conventions/testing.md': convention(
         'Testing',
         JSON.stringify(trigger),
       ),
@@ -878,7 +888,7 @@ test('comment-bearing discovery triggers are rejected before any planned writes'
   }
   validateConvention(
     convention('Testing', "'consultar o literal `<!-- comment -->`.'"),
-    'testing.tpl.md',
+    'testing.md',
   );
 });
 
@@ -888,7 +898,7 @@ test('normalized discovery triggers retain cross-resource link validation', asyn
     '[Other](.agents/skills/review/SKILL.md)\nwhen editing tests.',
   ]) {
     const fs = client({
-      '.agentscli/templates/conventions/testing.tpl.md': convention(
+      '.agentscli/conventions/testing.md': convention(
         'Testing',
         JSON.stringify(trigger),
       ),
@@ -903,8 +913,7 @@ test('normalized discovery triggers retain cross-resource link validation', asyn
 test('multiline setext convention titles occupy one index line', () => {
   const document = render([
     {
-      source: '.agentscli/templates/conventions/testing-policy.tpl.md',
-      output: '.agentscli/conventions/testing-policy.md',
+      path: '.agentscli/conventions/testing-policy.md',
       text: '---\ntrigger: Read before testing.\n---\n\nTesting\npolicy\n======\n\nKeep useful rules.\n',
     },
   ]).get('AGENTS.md');
