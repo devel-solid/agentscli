@@ -10,7 +10,6 @@ import {
   tree,
   walk,
   checkOwnSkill,
-  requirements,
   checkConvention,
 } from './lib.mjs';
 
@@ -33,8 +32,7 @@ export function checkOwn(root, io = fs) {
   const own = fileURLToPath(new URL('../', import.meta.url));
   const ctx = context(root, io),
     file = resolve(own, 'SKILL.md');
-  const info = checkOwnSkill(io.readFileSync(file, 'utf8'), file, ctx);
-  requirements(own, info, ctx, io);
+  checkOwnSkill(io.readFileSync(file, 'utf8'), file, ctx);
   return ctx;
 }
 

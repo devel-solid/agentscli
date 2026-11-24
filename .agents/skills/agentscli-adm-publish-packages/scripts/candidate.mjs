@@ -1,15 +1,7 @@
 import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { basename, resolve } from 'node:path';
-import {
-  regular,
-  checkPath,
-  header,
-  links,
-  skillConfiguration,
-  tree,
-  walk,
-} from './lib.mjs';
+import { regular, checkPath, header } from './lib.mjs';
 import * as nodeFs from 'node:fs';
 import { parseDocument, visit } from 'yaml';
 
@@ -226,12 +218,25 @@ export function inspectArchive(bytes, expected, prepared) {
     .sort();
   if (JSON.stringify(actual) !== JSON.stringify([...names[name]].sort()))
     throw new Error('Incorrect operational skill inventory.');
-  const dependencies = new Map();
   for (const skill of names[name]) {
     const base = `${prefix}${skill}/`,
       entry = files.get(`${base}SKILL.md`),
       data = frontmatter(entry.bytes);
     if (
+      !data ||
+      typeof data !== 'object' ||
+      Array.isArray(data) ||
+      Object.keys(data).some(
+        (field) =>
+          ![
+            'name',
+            'description',
+            'license',
+            'compatibility',
+            'metadata',
+            'allowed-tools',
+          ].includes(field),
+      ) ||
       data.name !== skill ||
       !data.description?.trim() ||
       data.license !== 'MIT' ||
@@ -241,46 +246,7 @@ export function inspectArchive(bytes, expected, prepared) {
       Object.values(data.metadata).some((value) => typeof value !== 'string')
     )
       throw new Error(`Invalid or stale generated skill metadata: ${skill}`);
-    if (data.requires !== undefined)
-      throw new Error('Root skill requires is not standard frontmatter.');
-    if (
-      Object.hasOwn(data.metadata, 'requires') ||
-      files.has(`${base}requires.yml`)
-    )
-      throw new Error(`Unsupported skill dependency declaration: ${skill}`);
-    const config = files.get(`${base}agentscli-skill.yml`);
-    const pointer = data.metadata.agentscli;
-    if (
-      (pointer === undefined && config) ||
-      (pointer !== undefined && (pointer !== 'agentscli-skill.yml' || !config))
-    )
-      throw new Error(
-        `Missing or undeclared skill configuration file: ${skill}`,
-      );
-    dependencies.set(
-      skill,
-      config
-        ? skillConfiguration(config.bytes, `${base}agentscli-skill.yml`)
-        : [],
-    );
-    walk(tree(header(entry.bytes.toString('utf8')).body), (node) => {
-      if (node.type === 'html' && /agentscli:requires/u.test(node.value))
-        throw new Error(`Obsolete skill dependency comment: ${skill}`);
-    });
   }
-  const visited = new Set();
-  function checkDependencies(skill) {
-    if (visited.has(skill)) return;
-    visited.add(skill);
-    for (const ref of dependencies.get(skill)) {
-      if (ref.source !== 'local' || !dependencies.has(ref.id))
-        throw new Error(
-          `Missing packaged skill dependency: ${skill} requires ${ref.source}:${ref.id}`,
-        );
-      checkDependencies(ref.id);
-    }
-  }
-  for (const skill of names[name]) checkDependencies(skill);
   const support = {
     'agentscli-write-conventions': ['scripts/check.mjs'],
     'agentscli-edit-agents': ['scripts/check.mjs'],

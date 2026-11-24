@@ -49,46 +49,9 @@ trigger: Read before writing or changing tests.
 Keep each unit focused on one observable behavior. Use injected boundaries for filesystem operations.
 ```
 
-Its name is `testing.tpl.md`, derived from its H1 in ASCII lowercase kebab case. Nested paths preserve their structure. Conventions are self-contained: no requires, no links to other conventions, and no links to skills or their support. Main orientation can link discovery resources. Generated convention frontmatter is stripped; trigger links use root AGENTS as their base, and body links use the generated convention location. Literal code examples stay literal.
+Its name is `testing.tpl.md`, derived from its H1 in ASCII lowercase kebab case. Nested paths preserve their structure. Conventions are self-contained: no links to other conventions, skills, or their support. Main orientation can link discovery resources. Generated convention frontmatter is stripped; trigger links use root AGENTS as their base, and body links use the generated convention location. Literal code examples stay literal.
 
-Skills have their own standard description trigger and carry their operation's instructions in their own entrypoint or bundled support. They may mention other skill identities, but must discover their actual project location rather than link or hardcode another resource's path. Own support links are allowed; project files remain legitimate work inputs. Optional `metadata.agentscli: agentscli-skill.yml` points to one contained sibling general configuration file. Its initially supported section is `requires`, containing only skill dependencies. This complete local-skill example assumes `inspect-tests` exists in the project:
-
-`.agents/skills/review-tests/SKILL.md`:
-
-```markdown
----
-name: review-tests
-description: Review requested test changes for meaningful assertions and coverage. Use when reviewing tests.
-license: MIT
-compatibility: Requires Node.js >= 22.
-metadata:
-  agentscli: agentscli-skill.yml
----
-
-# Review tests
-
-Read the [skill configuration](agentscli-skill.yml). Discover the required
-`inspect-tests` skill with source `local` among the project's available skills.
-Use its instructions to inspect the requested tests and relevant callers.
-
-Check observable behavior, meaningful assertions, and requested scope. Report
-confirmed findings and the checks actually performed. A review request does not
-authorize edits or generation.
-```
-
-`.agents/skills/review-tests/agentscli-skill.yml`:
-
-```yaml
-requires:
-  - id: inspect-tests
-    source: local
-```
-
-This is a complete authored local skill; its source has no invented generator stamp. Assembly stamps only the three distributed operational skills using the package's actual name and version. Project-owned skills keep their own metadata.
-
-Only skills have requirements, and every dependency is another local skill identified by exactly `id` and `source: local`. Missing or transitive dependencies block the operation without installing anything. A convention with the same ID cannot satisfy a skill dependency. Dependencies never define an invocation schedule.
-
-When no additional information is needed, omit both the pointer and file. An explicitly referenced empty mapping or `requires: []` declares no dependencies; blank/null documents, unknown sections, pointer/file disagreement, and unsafe files fail validation. Future supported sections belong in this same file. Beta major-zero releases adopt this contract directly: `metadata.requires`, the former `requires.yml`, and conventions/skills dependency mappings are unsupported, with no compatibility reader or conversion. Authored sources are never rewritten to make old input valid; managed operational copies are replaced normally by apply.
+Skills have their own standard description trigger and carry their operation's instructions in their own entrypoint or bundled support. They may mention other skill identities, but must discover their actual project location rather than link or hardcode another resource's path. Own support links are allowed; project files remain legitimate work inputs. Standard string metadata is preserved. Assembly stamps only the three distributed operational skills using the package's actual name and version. Project-owned skills keep their own metadata.
 
 ## Offline agent workflow
 
@@ -114,7 +77,7 @@ agentscli apply --migrate --dry-run --json
 agentscli apply --migrate --json
 ```
 
-Migration explicitly transfers supported `agentscli-compose.yml` roots with link rebasing and final legacy cleanup, or converts fixed-layout AGENT-CARD discovery text into trigger frontmatter. It preserves authored meaning and language. Ordinary operations never convert protected sources implicitly. Contradictory metadata, requires, and links to conventions/skills block conversion: perform separately authorized semantic authoring cleanup rather than automatically merging or deleting rules. Completed current migration is a no-op, even with `--lang`; ordinary apply refreshes installed operational resources. Retry partial migration with the same `apply --migrate` options.
+Migration explicitly transfers supported `agentscli-compose.yml` roots with link rebasing and final legacy cleanup, or converts fixed-layout AGENT-CARD discovery text into trigger frontmatter. It preserves authored meaning and language. Ordinary operations never convert protected sources implicitly. Contradictory metadata and links to conventions/skills block conversion: perform separately authorized semantic authoring cleanup rather than automatically merging or deleting rules. Completed current migration is a no-op, even with `--lang`; ordinary apply refreshes installed operational resources. Retry partial migration with the same `apply --migrate` options.
 
 ## Workspace development
 

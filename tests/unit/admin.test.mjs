@@ -10,8 +10,6 @@ import {
   yaml,
   links,
   monorepo,
-  requirements,
-  skillConfiguration,
 } from '../../.agents/skills/agentscli-adm-write-conventions/scripts/lib.mjs';
 import * as editContract from '../../.agents/skills/agentscli-adm-edit-agents/scripts/lib.mjs';
 import * as publishContract from '../../.agents/skills/agentscli-adm-publish-packages/scripts/lib.mjs';
@@ -33,7 +31,6 @@ const ctx = {
   root,
   conventions,
   skillRoots: [own, other],
-  localSkills: [own, other],
 };
 const skill = (body = '', meta = '') =>
   `---\nname: agentscli-adm-write-conventions\ndescription: Maintain rules.\n${meta}---\n${body}`;
@@ -93,12 +90,34 @@ test('administrative YAML rejects duplicates, aliases, malformed frontmatter and
   assert.throws(
     () =>
       checkOwnSkill(
-        skill('', 'requires: other.yml\n'),
+        skill('', 'unknown: other.yml\n'),
         resolve(own, 'SKILL.md'),
         ctx,
       ),
     /frontmatter/,
   );
+});
+
+test('administrative skill metadata stays standard and supports arbitrary string values', () => {
+  for (const contract of [{ checkOwnSkill }, editContract, publishContract]) {
+    assert.equal(
+      contract.checkOwnSkill(
+        skill('', 'metadata:\n  purpose: review\n'),
+        resolve(own, 'SKILL.md'),
+        ctx,
+      ).metadata.purpose,
+      'review',
+    );
+    assert.throws(
+      () =>
+        contract.checkOwnSkill(
+          skill('', 'metadata:\n  purpose: 42\n'),
+          resolve(own, 'SKILL.md'),
+          ctx,
+        ),
+      /metadata/,
+    );
+  }
 });
 
 test('handwritten rules need no trigger and preserve literal examples plus ordinary/self links', () => {
@@ -113,7 +132,7 @@ test('handwritten rules need no trigger and preserve literal examples plus ordin
   assert.throws(
     () =>
       checkConvention(
-        '---\ntrigger: Review.\nrequires: []\n---\n# Review',
+        '---\ntrigger: Review.\nunknown: []\n---\n# Review',
         conventions[0],
         ctx,
       ),
@@ -141,7 +160,7 @@ test('administrative rule link checker recognizes encoded, reference, image and 
     '![Testing](testing.md)',
     '<a href="testing.md#x">Testing</a>',
     '[Skill](../.agents/skills/agentscli-adm-edit-agents)',
-    '[Support](../.agents/skills/agentscli-adm-edit-agents/requires.yml)',
+    '[Support](../.agents/skills/agentscli-adm-edit-agents/references/guide.md)',
     '[Script](../.agents/skills/agentscli-adm-edit-agents/scripts/check.mjs)',
   ])
     assert.throws(
@@ -156,7 +175,7 @@ test('skill guidance allows owned support and identity mentions, rejecting forei
   assert.equal(
     checkOwnSkill(
       skill(
-        'Use agentscli-adm-edit-agents. [Own](scripts/check.mjs) [Configuration](agentscli-skill.yml)\n`node scripts/check.mjs`',
+        'Use agentscli-adm-edit-agents. [Own](scripts/check.mjs)\n`node scripts/check.mjs`',
       ),
       file,
       ctx,
@@ -215,178 +234,6 @@ test('tool context checks its workspace identity and rejects unrelated private p
     }),
   };
   assert.throws(() => monorepo(root, memory(invalid)), /Expected/);
-});
-
-test('admin dependencies stay local and traverse declared cycles without global or asset fallback', () => {
-  const req =
-    '.agents/skills/agentscli-adm-write-conventions/agentscli-skill.yml';
-  const info = { metadata: { agentscli: 'agentscli-skill.yml' } };
-  requirements(own, info, ctx, memory({ [req]: 'requires: []' }));
-  for (const text of [
-    'requires: []\nunknown: true',
-    'requires:\n  - id: agentscli-build-agents\n    source: local',
-    'requires:\n  - id: testing\n    source: local',
-    'requires: []\nrequires: []',
-  ])
-    assert.throws(() => requirements(own, info, ctx, memory({ [req]: text })));
-  const cyclic = {
-    [req]: 'requires:\n  - id: agentscli-adm-edit-agents\n    source: local',
-    '.agents/skills/agentscli-adm-edit-agents/SKILL.md':
-      '---\nname: agentscli-adm-edit-agents\ndescription: Edit entrypoint.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n# Edit',
-    '.agents/skills/agentscli-adm-edit-agents/agentscli-skill.yml':
-      'requires:\n  - id: agentscli-adm-write-conventions\n    source: local',
-    '.agents/skills/agentscli-adm-write-conventions/SKILL.md': skill(
-      '',
-      'metadata:\n  agentscli: agentscli-skill.yml\n',
-    ),
-  };
-  requirements(own, info, ctx, memory(cyclic));
-});
-
-test('all administrative configuration parsers enforce the general skill-only schema', () => {
-  const parsers = [
-    skillConfiguration,
-    editContract.skillConfiguration,
-    publishContract.skillConfiguration,
-  ];
-  for (const parse of parsers) {
-    assert.deepEqual(parse('{}', 'agentscli-skill.yml'), []);
-    assert.deepEqual(parse('requires: []', 'agentscli-skill.yml'), []);
-    assert.deepEqual(
-      parse(
-        'requires:\n  - id: inspect-code\n    source: local',
-        'agentscli-skill.yml',
-      ),
-      [{ id: 'inspect-code', source: 'local' }],
-    );
-    for (const input of [
-      '',
-      'null',
-      '[]',
-      'requires: null',
-      'requires: "[]"',
-      'conventions: []',
-      'conventions: []\nskills: []',
-      'requires: []\nrequires: []',
-      'requires: !!seq []',
-      'requires: &items []\nother: *items',
-      'requires: [{id: inspect-code, source: global}]',
-      'requires: [{id: ../inspect-code, source: local}]',
-      'requires: [{id: inspect-code, source: local, type: convention}]',
-      'requires: [{id: inspect-code, source: local}, {id: inspect-code, source: local}]',
-      Buffer.from([0xc3, 0x28]),
-    ])
-      assert.throws(() => parse(input, 'agentscli-skill.yml'));
-  }
-});
-
-test('all administrative readers reject obsolete, missing, orphaned and unsafe configuration', () => {
-  const file =
-    '.agents/skills/agentscli-adm-write-conventions/agentscli-skill.yml';
-  const info = { metadata: { agentscli: 'agentscli-skill.yml' } };
-  for (const contract of [
-    { requirements, checkOwnSkill },
-    editContract,
-    publishContract,
-  ]) {
-    assert.doesNotThrow(() => contract.requirements(own, {}, ctx, memory({})));
-    assert.throws(
-      () => contract.requirements(own, {}, ctx, memory({ [file]: '{}' })),
-      /declare metadata.agentscli/,
-    );
-    assert.throws(
-      () => contract.requirements(own, info, ctx, memory({})),
-      /missing declared/,
-    );
-    assert.throws(
-      () =>
-        contract.requirements(
-          own,
-          { metadata: { agentscli: '../agentscli-skill.yml' } },
-          ctx,
-          memory({}),
-        ),
-      /must point/,
-    );
-    assert.throws(
-      () =>
-        contract.requirements(
-          own,
-          { metadata: { requires: 'requires.yml' } },
-          ctx,
-          memory({}),
-        ),
-      /unsupported/,
-    );
-    assert.throws(
-      () =>
-        contract.requirements(
-          own,
-          {},
-          ctx,
-          memory({
-            '.agents/skills/agentscli-adm-write-conventions/requires.yml':
-              'conventions: []\nskills: []',
-          }),
-        ),
-      /unsupported/,
-    );
-    assert.throws(
-      () =>
-        contract.checkOwnSkill(
-          skill('', 'metadata:\n  requires: requires.yml\n'),
-          resolve(own, 'SKILL.md'),
-          ctx,
-        ),
-      /unsupported/,
-    );
-    assert.throws(
-      () =>
-        contract.checkOwnSkill(
-          skill('<!-- agentscli:requires {} -->'),
-          resolve(own, 'SKILL.md'),
-          ctx,
-        ),
-      /obsolete/,
-    );
-    assert.doesNotThrow(() =>
-      contract.checkOwnSkill(
-        skill('```markdown\n<!-- agentscli:requires {} -->\n```'),
-        resolve(own, 'SKILL.md'),
-        ctx,
-      ),
-    );
-    for (const mode of ['hardlink', 'symlink', 'realpath']) {
-      const io = memory({ [file]: '{}' }),
-        stat = io.lstatSync;
-      io.lstatSync = (path) => ({
-        ...stat(path),
-        nlink:
-          mode === 'hardlink' && resolve(path) === resolve(root, file) ? 2 : 1,
-        isSymbolicLink: () =>
-          mode === 'symlink' && resolve(path) === resolve(root, file),
-      });
-      if (mode === 'realpath')
-        io.realpathSync = (path) =>
-          resolve(path) === resolve(root, file)
-            ? resolve(root, 'escaped.yml')
-            : resolve(path);
-      assert.throws(
-        () => contract.requirements(own, info, ctx, io),
-        /Aliased|Unsafe/,
-      );
-    }
-    assert.throws(
-      () =>
-        contract.requirements(
-          own,
-          info,
-          ctx,
-          memory({ [file]: 'requires:\n  - id: testing\n    source: local' }),
-        ),
-      /missing skills dependency/,
-    );
-  }
 });
 
 test('root discovery permits convention links but rejects missing and escaping targets', () => {
@@ -565,13 +412,8 @@ function consumerArchive() {
   ]) {
     entries.push({
       name: `package/dist/assets/skills/${id}/SKILL.md`,
-      body: `---\nname: ${id}\ndescription: Perform the operation.\nlicense: MIT\ncompatibility: Requires Node.js >= 22.\nmetadata:\n  generatedBy: "${pkg.name}"\n  generatorVersion: ${pkg.version}\n${id === 'agentscli-build-agents' ? '' : '  agentscli: agentscli-skill.yml\n'}---\n# Operation\n`,
+      body: `---\nname: ${id}\ndescription: Perform the operation.\nlicense: MIT\ncompatibility: Requires Node.js >= 22.\nmetadata:\n  generatedBy: "${pkg.name}"\n  generatorVersion: ${pkg.version}\n---\n# Operation\n`,
     });
-    if (id !== 'agentscli-build-agents')
-      entries.push({
-        name: `package/dist/assets/skills/${id}/agentscli-skill.yml`,
-        body: 'requires:\n  - id: agentscli-build-agents\n    source: local\n',
-      });
   }
   for (const language of ['en', 'pt-br'])
     entries.push({
@@ -614,71 +456,6 @@ test('release inspection rejects metadata-only skill trees and incomplete locale
   const artifact = inspectArchive(tar(entries), pkg, prepared);
   assert.equal(artifact.version, '0.4.0');
   assert.match(artifact.integrity, /^sha512-/);
-  const configuration =
-    'package/dist/assets/skills/agentscli-write-conventions/agentscli-skill.yml';
-  assert.throws(
-    () =>
-      inspectArchive(
-        tar(entries.filter((entry) => entry.name !== configuration)),
-        pkg,
-      ),
-    /configuration file/,
-  );
-  assert.throws(
-    () =>
-      inspectArchive(
-        tar([
-          ...entries,
-          {
-            name: 'package/dist/assets/skills/agentscli-build-agents/agentscli-skill.yml',
-            body: '{}',
-          },
-        ]),
-        pkg,
-      ),
-    /configuration file/,
-  );
-  assert.throws(
-    () =>
-      inspectArchive(
-        tar([
-          ...entries,
-          {
-            name: 'package/dist/assets/skills/agentscli-build-agents/requires.yml',
-            body: 'conventions: []\nskills: []',
-          },
-        ]),
-        pkg,
-      ),
-    /Unsupported skill dependency/,
-  );
-  for (const declaration of [
-    'conventions: []\nskills: []',
-    'requires: null',
-    'requires: !!seq []',
-    'requires: [{id: agentscli-build-agents, source: remote}]',
-    'requires: [{id: absent-skill, source: local}]',
-  ]) {
-    const changed = entries.map((entry) =>
-      entry.name === configuration ? { ...entry, body: declaration } : entry,
-    );
-    assert.throws(() => inspectArchive(tar(changed), pkg));
-  }
-  const obsolete = entries.map((entry) =>
-    entry.name === 'package/dist/assets/skills/agentscli-build-agents/SKILL.md'
-      ? {
-          ...entry,
-          body: entry.body.replace(
-            'metadata:\n',
-            'metadata:\n  requires: requires.yml\n',
-          ),
-        }
-      : entry,
-  );
-  assert.throws(
-    () => inspectArchive(tar(obsolete), pkg),
-    /Unsupported skill dependency/,
-  );
   const windowsBinMode = entries.map((entry) =>
     entry.name === 'package/dist/cli.js' ? { ...entry, mode: 0o644 } : entry,
   );

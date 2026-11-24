@@ -11,10 +11,7 @@ import {
   PRODUCT_SKILLS,
   validPackageVersion,
 } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
-import {
-  skillRequirements,
-  validateResources,
-} from '../assets/templates/skills/agentscli-build-agents/scripts/lib/content.mjs';
+import { validateResources } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/content.mjs';
 import {
   uniquePaths,
   containedPath,
@@ -57,7 +54,6 @@ export function collectResources(root, io = fs) {
         .map((r) => [r.destination.slice(`skills/${id}/`.length), r.content]),
     ),
   }));
-  for (const skill of skills) skillRequirements(skill.files, skill.path);
   validateResources({ skills });
   for (const lang of ['en', 'pt-br']) {
     const prefix = `templates/${lang}/`;
@@ -99,15 +95,6 @@ export function stampSkill(content, pkg, path) {
       Object.values(header.fields.metadata).some((v) => typeof v !== 'string'))
   )
     throw new Error('Skill metadata must contain string values.');
-  if (
-    Object.hasOwn(header.fields, 'requires') ||
-    Object.hasOwn(header.fields.metadata ?? {}, 'requires') ||
-    (header.fields.metadata?.agentscli !== undefined &&
-      header.fields.metadata.agentscli !== 'agentscli-skill.yml')
-  )
-    throw new Error(
-      'Use metadata.agentscli: agentscli-skill.yml for skill configuration.',
-    );
   if (
     Object.hasOwn(header.fields.metadata ?? {}, 'generatedBy') ||
     Object.hasOwn(header.fields.metadata ?? {}, 'generatorVersion')

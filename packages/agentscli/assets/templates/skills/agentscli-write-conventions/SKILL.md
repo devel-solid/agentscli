@@ -3,8 +3,6 @@ name: agentscli-write-conventions
 description: Create, review, or update local convention templates in an existing agentscli consumer project. Use for project rules, trigger text, self-contained guidance, and convention naming; never for tool administration.
 license: MIT
 compatibility: Requires Node.js >= 22.
-metadata:
-  agentscli: agentscli-skill.yml
 ---
 
 # Maintain client conventions
@@ -13,7 +11,7 @@ Identify the consumer root from the request and project instructions. Run the re
 
 Read `.agentscli/config.yml` and use its language for authored text. Edit only local convention templates discovered under the configured fixed template tree. Generated output is managed; customize its authored template instead. Existing template text remains authored and is preserved by apply.
 
-Each template starts with YAML containing only nonempty string `trigger`, followed by one H1 outside examples. Derive its `.tpl.md` basename by normalizing the H1 to ASCII lowercase kebab case. Keep the trigger short and precise about when to read the rule. Keep the body self-contained: no requires declarations, dependency comments, links to conventions, or links to skill entrypoints, directories, or support files. Ordinary non-resource links and own fragments are allowed. Trigger links resolve from root AGENTS; body links resolve from the generated convention. Skills have their own activation description: move misplaced procedural content only through a separately authorized skill-authoring request.
+Each template starts with YAML containing only nonempty string `trigger`, followed by one H1 outside examples. Derive its `.tpl.md` basename by normalizing the H1 to ASCII lowercase kebab case. Keep the trigger short and precise about when to read the rule. Keep the body self-contained: no links to conventions or skill entrypoints, directories, or support files. Ordinary non-resource links and own fragments are allowed. Trigger links resolve from root AGENTS; body links resolve from the generated convention. Skills have their own activation description: move misplaced procedural content only through a separately authorized skill-authoring request.
 
 After edits rerun the checker. Review usefulness, contradictory rules, and scope semantically; scripts prove only mechanically decidable checks. For authorized generation, mention agentscli-build-agents and discover its actual project location through project skills; do not assume its path. Authorship alone does not authorize generation. Report edited sources and actual validation.
 

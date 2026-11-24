@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import { EngineError, parseYaml, exactKeys, resourceId } from './manifest.mjs';
+import { EngineError, exactKeys, resourceId } from './manifest.mjs';
 import { portableKey, uniquePaths } from './paths.mjs';
 import {
   activeNodes,
@@ -12,7 +12,7 @@ import {
 const fail = (code, message, path) => {
   throw new EngineError(code, message, 2, path);
 };
-export function skillRequirements(files, path) {
+export function validateSkill(files, path) {
   if (!files['SKILL.md']) fail('SKILL_ENTRY', 'Missing SKILL.md.', path);
   const header = frontmatter(
     decode(files['SKILL.md'], `${path}/SKILL.md`),
@@ -37,12 +37,6 @@ export function skillRequirements(files, path) {
       path,
     );
   resourceId(f.name, 'skills', path);
-  if (Object.hasOwn(f, 'requires'))
-    fail(
-      'SKILL_REQUIRES',
-      'Use metadata.agentscli: agentscli-skill.yml.',
-      path,
-    );
   if (
     f.metadata !== undefined &&
     (!f.metadata ||
@@ -64,69 +58,9 @@ export function skillRequirements(files, path) {
   for (const key of ['license', 'compatibility', 'allowed-tools'])
     if (f[key] !== undefined && typeof f[key] !== 'string')
       fail('SKILL_FRONTMATTER', `${key} must be a string.`, path);
-  if (
-    Object.hasOwn(f.metadata ?? {}, 'requires') ||
-    Object.keys(files).some((file) => portableKey(file) === 'requires.yml') ||
-    activeNodes(header.body).some(
-      (node) => node.type === 'html' && /agentscli:requires/u.test(node.value),
-    )
-  )
-    fail(
-      'SKILL_REQUIRES',
-      'Former dependency declarations are unsupported. Use metadata.agentscli: agentscli-skill.yml.',
-      path,
-    );
-  const pointer = f.metadata?.agentscli;
-  const configFile = Object.keys(files).find(
-    (file) => portableKey(file) === 'agentscli-skill.yml',
-  );
-  if (configFile !== undefined && configFile !== 'agentscli-skill.yml')
-    fail(
-      'SKILL_CONFIG',
-      'Use the exact sibling filename agentscli-skill.yml.',
-      path,
-    );
-  if (pointer === undefined) {
-    if (Object.hasOwn(files, 'agentscli-skill.yml'))
-      fail(
-        'SKILL_CONFIG',
-        'agentscli-skill.yml requires metadata.agentscli.',
-        path,
-      );
-    return { name: f.name, requirements: [], header };
-  }
-  if (pointer !== 'agentscli-skill.yml' || !files['agentscli-skill.yml'])
-    fail(
-      'SKILL_CONFIG',
-      'metadata.agentscli must point to the included sibling agentscli-skill.yml.',
-      path,
-    );
-  const configPath = `${path}/agentscli-skill.yml`,
-    config = parseYaml(
-      decode(files['agentscli-skill.yml'], configPath),
-      configPath,
-    );
-  exactKeys(config, [], ['requires'], configPath);
-  const requirements = Object.hasOwn(config, 'requires') ? config.requires : [];
-  if (!Array.isArray(requirements))
-    fail('SKILL_REQUIRES', 'requires must be an array of skills.', configPath);
-  const seen = new Set();
-  for (const entry of requirements) {
-    exactKeys(entry, ['id', 'source'], [], configPath);
-    resourceId(entry.id, 'skills', configPath);
-    if (entry.source !== 'local')
-      fail(
-        'SKILL_REQUIRES',
-        `Invalid skill dependency source: ${entry.source}.`,
-        configPath,
-      );
-    const key = `${entry.source}:${portableKey(entry.id)}`;
-    if (seen.has(key))
-      fail('SKILL_REQUIRES', `Duplicate skill dependency: ${key}.`, configPath);
-    seen.add(key);
-  }
-  return { name: f.name, requirements, header };
+  return { name: f.name, header };
 }
+
 function linkTarget(raw, base) {
   if (typeof raw !== 'string' || !raw || raw.startsWith('#')) return undefined;
   let value;
@@ -263,7 +197,8 @@ export function validateResources({ conventions = [], skills = [] }) {
     [c.path, c.output].filter(Boolean),
   );
   const skillRoots = skills.map((s) => s.path);
-  const registry = { conventions: new Map(), skills: new Map() };
+  const seenConventions = new Set(),
+    seenSkills = new Set();
   for (const c of conventions) {
     const parsed = validateConvention(c.text, c.path);
     validateConventionFilename(parsed.title, c.path);
@@ -278,36 +213,25 @@ export function validateResources({ conventions = [], skills = [] }) {
       trigger: true,
     });
     const key = `${c.source}:${portableKey(c.id)}`;
-    if (registry.conventions.has(key))
+    if (seenConventions.has(key))
       fail('RESOURCE_COLLISION', `Duplicate convention ${key}.`, c.path);
-    registry.conventions.set(key, c);
+    seenConventions.add(key);
   }
   for (const s of skills) {
     uniquePaths(Object.keys(s.files));
-    s.parsed = skillRequirements(s.files, s.path);
-    if (s.parsed.name !== s.id)
+    const parsed = validateSkill(s.files, s.path);
+    if (parsed.name !== s.id)
       fail(
         'SKILL_ID',
-        `Skill name ${s.parsed.name} does not match directory ${s.id}.`,
+        `Skill name ${parsed.name} does not match directory ${s.id}.`,
         s.path,
       );
     for (const [relative, content] of Object.entries(s.files))
       if (/\.(?:md|mdx)$/iu.test(relative)) {
         const text =
           relative === 'SKILL.md'
-            ? s.parsed.header.body
+            ? parsed.header.body
             : decode(content, `${s.path}/${relative}`);
-        if (
-          activeNodes(text).some(
-            (node) =>
-              node.type === 'html' && /agentscli:requires/u.test(node.value),
-          )
-        )
-          fail(
-            'SKILL_REQUIRES',
-            'Former dependency comments are unsupported.',
-            `${s.path}/${relative}`,
-          );
         validateResourceLinks(text, `${s.path}/${relative}`, {
           kind: 'skill',
           ownRoot: s.path,
@@ -316,26 +240,8 @@ export function validateResources({ conventions = [], skills = [] }) {
         });
       }
     const key = `${s.source}:${portableKey(s.id)}`;
-    if (registry.skills.has(key))
+    if (seenSkills.has(key))
       fail('RESOURCE_COLLISION', `Duplicate skill ${key}.`, s.path);
-    registry.skills.set(key, s);
+    seenSkills.add(key);
   }
-  const visited = new Set();
-  function visit(skill, key) {
-    if (visited.has(key)) return;
-    visited.add(key);
-    for (const req of skill.parsed.requirements) {
-      const dependencyKey = `${req.source}:${portableKey(req.id)}`,
-        target = registry.skills.get(dependencyKey);
-      if (!target)
-        fail(
-          'DEPENDENCY_MISSING',
-          `${skill.id} requires explicitly available skill: ${req.id} (source: ${req.source}).`,
-          skill.path,
-        );
-      visit(target, dependencyKey);
-    }
-  }
-  for (const [key, skill] of registry.skills) visit(skill, key);
-  return registry;
 }

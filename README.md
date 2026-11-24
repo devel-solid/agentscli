@@ -10,9 +10,9 @@ agentscli apply --repo-root ./my-project --dry-run
 agentscli apply --repo-root ./my-project
 ```
 
-`apply` is the only public CLI operation, alongside help/version. Repeat it after upgrading the package to replace managed resources. Managed edits are disposable, removed files stay removed from managed destinations, and authored content is preserved. Files are replaced individually without merging. The explicit `apply --migrate` transfers supported legacy local layouts and converts local AGENT-CARD metadata; invalid dependencies or cross-resource links need scoped authoring cleanup first.
+`apply` is the only public CLI operation, alongside help/version. Repeat it after upgrading the package to replace managed resources. Managed edits are disposable, removed files stay removed from managed destinations, and authored content is preserved. Files are replaced individually without merging. The explicit `apply --migrate` transfers supported legacy local layouts and converts local AGENT-CARD metadata; invalid cross-resource links need scoped authoring cleanup first.
 
-Agents perform generation and validation through the appropriate project skills and their deterministic scripts. Generation is offline, using Node.js and the shipped build skill without an installed CLI, Git, or npm installation. Project conventions and skills use local resources. See the package guide for schemas, dependency rules, and managed paths.
+Agents perform generation and validation through the appropriate project skills and their deterministic scripts. Generation is offline, using Node.js and the shipped build skill without an installed CLI, Git, or npm installation. Project conventions and skills use local resources. See the package guide for schemas and managed paths.
 
 Package versions with major zero are beta; production begins at `1.0.0`. Beta contracts change directly without transition periods, migration, backward compatibility, or protection for old clients.
 
@@ -37,7 +37,7 @@ packages/
 
 These six operational skills are independent and each has one responsibility. The three administrative skills stay internal; builds distribute exactly three consumer skills. OpenSpec is development-only. A source/distribution manifest is unnecessary: the package owns its fixed asset roots. No skill source or custom implementation is shared between environments.
 
-Conventions are self-contained rules: no requires, no links to other conventions or skills. Consumer convention templates have a nonempty `trigger` in leading YAML frontmatter and a canonical H1/filename. Optional string `metadata.agentscli: agentscli-skill.yml` points to a skill's configuration document. Its optional `requires` list contains only skill `id`/`source: local` references; conventions cannot be dependencies. Skills carry their own execution guidance and mention other skills by identity instead of linking or hardcoding their locations. Their own bundled support and project work inputs remain usable. The three distributed skills receive MIT, `compatibility: Requires Node.js >= 22.`, and the package's actual name/version during assembly; maintained sources stay unchanged.
+Conventions are self-contained rules with no links to other conventions or skills. Consumer convention templates have a nonempty `trigger` in leading YAML frontmatter and a canonical H1/filename. Skills carry their own execution guidance and mention other skills by identity instead of linking or hardcoding their locations. Their own bundled support and project work inputs remain usable. The three distributed skills receive MIT, `compatibility: Requires Node.js >= 22.`, and the package's actual name/version during assembly; maintained sources stay unchanged.
 
 ## Development
 

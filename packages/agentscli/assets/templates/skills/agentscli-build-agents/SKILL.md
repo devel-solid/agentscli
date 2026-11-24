@@ -16,9 +16,9 @@ node <this-skill>/scripts/build-agents.mjs sync --repo-root <root> --json
 node <this-skill>/scripts/build-agents.mjs sync --repo-root <root> --check --json
 ```
 
-Validate and preview before authorized synchronization; continue to apply an already authorized matching preview without another approval. Review-only requests stop after read-only checking. The same deterministic engine validates strict config, trigger-only conventions, skill requirements, supported links, safe paths, dependencies, collisions, and resulting files.
+Validate and preview before authorized synchronization; continue to apply an already authorized matching preview without another approval. Review-only requests stop after read-only checking. The same deterministic engine validates strict config, trigger-only conventions, skill frontmatter, supported links, safe paths, collisions, and resulting files.
 
-Skills use optional `metadata.agentscli: agentscli-skill.yml` for their own general configuration. Its `requires` list contains only skill references with `id` and `source: local`, never conventions. Validate the complete available local skill graph without installing dependencies. Reject the former pointer/file and unsupported structure without converting authored sources. Each skill carries its own procedure and bundled support; configuration and templates are work inputs, not providers of missing execution instructions.
+Each skill carries its own procedure and bundled support. Discover other skills by identity through project instructions when their distinct operation is needed. Configuration and templates are work inputs, not providers of missing execution instructions.
 
 Authored templates and configuration are protected. Sync replaces generated documents, removes stale managed outputs, and keeps authored bodies/languages literal. It does not restore package operational assets; use the public `agentscli apply` only when setup/refresh is requested. Never change language, migrate, or reset protected trees implicitly. The one public apply command uses its own installed package engine; this private script never wraps it.
 

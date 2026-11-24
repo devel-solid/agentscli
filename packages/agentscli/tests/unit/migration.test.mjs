@@ -158,7 +158,7 @@ const exists = (fs, path) => !!fs.io.info(join(fs.root, path));
 const assertSuccess = (result) =>
   assert.equal(result.exitCode, 0, JSON.stringify(result.result.diagnostics));
 
-test('fixed-layout card migration preserves regular skill metadata and discovers local dependencies', async () => {
+test('fixed-layout card migration preserves regular skill metadata and local skills', async () => {
   const metadata = {
     '.agents/skills/.openspec-target': bytes('codex\n'),
     '.agents/skills/tool-metadata.bin': new Uint8Array([0, 255, 13, 10]),
@@ -171,9 +171,7 @@ test('fixed-layout card migration preserves regular skill metadata and discovers
     '.agents/skills/review/SKILL.md':
       '---\nname: review\ndescription: Review changes.\n---\n',
     '.agents/skills/check/SKILL.md':
-      '---\nname: check\ndescription: Check changes.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n',
-    '.agents/skills/check/agentscli-skill.yml':
-      'requires:\n  - id: review\n    source: local\n',
+      '---\nname: check\ndescription: Check changes.\n---\n',
   });
   const preview = await invoke(fs, { dryRun: true });
   assertSuccess(preview);
@@ -658,7 +656,7 @@ test('fixed-layout conversion never runs implicitly and rejects ambiguous metada
     convention,
     convention +
       '\n<!-- AGENT-CARD START -->\nsecond\n<!-- AGENT-CARD END -->\n',
-    '---\ntrigger: Read.\nrequires: []\n---\n# Unit\n',
+    '---\ntrigger: Read.\nunknown: true\n---\n# Unit\n',
   ]) {
     const fs = memory({
       '.agentscli/config.yml': 'language: en\n',
@@ -711,22 +709,5 @@ test('fixed-layout migration retains discoverable old cards until its final auth
     fs.io.rename = original;
     assertSuccess(await invoke(fs));
     assert.equal((await invoke(fs)).result.changes.length, 0, target);
-  }
-});
-
-test('legacy migration validates prospective local skill requirements before the first write', async () => {
-  const fs = legacy({
-    extras: {
-      '.agents/skills/local-review/SKILL.md':
-        '---\nname: local-review\ndescription: Review requested content.\nmetadata:\n  agentscli: agentscli-skill.yml\n---\n# Review\n',
-      '.agents/skills/local-review/agentscli-skill.yml':
-        'requires:\n  - id: missing\n    source: local\n',
-    },
-  });
-  for (const dryRun of [true, false]) {
-    const response = await invoke(fs, { dryRun });
-    assert.equal(response.exitCode, 2, JSON.stringify(response.result));
-    assert.equal(fs.writes.length, 0);
-    assert.ok(exists(fs, 'agentscli-compose.yml'));
   }
 });

@@ -1,3 +1,0 @@
-requires:
-  - id: agentscli-build-agents
-    source: local

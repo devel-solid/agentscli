@@ -3,8 +3,6 @@ name: agentscli-edit-agents
 description: Create, review, or update the project-owned AGENTS template in an existing agentscli consumer. Use for concise project orientation and convention discovery; never edit generated AGENTS output directly.
 license: MIT
 compatibility: Requires Node.js >= 22.
-metadata:
-  agentscli: agentscli-skill.yml
 ---
 
 # Maintain client orientation

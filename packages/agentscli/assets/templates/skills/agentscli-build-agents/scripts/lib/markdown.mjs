@@ -222,16 +222,10 @@ export function validateConvention(input, path) {
       path,
     );
   const parsed = structure(header.body, path);
-  if (
-    parsed.markers(CARD_START).length ||
-    parsed.markers(CARD_END).length ||
-    activeNodes(header.body).some(
-      (node) => node.type === 'html' && /agentscli:requires/u.test(node.value),
-    )
-  )
+  if (parsed.markers(CARD_START).length || parsed.markers(CARD_END).length)
     throw new EngineError(
       'SOURCE_METADATA',
-      `${path}: Conventions cannot contain old operational discovery/dependency comments.`,
+      `${path}: Conventions cannot contain old operational discovery comments.`,
       2,
       path,
     );
