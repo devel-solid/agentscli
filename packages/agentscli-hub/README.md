@@ -9,7 +9,7 @@ agentscli-hub apply ./team-hub
 
 Node.js 22, 24, or 26 is supported. Git is required to create a repository. The only public operation is `apply`; `--help`, `--version`, and `--dry-run` are available. Initialization creates no remote, commit, tag, or push.
 
-Repeated application restores the five operational skill trees and the managed README from the installed CLI, deleting extra/stale managed files. Authored `AGENTS.md`, `docs/conventions/`, `conventions/`, and `skills/` stay in place, including deliberate deletions. The content manifest version and Git metadata/policy are preserved. Do not edit managed operational skills; make shared resources in the authoring directories.
+Repeated application restores the five operational skill trees and the managed README from the installed CLI, deleting extra/stale managed files. Authored `AGENTS.md`, `docs/conventions/`, `shared/conventions/`, and `shared/skills/` stay in place, including deliberate deletions. The content manifest version and Git metadata/policy are preserved. The operational skills under `.agents/skills/` maintain the hub and are not exported. Shared conventions are recursive templates under `shared/conventions/`; their IDs are relative paths without `.tpl.md`. Shared skills are complete direct-child trees under `shared/skills/`, identified by directory name. Neither identity includes `shared/`. Do not edit managed operational skills; make shared resources in the authoring directories. Repeat apply does not relocate authored resources or rewrite existing authored instructions.
 
 `agentscli-hub.yml` contains exactly `schemaVersion: 1` and content `version: 1.0.0` initially. That content version and hub `v1.0.0` tag are independent of CLI package versions and product tags such as `agentscli-hub-v0.1.0`.
 
@@ -23,7 +23,7 @@ Run `npm run check` from the monorepo root for all workspace gates. Tests are is
 
 An interrupted first creation can resume when native Git remains unborn, has no refs, staging or remotes, and the non-Git files are an exact subset of the initial scaffold. Changed, unrelated, or unsafe content requires explicit reconciliation. The manifest is written last; after identification, repeat apply always preserves authored deletions.
 
-A complete shared convention, `conventions/testing.tpl.md` (identity `testing`):
+A complete shared convention, `shared/conventions/testing.tpl.md` (identity `testing`):
 
 ```markdown
 ---
@@ -35,7 +35,7 @@ trigger: Read before creating or changing automated tests.
 Check observable behavior with small deterministic inputs. Cover a concrete failure or regression when one motivates a change. Keep test fixtures independent of network services and preserve the project's established test framework.
 ```
 
-A complete shared skill, `skills/inspect-tests/SKILL.md` (identity `inspect-tests`):
+A complete shared skill, `shared/skills/inspect-tests/SKILL.md` (identity `inspect-tests`):
 
 ```markdown
 ---
@@ -52,7 +52,7 @@ Identify the requested test diff and the behavior exercised by the changed tests
 Return the inspection evidence. Inspection does not authorize edits, generation, imports, or publication.
 ```
 
-A complete dependent shared skill, `skills/review-tests/SKILL.md` (identity `review-tests`):
+A complete dependent shared skill, `shared/skills/review-tests/SKILL.md` (identity `review-tests`):
 
 ```markdown
 ---
@@ -73,7 +73,7 @@ Evaluate the inspection evidence for meaningful coverage gaps and regressions. R
 The general configuration is this skill's own [agentscli-skill.yml](agentscli-skill.yml).
 ```
 
-The complete sibling `skills/review-tests/agentscli-skill.yml`:
+The complete sibling `shared/skills/review-tests/agentscli-skill.yml`:
 
 ```yaml
 requires:

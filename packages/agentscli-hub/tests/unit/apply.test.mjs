@@ -19,8 +19,8 @@ function fixtureAssets() {
     ['README.md', Buffer.from('Managed README\n')],
     ['AGENTS.md', Buffer.from('# AGENTS.md\n\nAuthor-owned instructions.\n')],
     ['docs/conventions/rules.md', Buffer.from('# Rules\n\nSelf-contained.\n')],
-    ['conventions/.gitkeep', Buffer.from('')],
-    ['skills/.gitkeep', Buffer.from('')],
+    ['shared/conventions/.gitkeep', Buffer.from('')],
+    ['shared/skills/.gitkeep', Buffer.from('')],
     ['.gitignore', Buffer.from('node_modules/\n')],
   ]);
   for (const name of skillNames) {
@@ -78,6 +78,18 @@ test('first apply previews new or empty standalone target without mutation', () 
   const plan = planApply(root, { assets: fixtureAssets(), contract, fs, git });
   assert.equal(plan.existing, false);
   assert.equal(plan.effects[0].kind, 'git-init');
+  assert.deepEqual(
+    plan.effects
+      .filter((effect) => effect.kind === 'mkdir')
+      .map(({ path }) => path),
+    ['shared/conventions', 'shared/skills'],
+  );
+  assert.equal(
+    plan.effects.some(({ path }) =>
+      /^(?:conventions|skills)(?:\/|$)/.test(path),
+    ),
+    false,
+  );
   const result = executeApply(plan, { fs, git, dryRun: true });
   assert.equal(result.ok, true);
   assert.deepEqual(fs.mutations, []);
@@ -169,10 +181,13 @@ test('every interrupted first-apply effect resumes from native empty Git plus ex
     );
     assert.equal(second.ok, true, interrupted.path);
     assert.equal(
-      fs.lstatSync(path.join(root, 'conventions')).isDirectory(),
+      fs.lstatSync(path.join(root, 'shared/conventions')).isDirectory(),
       true,
     );
-    assert.equal(fs.lstatSync(path.join(root, 'skills')).isDirectory(), true);
+    assert.equal(
+      fs.lstatSync(path.join(root, 'shared/skills')).isDirectory(),
+      true,
+    );
     assert.equal(
       planApply(root, { assets, contract, fs, git }).effects.length,
       0,
@@ -258,7 +273,7 @@ test('repeat apply replaces edited managed files/extras and preserves authored d
   fs.addFile(path.join(root, managed, 'obsolete/deep.mjs'), 'stale');
   fs.addFile(path.join(root, 'README.md'), 'edited managed README');
   fs.entries.delete(path.join(root, 'docs/conventions/rules.md'));
-  fs.entries.delete(path.join(root, 'conventions/.gitkeep'));
+  fs.entries.delete(path.join(root, 'shared/conventions/.gitkeep'));
   fs.addFile(
     path.join(root, 'agentscli-hub.yml'),
     'schemaVersion: 1\nversion: 3.2.1\n',
@@ -301,7 +316,10 @@ test('repeat apply replaces edited managed files/extras and preserves authored d
     fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
     /Authored custom/,
   );
-  assert.equal(fs.existsSync(path.join(root, 'conventions/.gitkeep')), false);
+  assert.equal(
+    fs.existsSync(path.join(root, 'shared/conventions/.gitkeep')),
+    false,
+  );
   assert.equal(
     fs.existsSync(path.join(root, '.agents/skills/unrelated/SKILL.md')),
     true,
@@ -328,7 +346,7 @@ test('all affected unsafe paths and invalid authored sources block before mutati
   }
   const fs = existingFs(assets);
   fs.addFile(
-    path.join(root, 'conventions/bad.tpl.md'),
+    path.join(root, 'shared/conventions/bad.tpl.md'),
     '---\ntrigger: Run\nrequires: []\n---\n# Bad\n',
   );
   assert.throws(
@@ -336,6 +354,88 @@ test('all affected unsafe paths and invalid authored sources block before mutati
     { code: 'convention-requires' },
   );
   assert.deepEqual(fs.mutations, []);
+});
+test('repeat apply preserves unrelated root content and removed authored shared directories', () => {
+  const assets = fixtureAssets(),
+    fs = existingFs(assets);
+  for (const file of [...fs.entries.keys()])
+    if (
+      file === path.join(root, 'shared') ||
+      file.startsWith(`${path.join(root, 'shared')}${path.sep}`)
+    )
+      fs.entries.delete(file);
+  for (const file of [
+    'conventions/.gitkeep',
+    'conventions/unrelated.tpl.md',
+    'skills/.gitkeep',
+    'skills/unrelated/SKILL.md',
+    'other/notes.txt',
+  ])
+    fs.addFile(path.join(root, file), 'Unrelated authored bytes');
+  fs.addFile(path.join(root, 'README.md'), 'Earlier managed README');
+  const before = new Map(
+    [...fs.entries].filter(([file]) => !file.endsWith('README.md')),
+  );
+  const plan = planApply(root, { assets, contract, fs, git: () => '' });
+  assert.deepEqual(
+    plan.effects.map(({ path }) => path),
+    ['README.md'],
+  );
+  assert.deepEqual(fs.mutations, []);
+  assert.equal(executeApply(plan, { fs }).ok, true);
+  assert.equal(fs.existsSync(path.join(root, 'shared')), false);
+  for (const [file, entry] of before)
+    assert.deepEqual(fs.entries.get(file), entry);
+});
+test('shared parents and descendants reject unsafe paths and portable aliases before writes', () => {
+  const assets = fixtureAssets();
+  const cases = [
+    { file: 'shared', type: 'file' },
+    { file: 'shared', type: 'link' },
+    { file: 'shared/conventions', type: 'file' },
+    { file: 'shared/skills', type: 'link' },
+    { file: 'shared/skills/review/payload.dat', type: 'hardlink' },
+    { file: 'shared/skills/review/escape', type: 'link' },
+    { file: 'shared/skills/review/bad:name.dat', type: 'file' },
+    {
+      file: 'shared/skills/review/SUPPORT.dat',
+      alias: 'shared/skills/review/support.dat',
+    },
+    { file: 'Shared', type: 'directory', alias: 'shared', parentAlias: true },
+    {
+      file: 'shared/Conventions',
+      type: 'directory',
+      alias: 'shared/conventions',
+      parentAlias: true,
+    },
+  ];
+  for (const item of cases) {
+    const fs = existingFs(assets);
+    if (item.parentAlias) {
+      for (const file of [...fs.entries.keys()])
+        if (
+          file === path.join(root, item.alias) ||
+          file.startsWith(`${path.join(root, item.alias)}${path.sep}`)
+        )
+          fs.entries.delete(file);
+    }
+    const absolute = path.join(root, item.file);
+    if (item.type === 'directory') fs.addDirectory(absolute);
+    else {
+      fs.addFile(absolute, 'Unsafe input');
+      const entry = fs.entries.get(absolute);
+      if (item.type === 'link') entry.type = 'link';
+      if (item.type === 'hardlink') entry.nlink = 2;
+    }
+    if (item.alias && !item.parentAlias)
+      fs.addFile(path.join(root, item.alias), 'Alias');
+    assert.throws(
+      () => planApply(root, { assets, contract, fs, git: () => '' }),
+      (error) => ['unsafe-path', 'collision'].includes(error.code),
+      item.file,
+    );
+    assert.deepEqual(fs.mutations, [], item.file);
+  }
 });
 test('portable directory aliases cannot turn replacement and removal into one physical target', () => {
   const assets = fixtureAssets(),

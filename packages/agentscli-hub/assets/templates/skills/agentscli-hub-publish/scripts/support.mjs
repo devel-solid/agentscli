@@ -401,7 +401,7 @@ export function validateLinks(
   const ownConventions = new Set(bases.map(normalized));
   const conventionIdentity = (value) => {
     const match =
-      /(?:^|\/)(docs\/conventions|\.agentscli\/(?:templates\/conventions|hub\/conventions|conventions)|conventions)\/(.+?)(?:\.tpl)?\.md$/i.exec(
+      /(?:^|\/)(docs\/conventions|shared\/conventions|\.agentscli\/(?:templates\/conventions|hub\/conventions|conventions)|conventions)\/(.+?)(?:\.tpl)?\.md$/i.exec(
         value,
       );
     return match
@@ -417,7 +417,7 @@ export function validateLinks(
         containsPath(target, resource),
       );
       const lexicalConventions =
-        /(?:^|\/)(?:docs\/conventions|\.agentscli\/(?:templates\/conventions|hub\/conventions|conventions)|conventions)\/[^?#]*\.md$/i.test(
+        /(?:^|\/)(?:docs\/conventions|shared\/conventions|\.agentscli\/(?:templates\/conventions|hub\/conventions|conventions)|conventions)\/[^?#]*\.md$/i.test(
           target,
         );
       const self =
@@ -435,7 +435,7 @@ export function validateLinks(
       );
       const lexical = [
         ...target.matchAll(
-          /(?:^|\/)(?:\.agents\/skills|\.agentscli\/hub\/skills|skills)\/([^/]+)/gi,
+          /(?:^|\/)(?:shared\/skills|\.agents\/skills|\.agentscli\/hub\/skills|skills)\/([^/]+)/gi,
         ),
       ].map((match) => match[1]);
       const names = [
@@ -591,8 +591,8 @@ export function validateHubFiles(
       conventions.add(`local:${file.slice(17, -3)}`);
       conventionPaths.push(file);
     }
-    if (/^conventions\/.*\.tpl\.md$/.test(file)) {
-      const id = file.slice(12, -7);
+    if (/^shared\/conventions\/.*\.tpl\.md$/.test(file)) {
+      const id = file.slice('shared/conventions/'.length, -'.tpl.md'.length);
       if (!validId(id)) fail('id', 'Invalid convention id.', file);
       conventions.add(`hub:${id}`);
       conventionPaths.push(
@@ -604,9 +604,14 @@ export function validateHubFiles(
         `.agentscli/hub/conventions/${id}.tpl.md`,
       );
     }
-    if (/^skills\/[^/]+\/SKILL\.md$/.test(file)) {
+    if (/^shared\/skills\/[^/]+\/SKILL\.md$/.test(file)) {
       const root = file.slice(0, -9);
-      skillRoots.push(root, `.agents/${root}`, `.agentscli/hub/${root}`);
+      const id = file.split('/').at(-2);
+      skillRoots.push(
+        root,
+        `.agents/skills/${id}`,
+        `.agentscli/hub/skills/${id}`,
+      );
     }
     if (/^\.agents\/skills\/[^/]+\/SKILL\.md$/.test(file))
       skillRoots.push(file.slice(0, -9));
@@ -620,7 +625,7 @@ export function validateHubFiles(
   }
   for (const file of files.keys()) {
     const isInternal = /^docs\/conventions\/.*\.md$/.test(file);
-    const isShared = /^conventions\/.*\.tpl\.md$/.test(file);
+    const isShared = /^shared\/conventions\/.*\.tpl\.md$/.test(file);
     if (
       (isInternal && ['internal-conventions', 'publish'].includes(scope)) ||
       (isShared && ['shared-conventions', 'publish'].includes(scope))
@@ -631,16 +636,16 @@ export function validateHubFiles(
         conventions: conventionPaths,
         skillRoots,
         outputFile: isShared
-          ? `.agentscli/conventions/${file.slice(12, -7)}.md`
+          ? `.agentscli/conventions/${file.slice('shared/conventions/'.length, -'.tpl.md'.length)}.md`
           : file,
         trigger: parsed.data.trigger,
       });
     }
     if (
-      /^(?:skills|\.agents\/skills)\/[^/]+\/SKILL\.md$/.test(file) &&
+      /^(?:shared\/skills|\.agents\/skills)\/[^/]+\/SKILL\.md$/.test(file) &&
       ['shared-skills', 'publish'].includes(scope)
     ) {
-      const shared = file.startsWith('skills/');
+      const shared = file.startsWith('shared/skills/');
       const id = file.split('/').at(-2);
       if (shared && reservedNames.has(id))
         fail(
@@ -785,12 +790,26 @@ export function inspectHub(root, { fs = nodeFs, scope = 'publish' } = {}) {
   const files = new Map();
   for (const directory of [
     'docs/conventions',
-    'conventions',
-    'skills',
+    'shared/conventions',
+    'shared/skills',
     '.agents/skills',
   ]) {
     let parent = root;
     for (const part of directory.split('/')) {
+      if (maybeStat(parent, fs)?.isDirectory()) {
+        const aliases = fs
+          .readdirSync(parent)
+          .filter(
+            (name) =>
+              name.normalize('NFC').toLowerCase() === part.toLowerCase(),
+          );
+        if (aliases.some((name) => name !== part))
+          fail(
+            'collision',
+            'Hub resource parents have a portable path alias.',
+            path.join(parent, part),
+          );
+      }
       parent = path.join(parent, part);
       const entry = maybeStat(parent, fs);
       if (entry && (!entry.isDirectory() || entry.isSymbolicLink()))

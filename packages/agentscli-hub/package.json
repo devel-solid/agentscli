@@ -1,6 +1,6 @@
 {
   "name": "@devel-solid/agentscli-hub",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Create and maintain standalone Git hubs for portable conventions and skills.",
   "license": "MIT",
   "repository": {

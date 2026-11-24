@@ -21,7 +21,7 @@ Obtain one credential-free native network Git endpoint, an explicit full commit 
 node scripts/hub-imports.mjs plan --repo-root <project> --repository git@example.org:team/conventions.git --tag v1.0.0 --conventions testing,security --skills code-review
 ```
 
-Use `--commit <full-object-id>` instead of `--tag` to pin a commit directly. Use `--conventions ""` or `--skills ""` for an explicitly empty selection. Resource IDs are relative convention names without `.tpl.md`, or skill directory names.
+Use `--commit <full-object-id>` instead of `--tag` to pin a commit directly. Use `--conventions ""` or `--skills ""` for an explicitly empty selection. Resource IDs are paths relative to the hub's `shared/conventions/` without `.tpl.md`, or direct-child directory names under `shared/skills/`; do not add the physical `shared/` prefix to selection or dependency IDs. Only these current remote roots are read, without alternate-root lookup or layout conversion. Internal operational skills are not shared resources.
 
 Planning inspects committed trees in disposable Git storage, performs the complete prospective source/dependency/destination validation, and returns JSON without writing into the project. Review the exact resolved commit and all proposed changes. Selected skills declare only other skills through optional `metadata.agentscli: agentscli-skill.yml` and its `requires` list of `id`/`source` references. Every transitive hub skill must be explicitly selected from the same revision; missing dependencies stop the operation. Convention selection is independent, and conventions cannot satisfy skill dependencies. No dependency is fetched automatically. Former dependency declarations are unsupported and are not converted or rewritten in accepted snapshots.
 
@@ -38,7 +38,7 @@ The reviewed plan binds the current project state, candidate integrity, effects,
 
 For an authorized operation without a saved plan, pass the same explicit repository, `--commit`, and both lists to `apply`; add `--dry-run` first when preview was requested. Updating, changing selections, and switching repositories use this same workflow. Never silently switch repositories or revisions.
 
-Only selected source trees are stored. The accepted lock records the hub content version separately from either CLI version, canonical text or opaque bytes, SHA-256, and Git executable intent. Preserve the complete accepted snapshot in project Git, including binaries and executable metadata. Do not hand-edit protected snapshot/configuration/lock files or ignore them.
+Only selected source trees are stored under the existing local snapshot convention/skill roots, without the remote `shared/` prefix. Committed attributes are inspected at physical Git paths before mapping. Valid accepted snapshots retain their existing paths, hashes, manifest, and pin after a CLI upgrade. The accepted lock records the hub content version separately from either CLI version, canonical text or opaque bytes, SHA-256, and Git executable intent. Preserve the complete accepted snapshot in project Git, including binaries and executable metadata. Do not hand-edit protected snapshot/configuration/lock files or ignore them.
 
 Managed installed skills and generated documents are replaceable outputs. Edits and extra files inside an accepted imported skill are removed by synchronization. Unrelated local skill directories cannot be adopted, even when their bytes match. Local authoring remains in the project's authored templates and local skills.
 

@@ -104,14 +104,14 @@ test('capture stores only explicitly selected complete trees and committed -text
     commit,
     entries: [
       manifest,
-      entry('conventions/testing.tpl.md', 'testing\r\n'),
-      entry('conventions/unselected.tpl.md', 'broken'),
-      entry('skills/review/SKILL.md', 'skill'),
-      entry('skills/review/scripts/blob.bin', 'a\r\n', {
+      entry('shared/conventions/testing.tpl.md', 'testing\r\n'),
+      entry('shared/conventions/unselected.tpl.md', 'broken'),
+      entry('shared/skills/review/SKILL.md', 'skill'),
+      entry('shared/skills/review/scripts/blob.bin', 'a\r\n', {
         textAttribute: 'unset',
         gitMode: '100755',
       }),
-      entry('skills/other/SKILL.md', 'other'),
+      entry('shared/skills/other/SKILL.md', 'other'),
     ],
   };
   const snapshot = snapshotFromCapture(selected, capture, parseYaml);
@@ -138,8 +138,8 @@ test('capture stores only explicitly selected complete trees and committed -text
 
 test('selected unsafe Git entries, aliasing, missing resources and release version mismatch fail', () => {
   for (const bad of [
-    entry('conventions/testing.tpl.md', 'target', { gitMode: '120000' }),
-    entry('conventions/testing.tpl.md', '', {
+    entry('shared/conventions/testing.tpl.md', 'target', { gitMode: '120000' }),
+    entry('shared/conventions/testing.tpl.md', '', {
       gitMode: '160000',
       type: 'commit',
     }),
@@ -156,7 +156,10 @@ test('selected unsafe Git entries, aliasing, missing resources and release versi
       { ...intent, skills: ['review'] },
       {
         commit,
-        entries: [manifest, entry('skills/review/readme.md', 'missing skill')],
+        entries: [
+          manifest,
+          entry('shared/skills/review/readme.md', 'missing skill'),
+        ],
       },
       parseYaml,
     ),
@@ -194,13 +197,105 @@ test('selected skill support directory aliases fail before any materialization',
           commit,
           entries: [
             manifest,
-            entry('skills/review/SKILL.md', 'entry'),
-            entry('skills/review/Scripts/a.mjs', 'a'),
-            entry('skills/review/scripts/b.mjs', 'b'),
+            entry('shared/skills/review/SKILL.md', 'entry'),
+            entry('shared/skills/review/Scripts/a.mjs', 'a'),
+            entry('shared/skills/review/scripts/b.mjs', 'b'),
           ],
         },
         parseYaml,
       ),
     { code: 'PATH_ALIAS' },
   );
+});
+
+test('physical selected paths are checked before fixed mapping and source identity stays logical', () => {
+  for (const path of [
+    'shared/skills/review/../escape',
+    'shared/skills/review/support\\escape',
+    'shared/skills/review/CON',
+    'shared/skills/review/trailing.',
+  ])
+    assert.throws(
+      () =>
+        snapshotFromCapture(
+          { ...intent, skills: ['review'] },
+          {
+            commit,
+            entries: [
+              manifest,
+              entry('shared/skills/review/SKILL.md', 'entry'),
+              entry(path, 'bad'),
+            ],
+          },
+          parseYaml,
+        ),
+      { code: 'PATH_UNSAFE' },
+    );
+  for (const extra of [
+    [
+      entry('shared/skills/review/support', 'file'),
+      entry('shared/skills/review/support/check.mjs', 'child'),
+    ],
+    [
+      entry('shared/skills/review/caf\u00e9/a.md', 'a'),
+      entry('shared/skills/review/cafe\u0301/b.md', 'b'),
+    ],
+  ])
+    assert.throws(
+      () =>
+        snapshotFromCapture(
+          { ...intent, skills: ['review'] },
+          {
+            commit,
+            entries: [
+              manifest,
+              entry('shared/skills/review/SKILL.md', 'entry'),
+              ...extra,
+            ],
+          },
+          parseYaml,
+        ),
+      { code: 'PATH_ALIAS' },
+    );
+  assert.throws(
+    () =>
+      snapshotFromCapture(
+        { ...intent, skills: ['review'] },
+        {
+          commit,
+          entries: [
+            manifest,
+            entry('shared/skills/review/SKILL.md', 'entry', {
+              invalidPath: true,
+            }),
+          ],
+        },
+        parseYaml,
+      ),
+    { code: 'GIT_TREE' },
+  );
+  const snapshot = snapshotFromCapture(
+    { ...intent, conventions: ['testing/unit'], skills: ['review'] },
+    {
+      commit,
+      entries: [
+        manifest,
+        entry('shared/conventions/testing/unit.tpl.md', 'nested'),
+        entry('shared/skills/review/SKILL.md', 'entry'),
+        entry('shared/skills/review/agentscli-skill.yml', 'requires: []\n'),
+      ],
+    },
+    parseYaml,
+  );
+  assert.deepEqual(snapshot.lock.conventions, ['testing/unit']);
+  assert.deepEqual(snapshot.lock.skills, ['review']);
+  assert.equal(snapshot.lock.schemaVersion, 1);
+  assert.deepEqual(
+    Buffer.from(snapshot.files['agentscli-hub.yml']),
+    manifest.content,
+  );
+  for (const [path, content] of Object.entries(snapshot.files)) {
+    assert.ok(!path.startsWith('shared/'));
+    assert.equal(snapshot.lock.files[path].sha256, sha256(content));
+  }
 });

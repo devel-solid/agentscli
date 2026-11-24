@@ -267,6 +267,28 @@ export function descriptor(content, gitMode, forceBytes = false) {
   };
 }
 
+function validateInventoryPaths(paths) {
+  const prefixes = new Map();
+  const files = new Set(paths.map(key));
+  for (const path of paths) {
+    portablePath(path);
+    const segments = path.split('/');
+    for (let length = 1; length <= segments.length; length++) {
+      const prefix = segments.slice(0, length).join('/');
+      const folded = key(prefix);
+      if (
+        (prefixes.has(folded) && prefixes.get(folded) !== prefix) ||
+        (length < segments.length && files.has(folded))
+      )
+        throw new HubImportError(
+          'PATH_ALIAS',
+          'Selected directory or file names collide portably.',
+        );
+      prefixes.set(folded, prefix);
+    }
+  }
+}
+
 export function snapshotFromCapture(input, capture, parseYaml) {
   const intent = request(input);
   const commit = commitId(capture.commit);
@@ -282,17 +304,18 @@ export function snapshotFromCapture(input, capture, parseYaml) {
     entries.set(entry.path, entry);
   }
   const selected = new Set(['agentscli-hub.yml']);
-  for (const id of intent.conventions) selected.add(`conventions/${id}.tpl.md`);
+  for (const id of intent.conventions)
+    selected.add(`shared/conventions/${id}.tpl.md`);
   for (const id of intent.skills) {
-    if (entries.has(`skills/${id}`))
+    if (entries.has(`shared/skills/${id}`))
       throw new HubImportError(
         'GIT_ENTRY',
         'Selected skill root must be a regular directory tree.',
       );
     const files = [...entries.keys()].filter((path) =>
-      path.startsWith(`skills/${id}/`),
+      path.startsWith(`shared/skills/${id}/`),
     );
-    if (!files.includes(`skills/${id}/SKILL.md`))
+    if (!files.includes(`shared/skills/${id}/SKILL.md`))
       throw new HubImportError(
         'SOURCE_MISSING',
         `Missing selected skill entrypoint: ${id}.`,
@@ -301,32 +324,22 @@ export function snapshotFromCapture(input, capture, parseYaml) {
   }
   const files = {};
   const inventory = {};
-  const seen = new Set();
-  const prefixes = new Map();
-  for (const path of [...selected].sort()) {
-    portablePath(path);
-    const segments = path.split('/');
-    for (let length = 1; length <= segments.length; length++) {
-      const prefix = segments.slice(0, length).join('/');
-      const folded = key(prefix);
-      if (prefixes.has(folded) && prefixes.get(folded) !== prefix)
-        throw new HubImportError(
-          'PATH_ALIAS',
-          'Selected directory or file names collide portably.',
-        );
-      prefixes.set(folded, prefix);
-    }
-    if (seen.has(key(path)))
-      throw new HubImportError(
-        'PATH_ALIAS',
-        'Selected paths collide portably.',
-      );
-    seen.add(key(path));
+  const physicalPaths = [...selected].sort();
+  const logicalPath = (path) =>
+    path === 'agentscli-hub.yml' ? path : path.slice('shared/'.length);
+  validateInventoryPaths(physicalPaths);
+  validateInventoryPaths(physicalPaths.map(logicalPath));
+  for (const path of physicalPaths) {
     const entry = entries.get(path);
     if (!entry)
       throw new HubImportError(
         'SOURCE_MISSING',
         `Missing selected hub source: ${path}.`,
+      );
+    if (entry.invalidPath)
+      throw new HubImportError(
+        'GIT_TREE',
+        'Selected Git paths must be valid UTF-8 without replacement characters.',
       );
     if (entry.type !== 'blob')
       throw new HubImportError(
@@ -338,8 +351,9 @@ export function snapshotFromCapture(input, capture, parseYaml) {
       entry.gitMode,
       entry.textAttribute === 'unset',
     );
-    files[path] = result.content;
-    inventory[path] = result.descriptor;
+    const target = logicalPath(path);
+    files[target] = result.content;
+    inventory[target] = result.descriptor;
   }
   let manifest;
   try {

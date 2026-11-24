@@ -30,8 +30,8 @@ function fixture({ initial = false } = {}) {
     localTags: new Map(initial ? [] : [['v1.0.0', A]]),
     commits: new Map([[A, 'schemaVersion: 1\nversion: 1.0.0\n']]),
     status: initial
-      ? '?? conventions/rules.tpl.md\0?? unrelated.txt\0'
-      : ' M conventions/rules.tpl.md\0M  unrelated.txt\0',
+      ? '?? shared/conventions/rules.tpl.md\0?? unrelated.txt\0'
+      : ' M shared/conventions/rules.tpl.md\0M  unrelated.txt\0',
     committedDiff: '',
     calls: [],
     failPushTag: false,
@@ -164,10 +164,10 @@ test('native ref/status parsing preserves exact commits and rename cleanup paths
     B,
   );
   assert.deepEqual(
-    parseStatus('R  skills/new/SKILL.md\0skills/old/SKILL.md\0').map(
-      (item) => item.path,
-    ),
-    ['skills/new/SKILL.md', 'skills/old/SKILL.md'],
+    parseStatus(
+      'R  shared/skills/new/SKILL.md\0shared/skills/old/SKILL.md\0',
+    ).map((item) => item.path),
+    ['shared/skills/new/SKILL.md', 'shared/skills/old/SKILL.md'],
   );
   assert.throws(() => parseStatus('?? ../outside\0'), { code: 'unsafe-path' });
   assert.throws(() => parseRefs('credential-like malformed output'), {
@@ -211,6 +211,30 @@ test('scoped publication preserves unrelated staging and verifies branch plus im
     false,
   );
   assert.equal(adapters.state.status, 'M  unrelated.txt\0');
+});
+
+test('explicit shared publication scopes include complete resources and preserve unrelated staged paths', () => {
+  const adapters = fixture();
+  adapters.state.status =
+    ' M shared/conventions/testing/rules.tpl.md\0' +
+    'A  shared/skills/review-code/references/details.md\0' +
+    'M  docs/conventions/internal.md\0M  unrelated.txt\0';
+  const result = publishRelease(
+    {
+      root,
+      bump: 'minor',
+      paths: ['shared/conventions/testing', 'shared/skills/review-code'],
+    },
+    adapters,
+  );
+  assert.equal(result.ok, true, JSON.stringify(result));
+  const commit = adapters.state.calls.find((args) => args[0] === 'commit');
+  assert.ok(commit.includes('shared/conventions/testing/rules.tpl.md'));
+  assert.ok(commit.includes('shared/skills/review-code/references/details.md'));
+  assert.equal(commit.includes('docs/conventions/internal.md'), false);
+  assert.equal(commit.includes('unrelated.txt'), false);
+  assert.equal(result.candidate.version, '1.1.0');
+  assert.equal(adapters.state.tags.get('v1.1.0'), B);
 });
 test('no changed published hub content does not create a release', () => {
   const adapters = fixture();
@@ -280,7 +304,7 @@ test('tag-only partial publication reuses current candidate and completes only b
 });
 test('preflight blocks partial selected staging, conflicts, malformed tag manifests, and missing destination', () => {
   const staged = fixture();
-  staged.state.status = 'MM conventions/rules.tpl.md\0';
+  staged.state.status = 'MM shared/conventions/rules.tpl.md\0';
   assert.throws(() => prepareRelease({ root, bump: 'patch' }, staged), {
     code: 'staging',
   });
@@ -313,9 +337,14 @@ test('private release helper parser keeps publication out of public CLI and requ
       '--bump',
       'minor',
       '--path',
-      'skills/review-code',
+      'shared/skills/review-code',
     ]),
-    { mode: 'plan', root: 'hub', bump: 'minor', paths: ['skills/review-code'] },
+    {
+      mode: 'plan',
+      root: 'hub',
+      bump: 'minor',
+      paths: ['shared/skills/review-code'],
+    },
   );
   for (const args of [
     ['publish', '--repo-root', 'hub'],

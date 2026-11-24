@@ -54,7 +54,7 @@ Its name is `testing.tpl.md`, derived from its H1 in ASCII lowercase kebab case.
 
 Skills have their own standard description trigger and carry their operation's instructions in their own entrypoint or bundled support. They may mention other skill identities, but must discover their actual project location rather than link or hardcode another resource's path. Own support links are allowed; project files remain legitimate work inputs. Optional `metadata.agentscli: agentscli-skill.yml` points to one contained sibling general configuration file. Its initially supported section is `requires`, containing only skill dependencies. This complete shared-skill example assumes `inspect-tests` exists in the same hub:
 
-`skills/review-tests/SKILL.md`:
+`shared/skills/review-tests/SKILL.md`:
 
 ```markdown
 ---
@@ -77,7 +77,7 @@ confirmed findings and the checks actually performed. A review request does not
 authorize edits, generation, imports, or publication.
 ```
 
-`skills/review-tests/agentscli-skill.yml`:
+`shared/skills/review-tests/agentscli-skill.yml`:
 
 ```yaml
 requires:
@@ -109,6 +109,10 @@ Exit codes: 0 success, 1 freshness drift under private `sync --check`, 2 usage/v
 ## One optional Git hub
 
 Without a hub, configuration contains only `language: en`. The import skill manages an explicitly requested acquisition, update, selection change, switch, or detach. Native Git supports provider-independent public/private SSH/SCP, HTTPS/HTTP, and Git endpoints with existing authentication. There is no hosted registry or custom login. The tool never stores credentials or executes downloaded hooks, scripts, filters, or submodules.
+
+Remote acquisition reads only `shared/conventions/**/*.tpl.md` and `shared/skills/<id>/`. For example, `shared/conventions/testing/unit.tpl.md` has ID `testing/unit`, and `shared/skills/review-tests/` has ID `review-tests`. Internal `.agents/skills/` trees are not shared resources. Beta layout changes are adopted directly, without alternate-root lookup or layout conversion.
+
+The local snapshot keeps `.agentscli/hub/conventions/` and `.agentscli/hub/skills/`, without `shared/`. Valid accepted snapshots, their source hashes, and pinned commits remain unchanged by a CLI upgrade. Committed attributes are evaluated at the physical Git paths before mapping into this namespace.
 
 Accepted configuration looks like:
 

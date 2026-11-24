@@ -28,7 +28,7 @@ test('YAML diagnostics omit source excerpts and legacy dependency comments are r
     () =>
       contract.parseConvention(
         convention('# Code review\n\n<!-- agentscli:requires {} -->\n'),
-        'conventions/code-review.tpl.md',
+        'shared/conventions/code-review.tpl.md',
       ),
     { code: 'convention-requires' },
   );
@@ -37,7 +37,7 @@ test('YAML diagnostics omit source excerpts and legacy dependency comments are r
       convention(
         '# Code review\n\n```markdown\n<!-- agentscli:requires {} -->\n```\n',
       ),
-      'conventions/code-review.tpl.md',
+      'shared/conventions/code-review.tpl.md',
     ),
   );
 });
@@ -69,7 +69,7 @@ test('conventions accept trigger-only YAML and real H1 while preserving examples
   );
   const parsed = contract.parseConvention(
     value,
-    'conventions/code-review.tpl.md',
+    'shared/conventions/code-review.tpl.md',
   );
   assert.equal(parsed.title, 'Code review');
   assert.match(parsed.body, /# Literal example/);
@@ -83,11 +83,12 @@ test('conventions accept trigger-only YAML and real H1 while preserving examples
     assert.throws(() =>
       contract.parseConvention(
         convention(undefined, yaml),
-        'conventions/code-review.tpl.md',
+        'shared/conventions/code-review.tpl.md',
       ),
     );
   assert.throws(
-    () => contract.parseConvention(convention(), 'conventions/wrong.tpl.md'),
+    () =>
+      contract.parseConvention(convention(), 'shared/conventions/wrong.tpl.md'),
     { code: 'filename' },
   );
   assert.throws(
@@ -143,7 +144,7 @@ test('standard skill metadata uses only the string pointer and validates names',
   assert.equal(
     contract.parseSkill(
       skill('review-code', 'metadata:\n  agentscli: agentscli-skill.yml\n'),
-      'skills/review-code/SKILL.md',
+      'shared/skills/review-code/SKILL.md',
       'review-code',
     ).data.metadata.agentscli,
     'agentscli-skill.yml',
@@ -268,13 +269,13 @@ test('resource normalization closes URL, casing, entity, source/output, and snap
   const options = {
     kind: 'convention',
     conventions: [
-      'conventions/a.tpl.md',
-      'conventions/b.tpl.md',
+      'shared/conventions/a.tpl.md',
+      'shared/conventions/b.tpl.md',
       '.agentscli/conventions/a.md',
       '.agentscli/conventions/b.md',
     ],
     skillRoots: [
-      'skills/review-code',
+      'shared/skills/review-code',
       '.agents/skills/review-code',
       '.agentscli/hub/skills/review-code',
     ],
@@ -283,7 +284,7 @@ test('resource normalization closes URL, casing, entity, source/output, and snap
   for (const value of [
     '[other](b.tpl.md)',
     '[other](B.MD)',
-    '[other](https://example.test/repo/conventions/b.tpl.md)',
+    '[other](https://example.test/repo/shared/conventions/b.tpl.md)',
     '[other](https://example.test/repo/.agents/skills/review-code/scripts/check.mjs)',
     '[other](skill://review-code)',
     '[other](../../.agentscli/hub/skills/review-code/requires.yml)',
@@ -291,7 +292,8 @@ test('resource normalization closes URL, casing, entity, source/output, and snap
     '[other](../../.agents/%73kills/review-code)',
   ])
     assert.throws(
-      () => contract.validateLinks(value, 'conventions/a.tpl.md', options),
+      () =>
+        contract.validateLinks(value, 'shared/conventions/a.tpl.md', options),
       { code: 'resource-link' },
     );
   for (const value of [
@@ -301,7 +303,7 @@ test('resource normalization closes URL, casing, entity, source/output, and snap
     '[asset](../../images/chart.png)',
   ])
     assert.doesNotThrow(() =>
-      contract.validateLinks(value, 'conventions/a.tpl.md', options),
+      contract.validateLinks(value, 'shared/conventions/a.tpl.md', options),
     );
   const skillOptions = {
     ...options,
@@ -376,39 +378,42 @@ test('complete resource trees preserve opaque support and reject aliases/collisi
 test('hub discovery only accepts shared roots and explicit same-hub dependencies', () => {
   const files = new Map([
     ['agentscli-hub.yml', Buffer.from('schemaVersion: 1\nversion: 1.0.0')],
-    ['conventions/code-review.tpl.md', Buffer.from(convention())],
+    ['shared/conventions/code-review.tpl.md', Buffer.from(convention())],
     [
-      'skills/review-code/SKILL.md',
+      'shared/skills/review-code/SKILL.md',
       Buffer.from(
         skill('review-code', 'metadata:\n  agentscli: agentscli-skill.yml\n'),
       ),
     ],
     [
-      'skills/review-code/agentscli-skill.yml',
+      'shared/skills/review-code/agentscli-skill.yml',
       Buffer.from('requires:\n  - id: inspect-code\n    source: hub\n'),
     ],
-    ['skills/inspect-code/SKILL.md', Buffer.from(skill('inspect-code'))],
-    ['skills/review-code/assets/opaque.bin', Buffer.from([0, 255])],
+    ['shared/skills/inspect-code/SKILL.md', Buffer.from(skill('inspect-code'))],
+    ['shared/skills/review-code/assets/opaque.bin', Buffer.from([0, 255])],
   ]);
   assert.equal(contract.validateHubFiles(files).skills.size, 2);
   files.set(
-    'skills/agentscli-build-agents/SKILL.md',
+    'shared/skills/agentscli-build-agents/SKILL.md',
     Buffer.from(skill('agentscli-build-agents')),
   );
   assert.throws(() => contract.validateHubFiles(files), {
     code: 'reserved-id',
   });
-  files.delete('skills/agentscli-build-agents/SKILL.md');
-  files.delete('conventions/code-review.tpl.md');
+  files.delete('shared/skills/agentscli-build-agents/SKILL.md');
+  files.delete('shared/conventions/code-review.tpl.md');
   assert.equal(contract.validateHubFiles(files).skills.size, 2);
-  files.delete('skills/inspect-code/SKILL.md');
+  files.delete('shared/skills/inspect-code/SKILL.md');
   assert.throws(() => contract.validateHubFiles(files), { code: 'dependency' });
 });
 test('nested convention directories are portable identities without imposing slug rules on directories', () => {
   const files = new Map([
     ['agentscli-hub.yml', Buffer.from('schemaVersion: 1\nversion: 1.0.0')],
-    ['conventions/front_end/V2/code-review.tpl.md', Buffer.from(convention())],
-    ['skills/review-code/SKILL.md', Buffer.from(skill('review-code'))],
+    [
+      'shared/conventions/front_end/V2/code-review.tpl.md',
+      Buffer.from(convention()),
+    ],
+    ['shared/skills/review-code/SKILL.md', Buffer.from(skill('review-code'))],
   ]);
   assert.equal(
     contract
@@ -428,7 +433,7 @@ test('each independent hub skill owns the same enforced link and convention boun
       () =>
         independent.parseConvention(
           '---\ntrigger: Read\nrequires: []\n---\n# Rules\n',
-          'conventions/rules.tpl.md',
+          'shared/conventions/rules.tpl.md',
         ),
       { code: 'convention-requires' },
     );
@@ -445,7 +450,7 @@ test('each independent hub skill owns the same enforced link and convention boun
       () =>
         independent.validateLinks(
           '[other](https://example.test/repo/.agents/skills/other/requires.yml)',
-          'conventions/rules.tpl.md',
+          'shared/conventions/rules.tpl.md',
           { kind: 'convention', skillRoots: ['.agents/skills/other'] },
         ),
       { code: 'resource-link' },
@@ -454,11 +459,11 @@ test('each independent hub skill owns the same enforced link and convention boun
       () =>
         independent.validateLinks(
           '[other](other.tpl.md)',
-          'conventions/rules.tpl.md',
+          'shared/conventions/rules.tpl.md',
           {
             kind: 'convention',
             outputFile: '.agentscli/conventions/rules.md',
-            conventions: ['conventions/other.tpl.md'],
+            conventions: ['shared/conventions/other.tpl.md'],
           },
         ),
       { code: 'resource-link' },
@@ -471,8 +476,8 @@ test('all five independent checkers enforce general configuration ownership and 
     const independent = await import(
       `../../assets/templates/skills/${name}/scripts/support.mjs`
     );
-    const configFile = 'skills/review-code/agentscli-skill.yml';
-    const entryFile = 'skills/review-code/SKILL.md';
+    const configFile = 'shared/skills/review-code/agentscli-skill.yml';
+    const entryFile = 'shared/skills/review-code/SKILL.md';
     const files = new Map([
       ['agentscli-hub.yml', Buffer.from('schemaVersion: 1\nversion: 1.0.0')],
       [entryFile, Buffer.from(skill('review-code'))],
@@ -520,25 +525,28 @@ test('all five independent checkers enforce general configuration ownership and 
       Buffer.from('requires:\n  - id: inspect-code\n    source: hub\n'),
     );
     files.set(
-      'conventions/inspect-code.tpl.md',
+      'shared/conventions/inspect-code.tpl.md',
       Buffer.from(convention('# Inspect code\n\nKeep rules local.\n')),
     );
     assert.throws(() => independent.validateHubFiles(files), {
       code: 'dependency',
     });
     files.set(
-      'skills/inspect-code/SKILL.md',
+      'shared/skills/inspect-code/SKILL.md',
       Buffer.from(skill('inspect-code')),
     );
     assert.equal(independent.validateHubFiles(files).skills.size, 2);
     files.delete(configFile);
     files.set(entryFile, Buffer.from(skill('review-code')));
     for (const variant of ['Agentscli-skill.yml', 'Requires.yml']) {
-      files.set(`skills/review-code/${variant}`, Buffer.from('requires: []'));
+      files.set(
+        `shared/skills/review-code/${variant}`,
+        Buffer.from('requires: []'),
+      );
       assert.throws(() => independent.validateHubFiles(files), {
         code: 'skill-config',
       });
-      files.delete(`skills/review-code/${variant}`);
+      files.delete(`shared/skills/review-code/${variant}`);
     }
     files.set(
       entryFile,
@@ -550,7 +558,7 @@ test('all five independent checkers enforce general configuration ownership and 
       configFile,
       Buffer.from('requires:\n  - id: inspect-code\n    source: hub\n'),
     );
-    const supportFile = 'skills/review-code/references/details.md';
+    const supportFile = 'shared/skills/review-code/references/details.md';
     files.set(
       supportFile,
       Buffer.from(
@@ -568,13 +576,13 @@ test('all five independent checkers enforce general configuration ownership and 
     });
     files.delete(supportFile);
     files.set(
-      'skills/review-code/requires.yml',
+      'shared/skills/review-code/requires.yml',
       Buffer.from('conventions: []\nskills: []'),
     );
     assert.throws(() => independent.validateHubFiles(files), {
       code: 'skill-config',
     });
-    files.delete('skills/review-code/requires.yml');
+    files.delete('shared/skills/review-code/requires.yml');
     files.set(
       entryFile,
       Buffer.from(
@@ -610,5 +618,167 @@ test('all five independent authoring environments reject legacy consumers and ne
       () => independent.inspectHub(path.join(root, 'child'), { fs: nested }),
       { code: 'role' },
     );
+  }
+});
+
+test('all independent inspectors discover current roots with stable IDs and separate internal resources', async () => {
+  const root = path.resolve('unit-shared-inspection');
+  for (const name of contract.operationalNames) {
+    const independent = await import(
+      `../../assets/templates/skills/${name}/scripts/support.mjs`
+    );
+    const fs = memoryFs({
+      [path.join(root, 'agentscli-hub.yml')]:
+        'schemaVersion: 1\nversion: 1.0.0',
+      [path.join(root, 'docs/conventions/internal.md')]:
+        '# Internal\n\nKeep internal rules here.\n',
+      [path.join(root, 'shared/conventions/testing/code-review.tpl.md')]:
+        convention('# Code review\n\n[self](code-review.tpl.md#details)\n'),
+      [path.join(root, 'shared/skills/review-code/SKILL.md')]:
+        skill('review-code', 'metadata:\n  agentscli: agentscli-skill.yml\n') +
+        '\n[details](references/details.md)\n',
+      [path.join(root, 'shared/skills/review-code/agentscli-skill.yml')]:
+        'requires:\n  - id: inspect-code\n    source: hub\n',
+      [path.join(root, 'shared/skills/review-code/references/details.md')]:
+        '[config](../agentscli-skill.yml)\n',
+      [path.join(root, 'shared/skills/review-code/assets/opaque.bin')]:
+        Buffer.from([0, 255]),
+      [path.join(root, 'shared/skills/inspect-code/SKILL.md')]:
+        skill('inspect-code'),
+      [path.join(root, '.agents/skills/internal-check/SKILL.md')]:
+        skill('internal-check') + '\n[own](scripts/check.mjs)\n',
+      [path.join(root, '.agents/skills/internal-check/scripts/check.mjs')]:
+        'throw new Error("Inspection must not execute support");',
+      [path.join(root, 'notes/skills/not-exported/SKILL.md')]:
+        'Unrelated project content is not a resource.',
+    });
+    const result = independent.inspectHub(root, { fs });
+    assert.deepEqual(
+      [...result.conventions],
+      ['local:internal', 'hub:testing/code-review'],
+    );
+    assert.deepEqual(
+      [...result.skills.keys()],
+      ['hub:inspect-code', 'hub:review-code', 'local:internal-check'],
+    );
+    assert.deepEqual(
+      result.files.get('shared/skills/review-code/assets/opaque.bin'),
+      Buffer.from([0, 255]),
+    );
+    assert.equal(result.files.has('notes/skills/not-exported/SKILL.md'), false);
+    assert.deepEqual(fs.mutations, []);
+
+    fs.addFile(
+      path.join(root, 'shared/skills/review-code/agentscli-skill.yml'),
+      'requires:\n  - id: inspect-code\n    source: local\n',
+    );
+    assert.throws(() => independent.inspectHub(root, { fs }), {
+      code: 'skill-config',
+    });
+  }
+});
+
+test('all independent link validators preserve own support and reject physical and consumer aliases', async () => {
+  for (const name of contract.operationalNames) {
+    const independent = await import(
+      `../../assets/templates/skills/${name}/scripts/support.mjs`
+    );
+    for (const ownRoot of ['shared/skills/one', '.agents/skills/one']) {
+      const options = {
+        kind: 'skill',
+        ownRoot,
+        conventions: ['shared/conventions/testing/rules.tpl.md'],
+        skillRoots: [
+          'shared/skills/one',
+          'shared/skills/two',
+          '.agents/skills/one',
+          '.agents/skills/two',
+          '.agentscli/hub/skills/two',
+        ],
+      };
+      for (const content of [
+        '[own](scripts/check.mjs#details)',
+        '[config](agentscli-skill.yml)',
+        '[details](references/details.md)',
+      ])
+        assert.doesNotThrow(() =>
+          independent.validateLinks(content, `${ownRoot}/SKILL.md`, options),
+        );
+      for (const content of [
+        '[foreign](../two/SKILL.md#details)',
+        '[foreign](/shared/skills/%74wo/references/details.md)',
+        '<a href="/.agents/skills/two/scripts/check.mjs">foreign</a>',
+        '[foreign][ref]\n\n[ref]: /.agentscli/hub/skills/two/agentscli-skill.yml',
+        '```sh\nnode /shared/skills/two/scripts/check.mjs\n```',
+        '[rules](/shared/conventions/testing/rules.tpl.md)',
+        '[rules](/.agentscli/conventions/testing/rules.md)',
+      ])
+        assert.throws(
+          () =>
+            independent.validateLinks(content, `${ownRoot}/SKILL.md`, options),
+          { code: 'resource-link' },
+        );
+    }
+  }
+});
+
+test('all independent inspectors reject unsafe shared parents and complete-tree aliases before mutation', async () => {
+  const root = path.resolve('unit-shared-safety');
+  for (const name of contract.operationalNames) {
+    const independent = await import(
+      `../../assets/templates/skills/${name}/scripts/support.mjs`
+    );
+    for (const type of ['file', 'link']) {
+      const fs = memoryFs({
+        [path.join(root, 'agentscli-hub.yml')]:
+          'schemaVersion: 1\nversion: 1.0.0',
+        [path.join(root, 'shared')]: 'Occupied parent',
+      });
+      fs.entries.get(path.join(root, 'shared')).type = type;
+      assert.throws(() => independent.inspectHub(root, { fs }), {
+        code: 'unsafe-path',
+      });
+      assert.deepEqual(fs.mutations, []);
+    }
+    const payload = path.join(root, 'shared/skills/review-code/payload.bin');
+    const fs = memoryFs({
+      [path.join(root, 'agentscli-hub.yml')]:
+        'schemaVersion: 1\nversion: 1.0.0',
+      [path.join(root, 'shared/skills/review-code/SKILL.md')]: skill(),
+      [payload]: Buffer.from([0, 255]),
+    });
+    fs.entries.get(payload).nlink = 2;
+    assert.throws(() => independent.inspectHub(root, { fs }), {
+      code: 'unsafe-path',
+    });
+    fs.entries.get(payload).nlink = 1;
+    fs.addFile(
+      path.join(root, 'shared/skills/review-code/Payload.bin'),
+      'alias',
+    );
+    assert.throws(() => independent.inspectHub(root, { fs }), {
+      code: 'collision',
+    });
+    assert.deepEqual(fs.mutations, []);
+  }
+});
+
+test('all independent inspectors reject portable aliases at each shared parent', async () => {
+  const root = path.resolve('unit-shared-parent-alias');
+  for (const name of contract.operationalNames) {
+    const independent = await import(
+      `../../assets/templates/skills/${name}/scripts/support.mjs`
+    );
+    for (const directory of ['Shared', 'shared/Conventions', 'shared/Skills']) {
+      const fs = memoryFs({
+        [path.join(root, 'agentscli-hub.yml')]:
+          'schemaVersion: 1\nversion: 1.0.0',
+      });
+      fs.addDirectory(path.join(root, directory));
+      assert.throws(() => independent.inspectHub(root, { fs }), {
+        code: 'collision',
+      });
+      assert.deepEqual(fs.mutations, []);
+    }
   }
 });

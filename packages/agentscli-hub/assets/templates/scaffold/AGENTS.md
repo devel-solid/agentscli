@@ -20,4 +20,4 @@ Read [resource authoring](docs/conventions/resource-authoring.md) when maintaini
 
 ## Ownership
 
-Only this file, `docs/conventions/`, `conventions/`, and `skills/` are authored content. The manifest version and Git policy are preserved state. The five operational skill directories and README are managed by `agentscli-hub apply`; edits there are disposable. Preserve unrelated content and staging. Do not execute shared skill code during inspection or publish without a publication request.
+Only this file, `docs/conventions/`, `shared/conventions/`, and `shared/skills/` are authored content. The manifest version and Git policy are preserved state. The five operational skill directories under `.agents/skills/` and README are managed by `agentscli-hub apply`; edits there are disposable. Preserve unrelated content and staging. Do not execute shared skill code during inspection or publish without a publication request.

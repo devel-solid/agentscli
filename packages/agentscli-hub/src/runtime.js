@@ -67,7 +67,11 @@ function interruptedBootstrap(root, assets, fs, git) {
   const metadata = maybeStat(path.join(root, '.git'), fs);
   if (!metadata || !metadata.isDirectory() || metadata.isSymbolicLink())
     return false;
-  const allowedDirectories = new Set(['conventions', 'skills']);
+  const allowedDirectories = new Set([
+    'shared',
+    'shared/conventions',
+    'shared/skills',
+  ]);
   for (const file of assets.keys()) {
     const parts = file.split('/');
     for (let index = 1; index < parts.length; index++)
@@ -216,6 +220,24 @@ function assertParents(file, root, fs) {
     const parent = path.dirname(current);
     if (parent === current || !current.startsWith(`${root}${path.sep}`))
       reject('unsafe-path', 'Effect escaped its target.', current);
+    const parentStat = maybeStat(parent, fs);
+    if (parentStat?.isDirectory() && !parentStat.isSymbolicLink()) {
+      const name = path.basename(current);
+      const key = name.normalize('NFC').toLowerCase();
+      if (
+        fs
+          .readdirSync(parent)
+          .some(
+            (entry) =>
+              entry !== name && entry.normalize('NFC').toLowerCase() === key,
+          )
+      )
+        reject(
+          'collision',
+          'An affected directory has a portable alias.',
+          current,
+        );
+    }
     current = parent;
   }
 }
@@ -308,8 +330,8 @@ export function planApply(
   const current = new Map();
   for (const prefix of [
     'docs/conventions',
-    'conventions',
-    'skills',
+    'shared/conventions',
+    'shared/skills',
     ...skillNames.map((name) => `.agents/skills/${name}`),
   ]) {
     assertParents(path.join(root, prefix, '__preflight__'), root, fs);
@@ -358,7 +380,7 @@ export function planApply(
   const effects = [];
   if (!existing && !resumed) effects.push({ kind: 'git-init', path: '.git' });
   if (!existing)
-    for (const directory of ['conventions', 'skills'])
+    for (const directory of ['shared/conventions', 'shared/skills'])
       if (!maybeStat(path.join(root, directory), fs))
         effects.push({ kind: 'mkdir', path: directory });
   const removed = new Set();

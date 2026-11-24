@@ -7,7 +7,7 @@ compatibility: Requires Node.js >= 22.
 
 # Shared skills
 
-Edit only direct-child shared skill directories under `skills/`. Preserve complete support trees, opaque files, and portable executable intent. A skill's standard name must match its direct-child directory. Product operational names are reserved. Never execute downloaded or proposed skill code merely to inspect it.
+Edit only direct-child shared skill directories under `shared/skills/`. Preserve complete support trees, opaque files, and portable executable intent. A skill's standard name must match its direct-child directory. Product operational names are reserved. Never execute downloaded or proposed skill code merely to inspect it.
 
 Use standard SKILL.md frontmatter with a nonempty name and activation description. Optional general configuration uses the string `metadata.agentscli: agentscli-skill.yml` and one regular sibling YAML mapping. Its only current section is optional `requires`, a list of `id` and `source` mappings referring exclusively to skills. Every shared dependency uses `source: hub` in this same hub revision. A skill without configuration needs no extra file. A declared file must exist; an unreferenced reserved configuration file, old requires.yml, obsolete metadata.requires, unknown sections, or encoded structured data are rejected. Do not add speculative sections or a separate file for another purpose.
 

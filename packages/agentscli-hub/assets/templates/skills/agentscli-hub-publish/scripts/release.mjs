@@ -135,9 +135,12 @@ function eligible(file) {
       '.gitattributes',
       '.gitignore',
     ].includes(file) ||
-    ['docs/conventions/', 'conventions/', 'skills/', '.agents/skills/'].some(
-      (prefix) => file.startsWith(prefix),
-    )
+    [
+      'docs/conventions/',
+      'shared/conventions/',
+      'shared/skills/',
+      '.agents/skills/',
+    ].some((prefix) => file.startsWith(prefix))
   );
 }
 function safeDestination(value, label) {

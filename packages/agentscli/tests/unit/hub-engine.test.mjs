@@ -129,6 +129,22 @@ test('offline rendering combines local and selected hub rules and preserves acce
   );
   success(await invoke(fs, 'sync', { check: true }));
 });
+
+test('existing logical snapshots retain sources, lock hashes and pins during offline generation', async () => {
+  const fs = fixture({ crlf: true });
+  const paths = [
+    '.agentscli/config.yml',
+    '.agentscli/hub/lock.yml',
+    ...Object.keys(fs.files).map((path) => `.agentscli/hub/${path}`),
+  ];
+  const before = paths.map((path) => [path, fs.io.read(join(fs.root, path))]);
+  success(await invoke(fs, 'validate'));
+  success(await invoke(fs, 'sync'));
+  success(await invoke(fs, 'sync', { check: true }));
+  for (const [path, content] of before)
+    assert.deepEqual(fs.io.read(join(fs.root, path)), content, path);
+  assert.equal(fs.io.info(join(fs.root, '.agentscli/hub/shared')), undefined);
+});
 test('POSIX mode-only drift repairs privately, preview is write-free, Windows retains executable metadata', async () => {
   const fs = fixture({ posix: true });
   success(await invoke(fs));

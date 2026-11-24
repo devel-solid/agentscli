@@ -7,7 +7,7 @@ compatibility: Requires Node.js >= 22.
 
 # Shared conventions
 
-Edit only shared `conventions/**/*.tpl.md` templates. Their ID is the relative path below the sharing root without `.tpl.md`. Do not edit internal conventions, operational skills, consumer output, or publication state.
+Edit only shared `shared/conventions/**/*.tpl.md` templates. Their ID is the relative path below the sharing root without `.tpl.md`. Do not edit internal conventions, operational skills, consumer output, or publication state.
 
 Start each template with YAML containing only one nonempty string `trigger`, followed by exactly one H1 outside examples. The filename must match the H1's ASCII kebab-case slug. Preserve authored Markdown and examples. Conventions cannot declare requires, link to other conventions, or link to skills or their support files. Make the content self-contained; procedural activation belongs in a skill. Review semantic self-containment separately from mechanical links.
 

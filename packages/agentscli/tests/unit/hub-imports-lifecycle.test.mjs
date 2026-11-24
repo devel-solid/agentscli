@@ -115,10 +115,13 @@ function gitFake({ version = '1.0.0', extra = [], fail = false } = {}) {
           path: 'agentscli-hub.yml',
           content: bytes(`schemaVersion: 1\nversion: ${version}\n`),
         },
-        { path: 'conventions/testing.tpl.md', content: bytes(convention) },
-        { path: 'skills/review/SKILL.md', content: bytes(skill) },
         {
-          path: 'skills/review/scripts/check.mjs',
+          path: 'shared/conventions/testing.tpl.md',
+          content: bytes(convention),
+        },
+        { path: 'shared/skills/review/SKILL.md', content: bytes(skill) },
+        {
+          path: 'shared/skills/review/scripts/check.mjs',
           content: bytes('export const check = true;\r\n'),
           gitMode: '100755',
         },
@@ -207,7 +210,7 @@ test('an unrelated same-byte skill cannot be adopted and missing selected depend
     missing = gitFake({
       extra: [
         {
-          path: 'skills/review/SKILL.md',
+          path: 'shared/skills/review/SKILL.md',
           content: bytes(
             skill.replace(
               'description:',
@@ -216,7 +219,7 @@ test('an unrelated same-byte skill cannot be adopted and missing selected depend
           ),
         },
         {
-          path: 'skills/review/agentscli-skill.yml',
+          path: 'shared/skills/review/agentscli-skill.yml',
           content: bytes('requires:\n  - id: absent\n    source: hub\n'),
         },
       ],

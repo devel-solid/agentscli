@@ -184,11 +184,11 @@ export function createGitCapture({
         const tree = parseTree(
           git(['ls-tree', '-r', '-z', '--full-tree', commit]),
         );
-        const prefixes = intent.skills.map((id) => `skills/${id}/`);
+        const prefixes = intent.skills.map((id) => `shared/skills/${id}/`);
         const exact = new Set([
           'agentscli-hub.yml',
-          ...intent.conventions.map((id) => `conventions/${id}.tpl.md`),
-          ...intent.skills.map((id) => `skills/${id}`),
+          ...intent.conventions.map((id) => `shared/conventions/${id}.tpl.md`),
+          ...intent.skills.map((id) => `shared/skills/${id}`),
         ]);
         const selected = tree.filter(
           (entry) =>
