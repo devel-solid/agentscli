@@ -1,17 +1,17 @@
 ---
 name: agentscli-adm-publish-packages
-description: Prepare, version, and publish the two CLI npm packages from this tool monorepo using native Git and npm. Use for authorized CLI releases, never a user hub's content release.
+description: Prepare, version, and publish the agentscli npm package from this tool monorepo using native Git and npm. Use for authorized CLI releases.
 ---
 
 # Release CLI packages
 
-Discover this monorepo and the requested workspace through current package metadata and project instructions. Run this skill's `node scripts/check.mjs --repo-root <root> --package <agentscli|agentscli-hub>` for concrete candidate checks. Do not publish the private root or use a hub's content-publication skill.
+Discover this monorepo and its workspace through current package metadata and project instructions. Run this skill's `node scripts/check.mjs --repo-root <root> --package agentscli` for concrete candidate checks. Do not publish the private root.
 
-Derive package identity/version, executable, registry, Git remote, and tag from actual metadata and current local/remote/registry state. Tags use agentscli-v<version> or agentscli-hub-v<version>. The first hub CLI is 0.1.0, independent of hub content versions. Preserve immutable identities, native authentication, unrelated work, and staging. Never collect/print tokens, rewrite history, force-push, or replace published identities.
+Derive package identity/version, executable, registry, Git remote, and tag from actual metadata and current local/remote/registry state. Tags use agentscli-v<version>. Preserve immutable identities, native authentication, unrelated work, and staging. Never collect/print tokens, rewrite history, force-push, or replace published identities.
 
-Assess completed impact and choose an unused semantic version. Major zero means beta; production starts at 1.0.0. Beta contract changes replace the old contract directly without transition periods, migration, or backward-compatibility machinery, and do not require promotion to production. Account for public command removals and managed replacement. Prepare metadata with native npm version --no-git-tag-version in the target workspace and update the root lockfile. The requested two releases do not create lockstep versions or an unrelated package bump.
+Assess completed impact and choose an unused semantic version. Major zero means beta; production starts at 1.0.0. Beta contract changes replace the old contract directly without transition periods, migration, or backward-compatibility machinery, and do not require promotion to production. Account for public command removals and managed replacement. Prepare metadata with native npm version --no-git-tag-version in the workspace and update the root lockfile.
 
-Run focused units and the root check gate, then build and inspect npm pack previews and actual archives in ignored storage. Check each archive using this skill's checker with --archive <tarball>. Verify identity/version/license/bin, four/five complete skill closures, exact compatibility and actual generator stamps, consumer locales, runtime/README/license, and exclusions. Rebuild when candidate inputs change.
+Run focused units and the root check gate, then build and inspect npm pack previews and actual archives in ignored storage. Check each archive using this skill's checker with --archive <tarball>. Verify identity/version/license/bin, three complete skill closures, exact compatibility and actual generator stamps, consumer locales, runtime/README/license, and exclusions. Rebuild when candidate inputs change.
 
 Present exact reviewed source commit or pending diff, versions/tags, destinations, tarballs, and SHA-512 integrity before external delivery. Reuse existing scoped authorization; request only missing authorization or concrete account/destination information. Local readiness is not publication.
 

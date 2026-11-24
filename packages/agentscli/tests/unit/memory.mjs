@@ -25,9 +25,7 @@ export function memory(files = {}) {
   const io = {
     info: (path) => {
       const node = nodes.get(path);
-      return (
-        node && { kind: node.kind, nlink: node.nlink, mode: node.mode ?? 0o644 }
-      );
+      return node && { kind: node.kind, nlink: node.nlink };
     },
     names: (path) =>
       [...nodes.keys()]

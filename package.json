@@ -8,14 +8,13 @@
     "url": "git+https://github.com/devel-solid/agentscli.git"
   },
   "workspaces": [
-    "packages/agentscli",
-    "packages/agentscli-hub"
+    "packages/agentscli"
   ],
   "scripts": {
     "build": "npm run build --workspaces",
     "typecheck": "npm run typecheck --workspaces",
-    "format": "prettier --write package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md openspec/config.yaml .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format --workspaces",
-    "format:check": "prettier --check package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md openspec/config.yaml .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format:check --workspaces",
+    "format": "prettier --write package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format --workspaces",
+    "format:check": "prettier --check package.json package-lock.json tsconfig.json tsconfig.base.json scripts tests/unit docs/conventions AGENTS.md README.md .github/workflows/node.yml \".agents/skills/agentscli-adm-*/**/*\" && npm run format:check --workspaces",
     "test": "npm run test --workspaces && node scripts/test-root.mjs",
     "check:skills": "node scripts/check-admin.mjs",
     "check": "npm run typecheck && npm run format:check && npm test && npm run check:skills",

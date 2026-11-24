@@ -24,10 +24,7 @@ import {
   validateResources,
   skillRequirements,
 } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/content.mjs';
-import {
-  execute,
-  applyEffects,
-} from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/runtime.mjs';
+import { execute } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/runtime.mjs';
 import { run } from '../../assets/templates/skills/agentscli-build-agents/scripts/build-agents.mjs';
 export const bytes = (text) => new TextEncoder().encode(text);
 export const main = '# Project\n\n<!-- agentscli:conventions -->\n';
@@ -85,16 +82,8 @@ export const client = (files) =>
 export const invoke = (fs, command = 'apply', options = {}) =>
   execute(command, { repoRoot: fs.root, ...options }, { io: fs.io, resources });
 
-test('strict config permits one explicit pinned hub and no layout aliases', () => {
-  const config = {
-    language: 'pt-br',
-    hub: {
-      repository: 'git@example.test:team/hub.git',
-      commit: 'a'.repeat(40),
-      conventions: ['testing'],
-      skills: [],
-    },
-  };
+test('strict config permits language and rejects extra fields and YAML aliases', () => {
+  const config = { language: 'pt-br' };
   assert.deepEqual(parseManifest(serializeManifest(config)), config);
   for (const text of [
     '[]',
@@ -104,31 +93,6 @@ test('strict config permits one explicit pinned hub and no layout aliases', () =
     'language: &a [*a]',
   ])
     assert.throws(() => parseManifest(text));
-  for (const repository of [
-    '../local',
-    'file:///tmp/hub',
-    'ext::helper',
-    'https://user:pass@example.test/hub',
-    'C:/repo',
-  ])
-    assert.throws(() =>
-      parseManifest(
-        serializeManifest({ ...config, hub: { ...config.hub, repository } }),
-      ),
-    );
-  assert.throws(() =>
-    parseManifest(
-      serializeManifest({ ...config, hub: { ...config.hub, commit: 'main' } }),
-    ),
-  );
-  assert.throws(() =>
-    parseManifest(
-      serializeManifest({
-        ...config,
-        hub: { ...config.hub, skills: ['agentscli-build-agents'] },
-      }),
-    ),
-  );
   assert.throws(() => parseYaml('a: &a {b: 1}\nb: *a'));
   assert.throws(() => parseYaml('a: !!str text'));
 });
@@ -182,38 +146,45 @@ test('conventions require only trigger and exactly one live H1; examples remain 
     'Read testing.',
   );
 });
-test('general skill configuration resolves only explicitly available skills by origin', () => {
+test('general skill configuration resolves only explicitly available local skills', () => {
   const files = {
     'SKILL.md': skill(
       'review',
       'metadata:\n  agentscli: agentscli-skill.yml\n',
     ),
     'agentscli-skill.yml': bytes(
-      'requires:\n  - id: testing\n    source: hub\n',
+      'requires:\n  - id: testing\n    source: local\n',
     ),
   };
   assert.equal(
-    skillRequirements(files, 'skills/review', 'hub').requirements[0].id,
+    skillRequirements(files, 'skills/review').requirements[0].id,
     'testing',
   );
   assert.throws(
     () =>
       validateResources({
-        skills: [{ id: 'review', source: 'hub', path: 'skills/review', files }],
+        skills: [
+          { id: 'review', source: 'local', path: 'skills/review', files },
+        ],
       }),
     /explicitly available/,
   );
   const conv = {
     id: 'testing',
-    source: 'hub',
+    source: 'local',
     path: 'conventions/testing.tpl.md',
     output: '.agentscli/conventions/testing.md',
     text: convention(),
   };
-  const review = { id: 'review', source: 'hub', path: 'skills/review', files };
+  const review = {
+    id: 'review',
+    source: 'local',
+    path: 'skills/review',
+    files,
+  };
   const testing = {
     id: 'testing',
-    source: 'hub',
+    source: 'local',
     path: 'skills/testing',
     files: {
       'SKILL.md': skill(
@@ -221,17 +192,12 @@ test('general skill configuration resolves only explicitly available skills by o
         'metadata:\n  agentscli: agentscli-skill.yml\n',
       ),
       'agentscli-skill.yml': bytes(
-        'requires:\n  - id: review\n    source: hub\n',
+        'requires:\n  - id: review\n    source: local\n',
       ),
     },
   };
   assert.throws(
     () => validateResources({ conventions: [conv], skills: [review] }),
-    /explicitly available skill/,
-  );
-  assert.throws(
-    () =>
-      validateResources({ skills: [review, { ...testing, source: 'local' }] }),
     /explicitly available skill/,
   );
   validateResources({ conventions: [conv], skills: [review, testing] });
@@ -245,7 +211,7 @@ test('general skill configuration resolves only explicitly available skills by o
             files: {
               ...testing.files,
               'agentscli-skill.yml': bytes(
-                'requires:\n  - id: absent\n    source: hub\n',
+                'requires:\n  - id: absent\n    source: local\n',
               ),
             },
           },
@@ -260,7 +226,7 @@ test('optional skill configuration is strict native YAML and rejects obsolete de
     'review',
     'metadata:\n  agentscli: agentscli-skill.yml\n',
   );
-  const parse = (config, source = 'local') =>
+  const parse = (config) =>
     skillRequirements(
       {
         'SKILL.md': entry,
@@ -268,7 +234,6 @@ test('optional skill configuration is strict native YAML and rejects obsolete de
           typeof config === 'string' ? bytes(config) : config,
       },
       'skills/review',
-      source,
     );
   for (const valid of ['{}\n', 'requires: []\n'])
     assert.deepEqual(parse(valid).requirements, []);
@@ -279,7 +244,6 @@ test('optional skill configuration is strict native YAML and rejects obsolete de
   );
   const local = 'requires:\n  - id: testing\n    source: local\n';
   assert.equal(parse(local).requirements[0].id, 'testing');
-  assert.throws(() => parse(local, 'hub'), /source/);
   for (const invalid of [
     '',
     'null',
@@ -667,7 +631,7 @@ test('manual root AGENTS, invalid authored input, and legacy state block all wri
     assert.equal(fs.writes.length, 0);
   }
 });
-test('tool package identity, verified workspaces, hub markers, and ancestors guard contexts without agentscli.yml', async () => {
+test('tool package identity, verified workspaces, and ancestors guard contexts without agentscli.yml', async () => {
   for (const files of [
     {
       'package.json': JSON.stringify({
@@ -675,19 +639,14 @@ test('tool package identity, verified workspaces, hub markers, and ancestors gua
         bin: { agentscli: 'dist/cli.js' },
       }),
     },
-    { 'agentscli-hub.yml': 'schemaVersion: 1\nversion: 1.0.0\n' },
     {
       'package.json': JSON.stringify({
         private: true,
-        workspaces: ['packages/agentscli', 'packages/agentscli-hub'],
+        workspaces: ['packages/agentscli'],
       }),
       'packages/agentscli/package.json': JSON.stringify({
         name: '@devel-solid/agentscli',
         bin: { agentscli: 'dist/cli.js' },
-      }),
-      'packages/agentscli-hub/package.json': JSON.stringify({
-        name: '@devel-solid/agentscli-hub',
-        bin: { 'agentscli-hub': 'dist/cli.js' },
       }),
     },
   ]) {
@@ -701,10 +660,15 @@ test('tool package identity, verified workspaces, hub markers, and ancestors gua
   });
   assert.equal((await invoke(fs, 'validate')).exitCode, 0);
   const parent = client();
-  parent.nodes.set(join(dirname(parent.root), 'agentscli-hub.yml'), {
+  parent.nodes.set(join(dirname(parent.root), 'package.json'), {
     kind: 'file',
     nlink: 1,
-    data: bytes('hub'),
+    data: bytes(
+      JSON.stringify({
+        name: '@devel-solid/agentscli',
+        bin: { agentscli: 'dist/cli.js' },
+      }),
+    ),
   });
   assert.equal((await invoke(parent)).exitCode, 2);
 });
@@ -721,7 +685,7 @@ test('safe path preflight rejects symlinks, hardlinks, and portable aliases befo
   assert.equal((await invoke(fs)).exitCode, 2);
   assert.equal(fs.writes.length, 0);
 });
-test('partial file and permission failure report completed/pending effects and retry converges', async () => {
+test('partial file failure report completed/pending effects and retry converges', async () => {
   const fs = memory(),
     original = fs.io.rename;
   let count = 0;
@@ -736,22 +700,6 @@ test('partial file and permission failure report completed/pending effects and r
   fs.io.rename = original;
   assert.equal((await invoke(fs)).exitCode, 0);
   assert.equal((await invoke(fs)).result.changes.length, 0);
-  const mode = client({ 'script.sh': 'echo ok\n' });
-  mode.io.supportsMode = true;
-  mode.io.chmod = () => {
-    throw new Error('chmod refused');
-  };
-  const response = applyEffects(mode.io, mode.root, [
-    {
-      path: 'script.sh',
-      action: 'update',
-      content: bytes('echo ok\n'),
-      previous: bytes('echo ok\n'),
-      gitMode: '100755',
-    },
-  ]);
-  assert.equal(response.exitCode, 3);
-  assert.equal(response.changes[0].status, 'pending');
 });
 test('private argument parser rejects aliases, repeated flags, migration, language, and invalid modes without writes', async () => {
   for (const args of [
@@ -765,32 +713,30 @@ test('private argument parser rejects aliases, repeated flags, migration, langua
     assert.equal((await run(args)).exitCode, 2);
 });
 
-test('skill resource aliases reject snapshot paths, remote URLs, HTML entities, case and suffixes', () => {
+test('skill resource aliases reject local paths, remote URLs, HTML entities, case and suffixes', () => {
   const make = (text) => ({
     id: 'review',
-    source: 'hub',
-    path: '.agentscli/hub/skills/review',
-    installedPath: '.agents/skills/review',
+    source: 'local',
+    path: '.agents/skills/review',
     files: {
       'SKILL.md': bytes(Buffer.from(skill('review')).toString() + text),
     },
   });
   const other = {
     id: 'other',
-    source: 'hub',
-    path: '.agentscli/hub/skills/other',
-    installedPath: '.agents/skills/other',
+    source: 'local',
+    path: '.agents/skills/other',
     files: { 'SKILL.md': skill('other') },
   };
   for (const text of [
-    '```sh\nnode .agentscli/hub/skills/other/scripts/check.mjs\n```\n',
-    'node .AGENTSCLI/HUB/SKILLS/OTHER/scripts/check.mjs\n',
-    '[Other](https://example.org/hub/blob/main/skills/other/SKILL.md?raw=1#start)',
-    '[Other](https://example.org/hub/tree/main/skills/%6Fther/references/rule.md)',
-    '[Other](https://example.org/hub/tree/main/skills/other/)',
+    '```sh\nnode .agents/skills/other/scripts/check.mjs\n```\n',
+    'node .AGENTS/SKILLS/OTHER/scripts/check.mjs\n',
+    '[Other](https://example.org/team/blob/main/skills/other/SKILL.md?raw=1#start)',
+    '[Other](https://example.org/team/tree/main/skills/%6Fther/references/rule.md)',
+    '[Other](https://example.org/team/tree/main/skills/other/)',
     '<a title=">" href="../&#111;ther/SKILL.md">Other</a>',
     '[Other](skill://other)',
-    '[Rule](https://example.org/hub/blob/main/conventions/testing.tpl.md)',
+    '[Rule](https://example.org/team/blob/main/conventions/testing.tpl.md)',
   ])
     assert.throws(
       () => validateResources({ skills: [make(text), other] }),

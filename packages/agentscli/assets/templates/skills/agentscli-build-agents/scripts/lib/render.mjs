@@ -6,12 +6,8 @@ import {
   validateTemplate,
 } from './markdown.mjs';
 function notice(source, language) {
-  const imported = source.startsWith('.agentscli/hub/');
-  const message = imported
-    ? language === 'pt-br'
-      ? `Arquivo gerado. Recurso importado de ${source}; use o fluxo de importacao do hub para altera-lo.`
-      : `Generated file. Imported source ${source}; use the hub import workflow to change it.`
-    : language === 'pt-br'
+  const message =
+    language === 'pt-br'
       ? `Arquivo gerado. Edite o template ${source}; alterações diretas serão sobrescritas.`
       : `Generated file. Edit the template ${source}; direct changes will be overwritten.`;
   return `${GENERATED}\n<!-- ${message} -->\n\n`;

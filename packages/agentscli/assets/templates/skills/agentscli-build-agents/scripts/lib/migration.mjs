@@ -25,13 +25,11 @@ import {
   allDirectories,
   equalBytes,
   isGenerated,
-  managedSkillEffects,
   plan,
   read,
 } from './plan.mjs';
 import { render } from './render.mjs';
 import { validateResources } from './content.mjs';
-import { loadHub, hubResources } from './hub.mjs';
 const bytes = (text) => new TextEncoder().encode(text);
 function conflict(path, message) {
   throw new EngineError('MIGRATION_CONFLICT', `${path}: ${message}`, 2, path);
@@ -280,15 +278,6 @@ export function planMigration(io, root, resources, selectedLanguage) {
   });
   const config =
     configBytes ?? bytes(serializeManifest({ language: selected }));
-  const configured = parseManifest(decode(config, CONFIG_PATH));
-  const accepted = loadHub(io, root, configured);
-  const shared = accepted
-    ? hubResources(accepted).conventions.map((c) => ({
-        source: c.path,
-        output: c.output,
-        text: c.text,
-      }))
-    : [];
   const projected = prospectiveFiles(
     withoutLegacy(io, root),
     root,
@@ -300,7 +289,7 @@ export function planMigration(io, root, resources, selectedLanguage) {
       source: main,
       text: decode(transferred.get(main), main),
     },
-    [...conventions, ...shared].sort((a, b) =>
+    conventions.sort((a, b) =>
       portableKey(a.output) < portableKey(b.output)
         ? -1
         : portableKey(a.output) > portableKey(b.output)

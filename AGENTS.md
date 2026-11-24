@@ -2,16 +2,16 @@
 
 ## Project
 
-This private npm workspace develops `@devel-solid/agentscli` and `@devel-solid/agentscli-hub`. See [README.md](README.md) for usage, package boundaries, and development commands.
+This private npm workspace develops `@devel-solid/agentscli`. See [README.md](README.md) for usage, package boundaries, and development commands.
 
-This repository is a tool source, not a consumer or a hub. Keep this AGENTS.md and `docs/conventions/` handwritten in English. Do not run either CLI's `apply` or client generation/import workflows here. Package name/bin identities and workspace declarations identify this context; there is no source manifest.
+This repository is a tool source, not a consumer. Keep this AGENTS.md and `docs/conventions/` handwritten in English. Do not run the CLI's `apply` or client generation workflows here. Package name/bin identities and workspace declarations identify this context; there is no source manifest.
 
 ## Workflows
 
 - Use `agentscli-adm-write-conventions` for handwritten conventions, `agentscli-adm-edit-agents` for this file, and `agentscli-adm-publish-packages` for authorized native Git/npm releases. Each skill has one responsibility and its own deterministic support.
 - The three administrative skills live in `.agents/skills/`. OpenSpec skills remain development tools outside the operational inventory.
-- Consumer and hub skill sources live separately under their owning package's `assets/templates/skills/`. Keep all twelve operational skills independent, even when their wording is similar. Builds assemble exactly four consumer and five hub skill trees without sharing source across environments.
-- Consumer locale templates and hub scaffold sources are product data in their owning packages, not instructions for this repository.
+- Consumer skill sources live under the package's `assets/templates/skills/`. Keep all six operational skills independent, even when their wording is similar. Builds assemble exactly three consumer skill trees without sharing source across environments.
+- Consumer locale templates are product data in their owning package, not instructions for this repository.
 
 ## Conventions
 
@@ -23,6 +23,6 @@ This repository is a tool source, not a consumer or a hub. Keep this AGENTS.md a
 
 ## Checks
 
-Use a Node.js line declared in `package.json`. Run focused unit tests during implementation and root `npm run check` for both workspaces and administrative checks. `npm run build` compiles the runtimes and assembles complete assets. Run `npm run setup` after cloning to enable the native Git pre-push hook, which runs the same unit/type/format gate as CI. Build and archive inspection are separate delivery operations.
+Use a Node.js line declared in `package.json`. Run focused unit tests during implementation and root `npm run check` for the workspace and administrative checks. `npm run build` compiles the runtime and assembles complete assets. Run `npm run setup` after cloning to enable the native Git pre-push hook, which runs the same unit/type/format gate as CI. Build and archive inspection are separate delivery operations.
 
 Report changed files, actual checks, and remaining work. Preserve unrelated changes and the requested scope.

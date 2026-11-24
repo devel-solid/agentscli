@@ -9,7 +9,6 @@ import {
   MANIFEST,
   PRODUCT_SKILLS,
   defaultManifest,
-  language,
   parseManifest,
   serializeManifest,
 } from './manifest.mjs';
@@ -17,7 +16,6 @@ import { decode, GENERATED } from './markdown.mjs';
 import { containedPath, portableKey, uniquePaths } from './paths.mjs';
 import { assertClientContext, disk, inspect, walk } from './io.mjs';
 import { render } from './render.mjs';
-import { loadHub, validateHubSnapshot, hubResources } from './hub.mjs';
 import { validateResources } from './content.mjs';
 const compareKeys = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const bytes = (text) => new TextEncoder().encode(text);
@@ -80,26 +78,17 @@ export function allDirectories(io, root, directory) {
 }
 function effectBuilder(io, root) {
   const effects = [];
-  const compare = (path, content, preserve = false, gitMode, boundary = io) => {
+  const compare = (path, content, boundary = io) => {
     const existing = inspect(boundary, root, path, 'file');
-    if (existing && preserve) return;
     const previous = existing
       ? boundary.read(containedPath(root, path))
       : undefined;
-    const modeDrift =
-      existing &&
-      gitMode &&
-      io.supportsMode &&
-      (existing.mode & 0o111) !== (gitMode === '100755' ? 0o111 : 0);
-    if (!existing || !equalBytes(previous, content) || modeDrift)
+    if (!existing || !equalBytes(previous, content))
       effects.push({
         path,
         action: existing ? 'update' : 'create',
         content,
         previous,
-        ...(gitMode
-          ? { gitMode, ...(existing ? { previousMode: existing.mode } : {}) }
-          : {}),
       });
   };
   const remove = (path) => {
@@ -110,7 +99,7 @@ function effectBuilder(io, root) {
         previous: io.read(containedPath(root, path)),
       });
   };
-  const tree = (directory, files, descriptors = {}) => {
+  const tree = (directory, files) => {
     uniquePaths(Object.keys(files));
     const rootInfo = inspect(io, root, directory);
     const expected = new Set(
@@ -149,24 +138,11 @@ function effectBuilder(io, root) {
         io.names(absolute).filter((name) => !hidden(join(absolute, name))),
     };
     for (const [relative, content] of Object.entries(files))
-      compare(
-        `${directory}/${relative}`,
-        content,
-        false,
-        descriptors[relative]?.gitMode,
-        prospective,
-      );
+      compare(`${directory}/${relative}`, content, prospective);
   };
   return { effects, compare, remove, tree };
 }
-export function plan(
-  io,
-  root,
-  command,
-  resources,
-  selectedLanguage,
-  overrides = {},
-) {
+export function plan(io, root, command, resources, selectedLanguage) {
   assertClientContext(io, root);
   if (inspect(io, root, MANIFEST, 'file'))
     throw new EngineError(
@@ -179,28 +155,12 @@ export function plan(
   const stored = inspect(io, root, CONFIG_PATH, 'file')
     ? parseManifest(decode(read(io, root, CONFIG_PATH), CONFIG_PATH))
     : undefined;
-  if (!applying && !stored && !overrides.manifest) read(io, root, CONFIG_PATH);
+  if (!applying && !stored) read(io, root, CONFIG_PATH);
   const manifest =
-    overrides.manifest ??
-    (selectedLanguage === undefined
+    selectedLanguage === undefined
       ? (stored ?? defaultManifest())
-      : { ...stored, ...defaultManifest(selectedLanguage) });
-  // Overrides are accepted only after the same strict configuration validation.
+      : { ...stored, ...defaultManifest(selectedLanguage) };
   parseManifest(serializeManifest(manifest));
-  const accepted = Object.hasOwn(overrides, 'hub')
-    ? overrides.hub
-      ? validateHubSnapshot(manifest, overrides.hub)
-      : undefined
-    : loadHub(io, root, manifest);
-  if (!!manifest.hub !== !!accepted)
-    throw new EngineError(
-      'HUB_CONFIG',
-      'Hub configuration requires its validated snapshot.',
-    );
-  const previous = Object.hasOwn(overrides, 'previousHub')
-    ? overrides.previousHub
-    : accepted;
-  const managedOld = new Set(previous?.lock.skills ?? []);
   inspect(io, root, TEMPLATE_ROOT, 'directory');
   inspect(io, root, OUTPUT_ROOT, 'directory');
   const builder = effectBuilder(io, root),
@@ -224,7 +184,7 @@ export function plan(
     )
       throw new EngineError(
         'PACKAGE_RESOURCE',
-        'Expected exactly four consumer operational skill assets.',
+        'Expected exactly three consumer operational skill assets.',
         3,
       );
     const defaults = resources.templates[manifest.language];
@@ -258,11 +218,8 @@ export function plan(
       output: `${OUTPUT_ROOT}/${path.slice(CONVENTION_ROOT.length + 1, -7)}.md`,
       text: decode(content, path),
     }));
-  const shared = accepted
-    ? hubResources(accepted)
-    : { conventions: [], skills: [] };
-  const conventions = [...localConventions, ...shared.conventions].sort(
-    (a, b) => compareKeys(portableKey(a.output), portableKey(b.output)),
+  const conventions = localConventions.sort((a, b) =>
+    compareKeys(portableKey(a.output), portableKey(b.output)),
   );
   uniquePaths(conventions.map((c) => c.output));
   const skills = [];
@@ -270,9 +227,7 @@ export function plan(
     for (const id of io.names(containedPath(root, '.agents/skills')).sort()) {
       const directory = `.agents/skills/${id}`;
       const managed =
-        PRODUCT_SKILLS.includes(id) ||
-        id === 'agentscli-update-agents' ||
-        managedOld.has(id);
+        PRODUCT_SKILLS.includes(id) || id === 'agentscli-update-agents';
       const entry = inspect(
         io,
         root,
@@ -310,16 +265,6 @@ export function plan(
             ),
           },
         });
-  for (const skill of shared.skills) {
-    if (!managedOld.has(skill.id) && inspect(io, root, skill.installedPath))
-      throw new EngineError(
-        'SKILL_COLLISION',
-        `Unrelated destination occupies imported skill ${skill.id}.`,
-        2,
-        skill.installedPath,
-      );
-    skills.push(skill);
-  }
   validateResources({ conventions, skills });
   const documents = render(
     { source: main, text: decode(virtual.get(main), main) },
@@ -352,23 +297,7 @@ export function plan(
       tree(`.agents/skills/${id}`, resources.skills[id]);
     tree('.agents/skills/agentscli-update-agents', {});
   }
-  for (const skill of shared.skills) {
-    const prefix = `skills/${skill.id}/`;
-    const descriptors = Object.fromEntries(
-      Object.entries(accepted.lock.files)
-        .filter(([p]) => p.startsWith(prefix))
-        .map(([p, d]) => [p.slice(prefix.length), d]),
-    );
-    tree(skill.installedPath, skill.files, descriptors);
-  }
-  for (const id of managedOld)
-    if (!shared.skills.some((s) => s.id === id))
-      tree(`.agents/skills/${id}`, {});
-  if (
-    applying &&
-    !overrides.manifest &&
-    (!stored || stored.language !== manifest.language)
-  )
+  if (applying && (!stored || stored.language !== manifest.language))
     compare(CONFIG_PATH, bytes(serializeManifest(manifest)));
   uniquePaths(
     effects
@@ -381,10 +310,4 @@ export function plan(
       .map((e) => e.path),
   );
   return effects;
-}
-export function managedSkillEffects(io, root, resources) {
-  const builder = effectBuilder(io, root);
-  for (const [id, files] of Object.entries(resources.skills))
-    builder.tree(`.agents/skills/${id}`, files);
-  return builder.effects;
 }

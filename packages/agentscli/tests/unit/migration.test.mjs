@@ -17,7 +17,6 @@ const skills = Object.fromEntries(
   [
     'agentscli-build-agents',
     'agentscli-edit-agents',
-    'agentscli-manage-hub-imports',
     'agentscli-write-conventions',
   ].map((name) => [
     name,
@@ -393,14 +392,6 @@ test('migration rejects unsupported, unsafe and conflicting contexts before writ
   );
   assert.equal((await invoke(internal)).exitCode, 2);
   assert.equal(internal.writes.length, 0);
-  const ancestor = legacy();
-  ancestor.nodes.set(join(dirname(ancestor.root), 'agentscli-hub.yml'), {
-    kind: 'file',
-    nlink: 1,
-    data: bytes('skills: []\n'),
-  });
-  assert.equal((await invoke(ancestor)).exitCode, 2);
-  assert.equal(ancestor.writes.length, 0);
   const noClient = memory();
   assert.equal((await invoke(noClient)).exitCode, 2);
   assert.equal(noClient.writes.length, 0);

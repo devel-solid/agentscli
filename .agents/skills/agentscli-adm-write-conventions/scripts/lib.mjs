@@ -139,18 +139,16 @@ export function monorepo(start, io = fs) {
           identities.set(child.name, child);
         }
         if (
+          pkg.workspaces.length === 1 &&
+          identities.size === 1 &&
           typeof identities.get('@devel-solid/agentscli')?.bin?.agentscli ===
-            'string' &&
-          typeof identities.get('@devel-solid/agentscli-hub')?.bin?.[
-            'agentscli-hub'
-          ] === 'string'
+            'string'
         ) {
           if (
             io.existsSync(resolve(at, '.agentscli/config.yml')) ||
-            io.existsSync(resolve(at, 'agentscli-hub.yml')) ||
             io.existsSync(resolve(at, 'agentscli-compose.yml'))
           )
-            throw new Error('Conflicting tool source/consumer/hub role.');
+            throw new Error('Conflicting tool source/consumer role.');
           return at;
         }
       }
@@ -158,7 +156,7 @@ export function monorepo(start, io = fs) {
     const parent = dirname(at);
     if (parent === at)
       throw new Error(
-        'Expected the private agentscli tool monorepo and verified workspace identities.',
+        'Expected the private agentscli tool monorepo and verified workspace identity.',
       );
     at = parent;
   }
@@ -226,14 +224,10 @@ export function resourceTarget(
     }
   }
   const lexical = key(decoded.split(/[?#]/u)[0]);
-  if (
-    /(?:^|\/)(?:\.agents\/skills|\.agentscli\/hub\/skills|skills)\/[^/]+/u.test(
-      lexical,
-    )
-  )
+  if (/(?:^|\/)(?:\.agents\/skills|skills)\/[^/]+/u.test(lexical))
     return 'skill';
   if (
-    /(?:^|\/)(?:\.agentscli\/(?:templates\/|hub\/)?|docs\/)?conventions\/.+\.(?:tpl\.)?md$/u.test(
+    /(?:^|\/)(?:\.agentscli\/(?:templates\/)?|docs\/)?conventions\/.+\.(?:tpl\.)?md$/u.test(
       lexical,
     )
   )
@@ -391,7 +385,6 @@ export function context(root, io = fs) {
   for (const base of [
     '.agents/skills',
     'packages/agentscli/assets/templates/skills',
-    'packages/agentscli-hub/assets/templates/skills',
   ]) {
     const path = resolve(root, base);
     if (!io.existsSync(path)) continue;
@@ -443,10 +436,10 @@ export function skillConfiguration(input, file) {
       typeof ref.id !== 'string' ||
       ref.id.length > 64 ||
       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(ref.id) ||
-      !['local', 'hub'].includes(ref.source)
+      ref.source !== 'local'
     )
       throw new Error(
-        `${file}: skill requirements need a safe id and local/hub source.`,
+        `${file}: skill requirements need a safe id and local source.`,
       );
     const identity = `${ref.source}:${key(ref.id)}`;
     if (seen.has(identity))
@@ -484,10 +477,9 @@ export function requirements(skill, info, ctx, io = fs, visited = new Set()) {
   regular(file, io);
   const dependencies = skillConfiguration(io.readFileSync(file), file);
   for (const ref of dependencies) {
-    const target =
-      ref.source === 'local'
-        ? ctx.localSkills.find((path) => key(basename(path)) === key(ref.id))
-        : undefined;
+    const target = ctx.localSkills.find(
+      (path) => key(basename(path)) === key(ref.id),
+    );
     if (!target)
       throw new Error(
         `${file}: missing skills dependency ${ref.id} from ${ref.source}.`,

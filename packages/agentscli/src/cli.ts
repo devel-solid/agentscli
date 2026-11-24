@@ -38,9 +38,9 @@ Usage:
 
 Common options: --repo-root <directory>, --json.
 
-apply creates missing setup and replaces managed documents and the four operational
+apply creates missing setup and replaces managed documents and the three operational
 skill trees, removing obsolete managed files. Authored templates, configured language,
-accepted hub configuration/snapshot, Git state, and unrelated files stay preserved.
+Git state and unrelated files stay preserved.
 --lang explicitly selects a language; default first use is en. --dry-run previews
 without writes. Customize .agentscli/templates, including AGENTS.tpl.md; generated
 root AGENTS.md and .agentscli/conventions are replaceable. Version .agentscli and

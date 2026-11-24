@@ -12,7 +12,7 @@ import {
 const fail = (code, message, path) => {
   throw new EngineError(code, message, 2, path);
 };
-export function skillRequirements(files, path, source = 'local') {
+export function skillRequirements(files, path) {
   if (!files['SKILL.md']) fail('SKILL_ENTRY', 'Missing SKILL.md.', path);
   const header = frontmatter(
     decode(files['SKILL.md'], `${path}/SKILL.md`),
@@ -114,10 +114,7 @@ export function skillRequirements(files, path, source = 'local') {
   for (const entry of requirements) {
     exactKeys(entry, ['id', 'source'], [], configPath);
     resourceId(entry.id, 'skills', configPath);
-    if (
-      !['local', 'hub'].includes(entry.source) ||
-      (source === 'hub' && entry.source !== 'hub')
-    )
+    if (entry.source !== 'local')
       fail(
         'SKILL_REQUIRES',
         `Invalid skill dependency source: ${entry.source}.`,
@@ -179,7 +176,7 @@ export function validateResourceLinks(
     if (
       !ownConvention &&
       (conventionTargets.has(target) ||
-        /(?:^|\/)\.agentscli\/(?:templates\/conventions|conventions|hub\/conventions)\//u.test(
+        /(?:^|\/)\.agentscli\/(?:templates\/conventions|conventions)\//u.test(
           target,
         ))
     )
@@ -190,9 +187,7 @@ export function validateResourceLinks(
     )
       return true;
     const explicit = [
-      ...target.matchAll(
-        /(?:^|\/)(?:\.agents\/skills|\.agentscli\/hub\/skills|skills)\/([^/]+)/gu,
-      ),
+      ...target.matchAll(/(?:^|\/)(?:\.agents\/skills|skills)\/([^/]+)/gu),
     ];
     if (
       explicit.some(
@@ -252,7 +247,7 @@ export function validateResourceLinks(
       text
         .replace(/<!--[\s\S]*?-->/gu, '')
         .match(
-          /(?:\.?\.?\/|\/)?(?:\.agents\/skills\/[^\s`<>"')]+|\.agentscli\/(?:templates\/conventions|conventions|hub\/(?:conventions|skills))\/[^\s`<>"')]+|\.\.\/[^\s`<>"')]+|(?:https?|skill|file):\/\/[^\s`<>"')]+)/giu,
+          /(?:\.?\.?\/|\/)?(?:\.agents\/skills\/[^\s`<>"')]+|\.agentscli\/(?:templates\/conventions|conventions)\/[^\s`<>"')]+|\.\.\/[^\s`<>"')]+|(?:https?|skill|file):\/\/[^\s`<>"')]+)/giu,
         ) ?? [];
     for (const target of candidates)
       if (prohibited(linkTarget(target, path)))
@@ -267,9 +262,7 @@ export function validateResources({ conventions = [], skills = [] }) {
   const conventionPaths = conventions.flatMap((c) =>
     [c.path, c.output].filter(Boolean),
   );
-  const skillRoots = skills.flatMap((s) =>
-    [s.path, s.installedPath].filter(Boolean),
-  );
+  const skillRoots = skills.map((s) => s.path);
   const registry = { conventions: new Map(), skills: new Map() };
   for (const c of conventions) {
     const parsed = validateConvention(c.text, c.path);
@@ -291,7 +284,7 @@ export function validateResources({ conventions = [], skills = [] }) {
   }
   for (const s of skills) {
     uniquePaths(Object.keys(s.files));
-    s.parsed = skillRequirements(s.files, s.path, s.source);
+    s.parsed = skillRequirements(s.files, s.path);
     if (s.parsed.name !== s.id)
       fail(
         'SKILL_ID',

@@ -4,8 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { EngineError } from './manifest.mjs';
 import { containedPath, portableKey, relativePath } from './paths.mjs';
 export const disk = {
-  supportsMode: process.platform !== 'win32',
-  chmod: (path, mode) => fs.chmodSync(path, mode),
   info(path) {
     try {
       const stat = fs.lstatSync(path);
@@ -18,7 +16,6 @@ export const disk = {
               ? 'directory'
               : 'other',
         nlink: stat.nlink,
-        mode: stat.mode,
       };
     } catch (error) {
       if (error.code === 'ENOENT') return undefined;
@@ -88,38 +85,23 @@ function toolPackage(value, name, bin) {
 export function assertClientContext(io, root) {
   let current = root;
   while (true) {
-    if (inspect(io, current, 'agentscli-hub.yml'))
-      throw new EngineError(
-        'HUB_CONTEXT',
-        'A hub repository cannot consume client resources.',
-        2,
-        current,
-      );
     const pkg = packageIdentity(io, current, 'package.json');
-    let internal =
-      toolPackage(pkg, '@devel-solid/agentscli', 'agentscli') ||
-      toolPackage(pkg, '@devel-solid/agentscli-hub', 'agentscli-hub');
+    let internal = toolPackage(pkg, '@devel-solid/agentscli', 'agentscli');
     const declared = Array.isArray(pkg?.workspaces)
       ? pkg.workspaces
       : pkg?.workspaces?.packages;
     if (
       pkg?.private === true &&
       Array.isArray(declared) &&
-      ['packages/agentscli', 'packages/agentscli-hub'].every(
+      ['packages/agentscli'].every(
         (p) => declared.includes(p) || declared.includes('packages/*'),
       )
     ) {
-      internal ||=
-        toolPackage(
-          packageIdentity(io, current, 'packages/agentscli/package.json'),
-          '@devel-solid/agentscli',
-          'agentscli',
-        ) &&
-        toolPackage(
-          packageIdentity(io, current, 'packages/agentscli-hub/package.json'),
-          '@devel-solid/agentscli-hub',
-          'agentscli-hub',
-        );
+      internal ||= toolPackage(
+        packageIdentity(io, current, 'packages/agentscli/package.json'),
+        '@devel-solid/agentscli',
+        'agentscli',
+      );
     }
     if (internal)
       throw new EngineError(

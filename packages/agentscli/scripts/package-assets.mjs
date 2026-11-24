@@ -9,12 +9,12 @@ import {
 import {
   stringifyYaml,
   PRODUCT_SKILLS,
+  validPackageVersion,
 } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/manifest.mjs';
 import {
   skillRequirements,
   validateResources,
 } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/content.mjs';
-import { validContentVersion } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/hub.mjs';
 import {
   uniquePaths,
   containedPath,
@@ -41,7 +41,7 @@ export function collectResources(root, io = fs) {
   }
   const names = io.readdirSync(resolve(root, 'assets/templates/skills')).sort();
   if (names.join('\n') !== [...PRODUCT_SKILLS].sort().join('\n'))
-    throw new Error('Expected exactly the four consumer skill directories.');
+    throw new Error('Expected exactly the three consumer skill directories.');
   for (const name of PRODUCT_SKILLS)
     collect(`assets/templates/skills/${name}`, `skills/${name}`);
   for (const lang of ['en', 'pt-br'])
@@ -86,7 +86,7 @@ export function stampSkill(content, pkg, path) {
   if (!header) throw new Error(`Missing skill metadata ${path}.`);
   if (
     pkg.name !== '@devel-solid/agentscli' ||
-    !validContentVersion(pkg.version)
+    !validPackageVersion(pkg.version)
   )
     throw new Error(
       'Generator must use the actual consumer package name and semantic version.',

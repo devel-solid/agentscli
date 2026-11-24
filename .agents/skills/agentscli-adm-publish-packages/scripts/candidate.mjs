@@ -18,14 +18,6 @@ const names = {
     'agentscli-write-conventions',
     'agentscli-edit-agents',
     'agentscli-build-agents',
-    'agentscli-manage-hub-imports',
-  ],
-  'agentscli-hub': [
-    'agentscli-hub-write-conventions',
-    'agentscli-hub-edit-agents',
-    'agentscli-hub-write-shared-conventions',
-    'agentscli-hub-write-shared-skills',
-    'agentscli-hub-publish',
   ],
 };
 export function inspectMetadata(pkg, name) {
@@ -222,10 +214,7 @@ export function inspectArchive(bytes, expected, prepared) {
     );
   // npm bin-links supplies executable permissions and platform shims at install.
   // A native Windows npm tarball may record 0644 even for a declared bin.
-  const prefix =
-    name === 'agentscli'
-      ? 'package/dist/assets/skills/'
-      : 'package/dist/assets/.agents/skills/';
+  const prefix = 'package/dist/assets/skills/';
   const actual = [...files.keys()]
     .filter(
       (path) =>
@@ -292,46 +281,18 @@ export function inspectArchive(bytes, expected, prepared) {
     }
   }
   for (const skill of names[name]) checkDependencies(skill);
-  const support =
-    name === 'agentscli'
-      ? {
-          'agentscli-write-conventions': ['scripts/check.mjs'],
-          'agentscli-edit-agents': ['scripts/check.mjs'],
-          'agentscli-build-agents': [
-            'scripts/build-agents.mjs',
-            'scripts/lib/index.mjs',
-          ],
-          'agentscli-manage-hub-imports': [
-            'scripts/hub-imports.mjs',
-            'scripts/contracts.mjs',
-            'scripts/git.mjs',
-          ],
-        }
-      : Object.fromEntries(
-          names[name].map((skill) => [
-            skill,
-            [
-              'scripts/support.mjs',
-              skill === 'agentscli-hub-publish'
-                ? 'scripts/release.mjs'
-                : 'scripts/validate.mjs',
-            ],
-          ]),
-        );
+  const support = {
+    'agentscli-write-conventions': ['scripts/check.mjs'],
+    'agentscli-edit-agents': ['scripts/check.mjs'],
+    'agentscli-build-agents': [
+      'scripts/build-agents.mjs',
+      'scripts/lib/index.mjs',
+    ],
+  };
   for (const [skill, entries] of Object.entries(support))
     for (const entry of entries)
       if (!files.has(`${prefix}${skill}/${entry}`))
         throw new Error(`Missing runtime closure: ${skill}/${entry}`);
-  if (name === 'agentscli-hub') {
-    for (const file of [
-      'package/dist/runtime.js',
-      'package/dist/assets/agentscli-hub.yml',
-      'package/dist/assets/AGENTS.md',
-      'package/dist/assets/docs/conventions/resource-authoring.md',
-    ])
-      if (!files.has(file))
-        throw new Error(`Missing hub scaffold/runtime: ${file}`);
-  }
   if (prepared) {
     const expectedPaths = [...prepared.keys(), 'package/package.json'].sort();
     if (
@@ -346,37 +307,35 @@ export function inspectArchive(bytes, expected, prepared) {
           `Archive bytes differ from the reviewed prepared package: ${file}`,
         );
   }
-  if (name === 'agentscli') {
-    for (const [language, convention] of [
-      ['en', 'project-context'],
-      ['pt-br', 'contexto-do-projeto'],
-    ]) {
-      const main = files.get(
-        `package/dist/assets/templates/${language}/AGENTS.tpl.md`,
-      );
-      const source = files.get(
-        `package/dist/assets/templates/${language}/conventions/${convention}.tpl.md`,
-      );
-      if (!main || !source)
-        throw new Error(`Missing locale templates: ${language}`);
-      const parsed = header(source.bytes.toString('utf8'));
-      if (
-        !parsed.value ||
-        Object.keys(parsed.value).join(',') !== 'trigger' ||
-        typeof parsed.value.trigger !== 'string' ||
-        !parsed.value.trigger.trim() ||
-        (parsed.body.match(/^#\s+[^\n]+$/gmu) ?? []).length !== 1
-      )
-        throw new Error(`Invalid locale convention: ${language}`);
-      if (
-        (
-          main.bytes
-            .toString('utf8')
-            .match(/^<!-- agentscli:conventions -->$/gmu) ?? []
-        ).length !== 1
-      )
-        throw new Error(`Invalid locale discovery marker: ${language}`);
-    }
+  for (const [language, convention] of [
+    ['en', 'project-context'],
+    ['pt-br', 'contexto-do-projeto'],
+  ]) {
+    const main = files.get(
+      `package/dist/assets/templates/${language}/AGENTS.tpl.md`,
+    );
+    const source = files.get(
+      `package/dist/assets/templates/${language}/conventions/${convention}.tpl.md`,
+    );
+    if (!main || !source)
+      throw new Error(`Missing locale templates: ${language}`);
+    const parsed = header(source.bytes.toString('utf8'));
+    if (
+      !parsed.value ||
+      Object.keys(parsed.value).join(',') !== 'trigger' ||
+      typeof parsed.value.trigger !== 'string' ||
+      !parsed.value.trigger.trim() ||
+      (parsed.body.match(/^#\s+[^\n]+$/gmu) ?? []).length !== 1
+    )
+      throw new Error(`Invalid locale convention: ${language}`);
+    if (
+      (
+        main.bytes
+          .toString('utf8')
+          .match(/^<!-- agentscli:conventions -->$/gmu) ?? []
+      ).length !== 1
+    )
+      throw new Error(`Invalid locale discovery marker: ${language}`);
   }
   for (const path of files.keys()) {
     if (

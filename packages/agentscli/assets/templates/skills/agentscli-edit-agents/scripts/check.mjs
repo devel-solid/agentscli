@@ -123,17 +123,17 @@ export async function check(
     );
     if (
       !['en', 'pt-br'].includes(config.language) ||
-      Object.keys(config).some((key) => !['language', 'hub'].includes(key))
+      Object.keys(config).some((key) => key !== 'language')
     )
       throw new Error(
         'A valid consumer configuration is required before authoring.',
       );
     for (let current = root; ; current = dirname(current)) {
-      for (const marker of ['agentscli-hub.yml', 'agentscli-compose.yml']) {
+      for (const marker of ['agentscli-compose.yml']) {
         try {
           fs.lstatSync(join(current, marker));
           throw new Error(
-            'Hub or legacy context is incompatible with consumer authoring.',
+            'Legacy context is incompatible with consumer authoring.',
           );
         } catch (error) {
           if (error.code !== 'ENOENT') throw error;

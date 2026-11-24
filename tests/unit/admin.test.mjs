@@ -174,19 +174,15 @@ test('skill guidance allows owned support and identity mentions, rejecting forei
     );
 });
 
-test('tool context checks both workspace identities and rejects unrelated private projects and mixed roles', () => {
+test('tool context checks its workspace identity and rejects unrelated private projects and mixed roles', () => {
   const entries = {
     'package.json': JSON.stringify({
       private: true,
-      workspaces: ['packages/agentscli', 'packages/agentscli-hub'],
+      workspaces: ['packages/agentscli'],
     }),
     'packages/agentscli/package.json': JSON.stringify({
       name: '@devel-solid/agentscli',
       bin: { agentscli: 'dist/cli.js' },
-    }),
-    'packages/agentscli-hub/package.json': JSON.stringify({
-      name: '@devel-solid/agentscli-hub',
-      bin: { 'agentscli-hub': 'dist/cli.js' },
     }),
   };
   assert.equal(
@@ -207,7 +203,7 @@ test('tool context checks both workspace identities and rejects unrelated privat
     () =>
       monorepo(
         root,
-        memory({ ...entries, 'agentscli-hub.yml': 'schemaVersion: 1' }),
+        memory({ ...entries, '.agentscli/config.yml': 'schemaVersion: 1' }),
       ),
     /Conflicting/,
   );
@@ -230,7 +226,6 @@ test('admin dependencies stay local and traverse declared cycles without global 
     'requires: []\nunknown: true',
     'requires:\n  - id: agentscli-build-agents\n    source: local',
     'requires:\n  - id: testing\n    source: local',
-    'requires:\n  - id: agentscli-adm-edit-agents\n    source: hub',
     'requires: []\nrequires: []',
   ])
     assert.throws(() => requirements(own, info, ctx, memory({ [req]: text })));
@@ -259,10 +254,10 @@ test('all administrative configuration parsers enforce the general skill-only sc
     assert.deepEqual(parse('requires: []', 'agentscli-skill.yml'), []);
     assert.deepEqual(
       parse(
-        'requires:\n  - id: inspect-code\n    source: hub',
+        'requires:\n  - id: inspect-code\n    source: local',
         'agentscli-skill.yml',
       ),
-      [{ id: 'inspect-code', source: 'hub' }],
+      [{ id: 'inspect-code', source: 'local' }],
     );
     for (const input of [
       '',
@@ -567,7 +562,6 @@ function consumerArchive() {
     'agentscli-write-conventions',
     'agentscli-edit-agents',
     'agentscli-build-agents',
-    'agentscli-manage-hub-imports',
   ]) {
     entries.push({
       name: `package/dist/assets/skills/${id}/SKILL.md`,
@@ -598,9 +592,6 @@ test('release inspection rejects metadata-only skill trees and incomplete locale
     'agentscli-edit-agents/scripts/check.mjs',
     'agentscli-build-agents/scripts/build-agents.mjs',
     'agentscli-build-agents/scripts/lib/index.mjs',
-    'agentscli-manage-hub-imports/scripts/hub-imports.mjs',
-    'agentscli-manage-hub-imports/scripts/contracts.mjs',
-    'agentscli-manage-hub-imports/scripts/git.mjs',
   ])
     entries.push({
       name: `package/dist/assets/skills/${path}`,
@@ -665,7 +656,7 @@ test('release inspection rejects metadata-only skill trees and incomplete locale
     'conventions: []\nskills: []',
     'requires: null',
     'requires: !!seq []',
-    'requires: [{id: agentscli-build-agents, source: hub}]',
+    'requires: [{id: agentscli-build-agents, source: remote}]',
     'requires: [{id: absent-skill, source: local}]',
   ]) {
     const changed = entries.map((entry) =>

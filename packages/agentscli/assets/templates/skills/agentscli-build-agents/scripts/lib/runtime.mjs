@@ -25,17 +25,6 @@ export function applyEffects(io, root, effects) {
   try {
     for (const effect of effects) {
       effect.precondition?.(io, root);
-      if (
-        io.supportsMode &&
-        effect.previousMode !== undefined &&
-        inspect(io, root, effect.path, 'file')?.mode !== effect.previousMode
-      )
-        throw new EngineError(
-          'DESTINATION_CHANGED',
-          'Destination mode changed after preflight.',
-          3,
-          effect.path,
-        );
       if (effect.action === 'delete') {
         if (effect.directory) {
           if (inspect(io, root, effect.path, 'directory'))
@@ -43,19 +32,6 @@ export function applyEffects(io, root, effects) {
         } else removeFile(io, root, effect.path, effect.previous);
       } else {
         replaceFile(io, root, effect.path, effect.content, effect.previous);
-        if (effect.gitMode && io.supportsMode) {
-          if (typeof io.chmod !== 'function')
-            throw new EngineError(
-              'MODE_FAILURE',
-              'Filesystem cannot apply executable intent.',
-              3,
-              effect.path,
-            );
-          io.chmod(
-            containedPath(root, effect.path),
-            effect.gitMode === '100755' ? 0o755 : 0o644,
-          );
-        }
       }
       changes[completed].status = 'completed';
       completed++;

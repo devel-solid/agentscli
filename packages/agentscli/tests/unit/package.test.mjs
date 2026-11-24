@@ -84,7 +84,7 @@ function resourceIO(overrides = {}) {
 test('whole skill trees and both document locales map without duplicated sources', () => {
   const { root, io } = resourceIO();
   const resources = collectResources(root, io);
-  assert.equal(resources.length, 12);
+  assert.equal(resources.length, 10);
   assert.equal(
     resources
       .find(
@@ -262,7 +262,7 @@ test('stamping rejects stale, malformed or placeholder provenance instead of sil
   ])
     assert.throws(() => stampSkill(input(extra), pkg, 'SKILL.md'));
   for (const invalid of [
-    { ...pkg, name: '@devel-solid/agentscli-hub' },
+    { ...pkg, name: '@example/other-tool' },
     { ...pkg, version: 'PLACEHOLDER' },
     { ...pkg, version: 0.4 },
   ])

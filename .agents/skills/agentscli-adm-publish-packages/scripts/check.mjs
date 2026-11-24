@@ -47,11 +47,9 @@ export { readArchive, inspectArchive, inspectMetadata };
 export function validate(start = process.cwd(), options = {}, io = fs) {
   const root = monorepo(start, io);
   checkOwn(root, io);
-  const targets = options.package
-    ? [options.package]
-    : ['agentscli', 'agentscli-hub'];
-  if (targets.some((name) => !['agentscli', 'agentscli-hub'].includes(name)))
-    throw new Error('Select agentscli or agentscli-hub.');
+  const targets = options.package ? [options.package] : ['agentscli'];
+  if (targets.some((name) => name !== 'agentscli'))
+    throw new Error('Select agentscli.');
   if (options.archive && targets.length !== 1)
     throw new Error('Archive inspection requires one target package.');
   const packages = targets.map((name) => {

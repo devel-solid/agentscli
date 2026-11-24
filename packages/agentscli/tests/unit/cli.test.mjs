@@ -122,13 +122,13 @@ test('help and standalone version use no runtime or project writes', async () =>
     assert.equal(response.exitCode, 0);
     assert.match(response.stdout, /agentscli 0\.1\.0/);
     assert.match(response.stdout, /agentscli apply/);
-    assert.match(response.stdout, /four operational\nskill trees/);
+    assert.match(response.stdout, /three operational\nskill trees/);
     assert.match(response.stdout, /repeat the same/);
     assert.equal(response.stderr, '');
   }
   const help = await runCli(['--help', '--json'], dependencies);
   assert.equal(JSON.parse(help.stdout).command, 'help');
-  assert.match(JSON.parse(help.stdout).text, /accepted hub configuration/);
+  assert.match(JSON.parse(help.stdout).text, /Git state/);
   assert.match(JSON.parse(help.stdout).text, /apply --migrate/);
   assert.match(JSON.parse(help.stdout).text, /configured language/);
   assert.doesNotMatch(
