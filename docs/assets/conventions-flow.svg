@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="352" viewBox="0 0 1000 352" fill="none" role="img" aria-labelledby="title description">
+  <title id="title">One convention, one generated index entry</title>
+  <desc id="description">Step 1: Save .agentscli/conventions/testing.md with a YAML trigger of Read when changing tests., the heading Testing, and the rule Test one behavior at a time. Step 2: Run agentscli apply in a terminal. Step 3: Open AGENTS.md. Its rendered body contains the heading AGENTS.md and an entry linking Testing to the convention, followed by Read when changing tests. The full rule remains in testing.md.</desc>
+  <style>
+    .panel { fill: #ffffff; stroke: #d1d9e0; }
+    .bar { fill: #eef1f4; }
+    .ink { fill: #1f2328; }
+    .muted { fill: #59636e; }
+    .blue { fill: #0969da; }
+    .purple { fill: #773bc7; }
+    .line { stroke: #d1d9e0; }
+    .arrow { stroke: #59636e; }
+    .arrow-halo { stroke: #ffffff; }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }
+    @media (prefers-color-scheme: dark) {
+      .panel { fill: #161b22; stroke: #30363d; }
+      .bar { fill: #21262d; }
+      .ink { fill: #e6edf3; }
+      .muted { fill: #b1bac4; }
+      .blue { fill: #79c0ff; }
+      .purple { fill: #d2a8ff; }
+      .line { stroke: #30363d; }
+      .arrow { stroke: #b1bac4; }
+      .arrow-halo { stroke: #161b22; }
+    }
+  </style>
+
+  <rect class="panel" x="24.5" y="8.5" width="367" height="325" rx="10"/>
+  <path class="bar" d="M35 9H381Q391 9 391 19V94H25V19Q25 9 35 9Z"/>
+  <text class="ink" x="44" y="36" font-size="17" font-weight="600">1. Write the rules</text>
+  <text class="ink mono" x="44" y="77" font-size="13">.agentscli/conventions/testing.md</text>
+  <path class="line" d="M25 94H391"/>
+  <g class="mono" font-size="15">
+    <text class="muted mono" x="44" y="127">---</text>
+    <text class="ink mono" x="44" y="153"><tspan class="blue">trigger:</tspan> Read when changing tests.</text>
+    <text class="muted mono" x="44" y="179">---</text>
+    <text class="ink mono" x="44" y="221"><tspan class="purple">#</tspan> Testing</text>
+    <text class="ink mono" x="44" y="263">- Test one behavior at a time.</text>
+  </g>
+  <text class="muted" x="44" y="314" font-size="14">Authored Markdown · stays unchanged</text>
+
+  <rect class="panel" x="416.5" y="104.5" width="167" height="123" rx="10"/>
+  <text class="ink" x="500" y="130" text-anchor="middle" font-size="17" font-weight="600">2. Run the CLI</text>
+  <path class="line" d="M417 148H583"/>
+  <text class="muted" x="430" y="172" font-size="13">Terminal</text>
+  <text class="ink mono" x="430" y="205" font-size="13.5"><tspan class="muted">$ </tspan>agentscli apply</text>
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path class="arrow-halo" d="M398 188H410M405 183L410 188L405 193M590 188H602M597 183L602 188L597 193" stroke-width="5"/>
+    <path class="arrow" d="M398 188H410M405 183L410 188L405 193M590 188H602M597 183L602 188L597 193" stroke-width="2"/>
+  </g>
+
+  <rect class="panel" x="608.5" y="8.5" width="367" height="325" rx="10"/>
+  <path class="bar" d="M619 9H965Q975 9 975 19V94H609V19Q609 9 619 9Z"/>
+  <text class="ink" x="628" y="36" font-size="17" font-weight="600">3. Open AGENTS.md</text>
+  <text class="ink mono" x="628" y="77" font-size="14">AGENTS.md</text>
+  <text class="muted" x="954" y="77" text-anchor="end" font-size="13">Rendered body</text>
+  <path class="line" d="M609 94H975"/>
+  <text class="ink" x="628" y="143" font-size="26" font-weight="600">AGENTS.md</text>
+  <path class="line" d="M628 159H954"/>
+  <circle class="ink" cx="634" cy="193" r="2.5"/>
+  <text class="ink" x="650" y="199" font-size="16"><tspan class="blue" text-decoration="underline">Testing</tspan>: Read when changing tests.</text>
+  <text class="muted" x="628" y="282" font-size="15">The link opens testing.md.</text>
+  <text class="muted" x="628" y="308" font-size="15">The full rule stays in that file.</text>
+</svg>
