@@ -254,12 +254,15 @@ test('release inspection requires complete skill trees and compares every prepar
   );
   for (const path of [
     'agentscli-write-conventions/scripts/check.mjs',
+    'agentscli-write-conventions/references/writing-examples.md',
     'agentscli-build-agents/scripts/build-agents.mjs',
     'agentscli-build-agents/scripts/lib/index.mjs',
   ])
     entries.push({
       name: `package/dist/assets/skills/${path}`,
-      body: 'export const valid = true;\n',
+      body: path.endsWith('.md')
+        ? '# Writing examples\n'
+        : 'export const valid = true;\n',
     });
   const prepared = new Map(
     entries

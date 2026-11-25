@@ -23,7 +23,10 @@ function resourceIO(overrides = {}) {
     );
     add(`${path}/references/example.md`, 'Support content\n');
     for (const support of PRODUCT_SUPPORT[name])
-      add(`${path}/${support}`, 'export {};\n');
+      add(
+        `${path}/${support}`,
+        support.endsWith('.md') ? '# Writing examples\n' : 'export {};\n',
+      );
   }
   const writes = [];
   const io = {
@@ -66,7 +69,7 @@ function resourceIO(overrides = {}) {
 test('whole operational skill trees map to package resources', () => {
   const { root, io } = resourceIO();
   const resources = collectResources(root, io);
-  assert.equal(resources.length, 7);
+  assert.equal(resources.length, 8);
   assert.equal(
     resources
       .find(
@@ -214,7 +217,7 @@ function productResources() {
   };
 }
 
-test('operational assets require complete nonempty runtime support before installation', () => {
+test('operational assets require complete nonempty support before installation', () => {
   assert.doesNotThrow(() => validateProductResources(productResources()));
   for (const id of PRODUCT_SKILLS)
     for (const path of PRODUCT_SUPPORT[id])

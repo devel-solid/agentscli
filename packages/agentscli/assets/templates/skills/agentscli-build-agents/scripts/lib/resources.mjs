@@ -7,7 +7,10 @@ import { validateResources } from './content.mjs';
 import { decode, frontmatter } from './markdown.mjs';
 
 export const PRODUCT_SUPPORT = {
-  'agentscli-write-conventions': ['scripts/check.mjs'],
+  'agentscli-write-conventions': [
+    'scripts/check.mjs',
+    'references/writing-examples.md',
+  ],
   'agentscli-build-agents': [
     'scripts/build-agents.mjs',
     'scripts/lib/index.mjs',
@@ -35,12 +38,9 @@ export function validateProductResources(resources, { generated = true } = {}) {
       for (const relative of PRODUCT_SUPPORT[id]) {
         const content = files[relative];
         if (!(content instanceof Uint8Array) || !content.byteLength)
-          fail(
-            `Missing or empty runtime support: ${relative}.`,
-            `${path}/${relative}`,
-          );
+          fail(`Missing or empty support: ${relative}.`, `${path}/${relative}`);
         if (!decode(content, `${path}/${relative}`).trim())
-          fail(`Empty runtime support: ${relative}.`, `${path}/${relative}`);
+          fail(`Empty support: ${relative}.`, `${path}/${relative}`);
       }
       return { id, source: 'local', path, files };
     });

@@ -51,7 +51,10 @@ export const resources = {
               'scripts/build-agents.mjs': bytes('export const build = true;'),
               'scripts/lib/index.mjs': bytes('export const engine = true;'),
             }
-          : { 'scripts/check.mjs': bytes('export const check = true;') }),
+          : {
+              'scripts/check.mjs': bytes('export const check = true;'),
+              'references/writing-examples.md': bytes('# Writing examples\n'),
+            }),
       },
     ]),
   ),
@@ -1054,6 +1057,7 @@ test('init validates complete package resources before any directory or file wri
   for (const mutate of [
     (r) => delete r.skills[PRODUCT_SKILLS[1]],
     (r) => delete r.skills[PRODUCT_SKILLS[0]]['scripts/check.mjs'],
+    (r) => delete r.skills[PRODUCT_SKILLS[0]]['references/writing-examples.md'],
     (r) => {
       r.skills[PRODUCT_SKILLS[1]]['scripts/lib/index.mjs'] = bytes('');
     },

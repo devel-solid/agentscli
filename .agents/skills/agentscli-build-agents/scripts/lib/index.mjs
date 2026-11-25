@@ -16686,7 +16686,10 @@ function validateResources({ conventions = [], skills = [] }) {
 
 // assets/templates/skills/agentscli-build-agents/scripts/lib/resources.mjs
 var PRODUCT_SUPPORT = {
-  "agentscli-write-conventions": ["scripts/check.mjs"],
+  "agentscli-write-conventions": [
+    "scripts/check.mjs",
+    "references/writing-examples.md"
+  ],
   "agentscli-build-agents": [
     "scripts/build-agents.mjs",
     "scripts/lib/index.mjs"
@@ -16706,12 +16709,9 @@ function validateProductResources(resources, { generated = true } = {}) {
       for (const relative2 of PRODUCT_SUPPORT[id]) {
         const content3 = files[relative2];
         if (!(content3 instanceof Uint8Array) || !content3.byteLength)
-          fail2(
-            `Missing or empty runtime support: ${relative2}.`,
-            `${path}/${relative2}`
-          );
+          fail2(`Missing or empty support: ${relative2}.`, `${path}/${relative2}`);
         if (!decode2(content3, `${path}/${relative2}`).trim())
-          fail2(`Empty runtime support: ${relative2}.`, `${path}/${relative2}`);
+          fail2(`Empty support: ${relative2}.`, `${path}/${relative2}`);
       }
       return { id, source: "local", path, files };
     });
