@@ -6,7 +6,7 @@ description: Create, review, or update authored convention files in an agentscli
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.7.4
+  generatorVersion: 0.7.5
 ---
 
 # Maintain project conventions
@@ -17,7 +17,7 @@ metadata:
 
 Identify the project root from the request and project instructions. Run the read-only [checker](scripts/check.mjs) before edits: `node <this-skill>/scripts/check.mjs --repo-root <root>`. A nonzero result blocks authorship until the reported input issue is resolved; do not initialize, generate, or repair beyond the request.
 
-Before creating or reviewing conventions, read the [writing examples](references/writing-examples.md). Transfer their writing and review concepts to the requested subject, without automatically copying their structure or importing their topics, technologies, names, or decisions. They are demonstrations, not templates for individual files or a batch.
+Before creating or reviewing conventions, consult the [writing-problem index](references/writing-examples.md). Select cases by the difficulty in the draft, and read their analyses and both complete conventions to see what information changes the reader's decision. Transfer the concepts to the requested subject without automatically copying structures, topics, technologies, names, or agreements. The library's hypothetical contexts establish its teaching examples only; these are bundled references, not templates, commands, or policies to install in a client project.
 
 Use the language requested by the user or already used in the project's relevant content. Write the final convention files directly under `.agentscli/conventions/`, including subdirectories when useful; if none exist, create the first convention there within the request. These files are authored content: initialization, skill updates, synchronization, and checking preserve their bytes.
 
@@ -39,6 +39,6 @@ Use verified project facts within the authorized convention. When an authorized 
 
 ## Review and validate
 
-Review the prose semantically: does it describe a recurring agreement, use clear and precise language, give applicable criteria, and fit the actual subject and authorized scope? Check for contradictions and unsupported choices. For each added example, can the reader now make a decision that was ambiguous before? Does it add context rather than repeat the rule in other words? Does its presentation make the information easier to understand, or merely rearrange it? Revise or remove additions without an informative gain; check the accuracy of their details and keep the explanation proportional. In a batch, review those reasons across the files: repeated form alone is not a defect, and varied form alone is not evidence of quality. Keep rules that are already clear concise; enrich rules whose application remains ambiguous.
+Review the prose semantically: does it describe a recurring agreement, use clear and precise language, give applicable criteria, and fit the actual subject and authorized scope? Check for contradictions and unsupported choices. Apply the document to a plausible task and a competing interpretation: can the reader distinguish the compliant outcome using the document alone? Saying that a technical rule is already clear does not demonstrate that it can be applied. For each added example, can the reader now make a decision that was ambiguous before? Does it add context rather than repeat the rule in other words? Does its presentation make the information easier to understand, or merely rearrange it? Revise or remove additions without an informative gain; check the accuracy of their details and keep the explanation proportional. In a batch, review those reasons across the files: repeated form alone is not a defect, and varied form alone is not evidence of quality. Keep rules that are already clear concise; enrich rules whose application remains ambiguous.
 
 After edits rerun the checker. Scripts prove only mechanically decidable checks; do not approximate editorial quality with keyword searches, mandatory sections, or example counts. For an authorized index update, mention agentscli-build-agents and discover its actual project location through project skills; do not assume its path. Authorship alone does not authorize generation. Report edited conventions and actual validation.
