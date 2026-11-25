@@ -1,8 +1,12 @@
 # Writing examples
 
-The examples illustrate writing and review criteria. Learn the concept demonstrated and apply it to the requested subject. Do not assume that the subjects, technologies, names, or decisions in the examples should appear in other conventions.
+The examples illustrate writing and review decisions. Transfer the concept to the requested subject without automatically copying the example's structure, subjects, technologies, names, or agreements.
 
 The agreements below are hypothetical choices, not defaults for a project. Establish the actual agreement from the request and verified project evidence before writing it. These cases show how to express a choice once it is known; they do not authorize inventing one.
+
+Start with the reader's unresolved question or decision. Choose an example that supplies the missing information, then choose a presentation that makes that information understandable. Input and output can reveal a transformation; annotated code can explain an abstraction; a scenario can establish an exception's boundary; a table can compare alternatives or conditions. These are possible uses, not a mapping from subjects to formats.
+
+The comments below explain those authoring choices. They need not appear as a checklist or a report in a final convention. Across a batch, judge each addition by the understanding it provides. Repeated forms can be appropriate when they serve the content; changing forms merely for variety provides no evidence of quality.
 
 ## Decisions in context
 
@@ -28,7 +32,7 @@ Use `<type>: <summary>` for commit subjects, with `feat`, `fix`, `docs`, or `cho
 
 Both the format and the information matter: adding a type does not make a vague summary useful.
 
-**Transferable concept — observable agreement:** Replace adjectives such as “clear” with a choice that authors can apply and reviewers can assess. The format and types here are illustrative, not universal requirements.
+**Transferable concept — observable agreement:** Replace adjectives such as “clear” with a choice that authors can apply and reviewers can assess. Here the parallel subjects isolate two independent mistakes, so a comparison helps distinguish format compliance from useful information. The format and types are illustrative, not universal requirements.
 
 ### Monetary values: make representation and units explicit
 
@@ -66,19 +70,21 @@ Do not store `"R$ 12,50"` as the value used for arithmetic: it mixes a number wi
 
 #### Match test evidence to the changed behavior
 
-Choose cases from the behavior affected by the change:
+Choose cases from the behavior affected by the change. For a validation rule, exercise accepted and rejected inputs. At a numeric boundary, include the boundary and adjacent values on each relevant side. For a defect fix, include a regression case that fails with the original defect and passes with the fix.
 
-| Change           | Required evidence                                                              |
-| ---------------- | ------------------------------------------------------------------------------ |
-| Validation rule  | An accepted input and an input rejected by that rule.                          |
-| Numeric boundary | The boundary and adjacent values on each relevant side.                        |
-| Defect fix       | A regression case that fails with the original defect and passes with the fix. |
+For an inclusive integer maximum of 10, the relevant observations are:
 
-For an inclusive integer maximum of 10, check that 9 and 10 are accepted and 11 is rejected. These cases distinguish the accepted boundary from an off-by-one error. The number 10 is illustrative; use the actual limit.
+```text
+input 9  -> accepted
+input 10 -> accepted
+input 11 -> rejected
+```
+
+Rejecting 10 would expose an exclusive comparison; accepting 11 would expose a missing or misplaced limit. A test of 5 alone cannot distinguish either mistake. The number 10 is illustrative; use the actual limit.
 
 Assert observable results rather than private function calls. A test that only verifies which helper ran does not establish that validation accepts or rejects the right input.
 
-**Transferable concept — objective applicability:** Tie the required evidence to a recognizable change. A contributor can determine which cases apply without inventing a test quota or duplicating the implementation.
+**Transferable concept — objective applicability:** Tie the required evidence to a recognizable change. The concrete inputs and outcomes show what the reader would miss by checking only an ordinary value. A catalog of test categories alone would leave that doubt unresolved; this example does not prescribe a test quota or duplicate an implementation.
 
 ### Logs: choose useful context without exposing payloads
 
@@ -90,29 +96,20 @@ Assert observable results rather than private function calls. A test that only v
 
 #### Record failure context without serializing the job
 
-For a failed background job, select fields that let an operator correlate retries and identify the failure category:
-
-| Field       | Purpose                                         |
-| ----------- | ----------------------------------------------- |
-| `event`     | Identifies the event as `job.failed`.           |
-| `jobId`     | Correlates attempts using an opaque identifier. |
-| `attempt`   | Distinguishes retries of the same job.          |
-| `errorCode` | Identifies a stable failure category.           |
-
-Do not include credentials, authorization headers, or the complete job payload. Select the diagnostic fields explicitly:
+For a failed background job, select fields that let an operator correlate retries and identify the failure category. Do not include credentials, authorization headers, or the complete job payload:
 
 ```typescript
 logger.warn({
-  event: 'job.failed',
-  jobId,
-  attempt,
-  errorCode: 'UPSTREAM_TIMEOUT',
+  event: 'job.failed', // Identify what happened.
+  jobId, // Correlate attempts with an opaque identifier.
+  attempt, // Distinguish retries of that job.
+  errorCode: 'UPSTREAM_TIMEOUT', // Classify the failure without its payload.
 });
 ```
 
 Avoid `logger.warn({ job, error })`: serializing entire objects can expose fields unrelated to diagnosis, including data added later.
 
-**Transferable concept — useful information boundary:** State the diagnostic purpose and select information that serves it. An explicit exclusion and a contrast can explain the boundary better than “log safely.”
+**Transferable concept — useful information boundary:** State the diagnostic purpose and select information that serves it. The annotated object shows exactly what crosses the logging boundary and why. It also makes the contrast with whole-object serialization visible without a second inventory of the same fields.
 
 ### Dependencies: scope a default and its exception
 
@@ -129,9 +126,9 @@ This restriction applies to production dependencies. Development-only tools are 
 - **Default:** Use an existing dependency or a platform API when it meets the requirement.
 - **Exception:** Add a library when those options lack a needed capability. In the change description, name that capability and explain the maintenance and bundle-size tradeoffs.
 
-An exception needs a concrete gap, such as a required file format that the platform cannot parse. “This library is popular” does not explain why the existing options are insufficient.
+Suppose an import must read a file format that neither the platform nor an existing dependency can parse. A library that supplies that parser addresses the missing capability; justify it by naming that gap and its maintenance and bundle-size costs. If the input is already supported and the proposal merely replaces a working parser with a more popular one, this exception does not justify the addition.
 
-**Transferable concept — bounded agreement:** Define where the default applies and what makes an exception justified. Do not turn a preference into an absolute ban unless that is the actual agreement.
+**Transferable concept — bounded agreement:** Define where the default applies and what makes an exception justified. The scenario changes the decisive fact—whether a required capability is absent—so the reader can apply the exception rather than treating “when needed” as permission for any preference. Do not invent an exception unless it belongs to the actual agreement.
 
 ### Components: describe a recurring decision, not the current tree
 
@@ -145,14 +142,20 @@ An exception needs a concrete gap, such as a required file format that the platf
 
 Reuse a shared component when its behavior and accessibility contract match the new use. Visual resemblance alone is insufficient.
 
-| Situation                                                                         | Decision                                   | Reason                                                                   |
-| --------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
-| Two controls have the same interaction semantics and differ only in their labels. | Reuse the component with a label input.    | The variation does not change its behavioral contract.                   |
-| A navigation link looks like a button that submits a form.                        | Keep their interaction semantics distinct. | Similar styling does not make navigation and submission the same action. |
+For example, an existing `SubmitButton` wraps a native form submission button:
 
-Shared styling can still be useful in the second case; it does not require forcing different behaviors into one control.
+```tsx
+// Both uses submit their enclosing form; the label is a coherent variation.
+<SubmitButton label="Save profile" />
+<SubmitButton label="Save address" />
 
-**Transferable concept — decision rule instead of implementation description:** Express the criterion that remains useful across changes. Refer to code facts as evidence, not as a substitute for the agreement.
+// This control navigates. Similar styling does not make it a form submission.
+<a className="action" href="/reports">Open reports</a>
+```
+
+Reuse `SubmitButton` for the two submission actions when its accessibility contract also fits. Keep navigation semantics for the link. Shared styling may serve both without forcing navigation into the submission abstraction.
+
+**Transferable concept — decision rule instead of implementation description:** Express the criterion that remains useful across changes. The comments identify what the abstraction shares and what falls outside it; the component names alone would not explain that boundary. Refer to verified code facts as evidence, not as a substitute for the agreement.
 
 ### Authentication: recognize a product requirement
 
@@ -179,6 +182,39 @@ The flow belongs in the product specification and its implementation. Report tha
 **Better:** Name environment variables in uppercase snake case, such as `EXPORT_DIRECTORY`.
 
 **Transferable concept — proportional detail:** A familiar, unambiguous rule may need only one sentence. A separate rationale, negative example, or section for every rule would add noise here.
+
+## Review the information gained
+
+Consider a draft that says “Normalize imported names.” Verified project evidence establishes that normalization removes surrounding whitespace and preserves whitespace inside the name. The draft still leaves the reader unsure whether repeated internal spaces are collapsed.
+
+**Superficial enrichment:** “For example, normalize each imported name by applying the agreed normalization consistently.”
+
+This repeats the instruction without explaining the agreed transformation. More words have not resolved the concrete doubt.
+
+State the verified agreement explicitly: “Remove surrounding whitespace from imported names; preserve whitespace inside the name.” If the distinction still needs illustration for the intended reader, consider how to show the resulting value.
+
+**Unhelpful presentation for that question:**
+
+| Position      | Input content | Output content |
+| ------------- | ------------- | -------------- |
+| Beginning     | Two spaces    | None           |
+| First word    | `Ana`         | `Ana`          |
+| Between words | Two spaces    | Two spaces     |
+| Second word   | `Silva`       | `Silva`        |
+| End           | Two spaces    | None           |
+
+The information is concrete, but splitting one value across rows makes the reader reconstruct the name to see the result. For this question, quoted input and output show the same information in context:
+
+```text
+input:  "  Ana  Silva  "
+output: "Ana  Silva"
+```
+
+The two spaces between the words remain; only the surrounding spaces disappear. `"Ana Silva"` would violate the agreement by collapsing internal whitespace. The example lets the reader distinguish two plausible implementations without introducing a new normalization policy. If the explicit sentence already resolves the doubt, keep that sentence alone.
+
+A table could help if the task actually required comparing several normalization policies. Its use is judged by that information need, not by the subject or the presence of rows. Likewise, a snippet that merely called `normalizeName(value)` would leave the relevant behavior hidden.
+
+In review, ask whether the addition enables a decision that was ambiguous, adds relevant context instead of paraphrasing the rule, and presents that information clearly. Remove or revise additions that fail that judgment. Do not add more examples when the existing agreement already answers the reader's question.
 
 ## Complete conventions with different organizations
 
@@ -213,12 +249,7 @@ trigger: Read when storing, exchanging, or displaying timestamps.
 
 ## Preserve the instant across boundaries
 
-Store and exchange timestamps as UTC instants using ISO 8601 strings with `Z`. This gives consumers an explicit timezone instead of relying on the server's local setting. Distinguish an instant from a calendar date:
-
-| Meaning                             | Representation                   | Example                |
-| ----------------------------------- | -------------------------------- | ---------------------- |
-| A completion instant                | ISO 8601 in UTC with `Z`         | `2026-04-18T14:30:00Z` |
-| A calendar date, such as a birthday | `YYYY-MM-DD`, without a timezone | `1990-04-18`           |
+Store and exchange timestamps as UTC instants using ISO 8601 strings with `Z`. This gives consumers an explicit timezone instead of relying on the server's local setting.
 
 A record of an event therefore carries its instant explicitly:
 
@@ -226,14 +257,25 @@ A record of an event therefore carries its instant explicitly:
 { "completedAt": "2026-04-18T14:30:00Z" }
 ```
 
-Avoid `"2026-04-18 14:30"` for an instant: the reader cannot tell which timezone it represents. Do not convert a calendar date to midnight UTC merely to reuse timestamp handling; that would change its meaning when localized.
+Avoid `"2026-04-18 14:30"` for an instant: the reader cannot tell which timezone it represents.
+
+A calendar date such as a birthday instead uses `YYYY-MM-DD`, for example `1990-04-18`, without a timezone. Converting it to midnight UTC merely to reuse timestamp handling would add an instant that was never part of its meaning; displaying that instant west of UTC could even show the previous date.
 
 ## Localize at display time
 
 Render instants in the user's selected timezone. Keep the original instant available for sorting and comparisons; a formatted display string is not the stored value.
+
+For a user whose selected timezone has offset UTC−03:00 at that instant:
+
+```text
+stored instant: 2026-04-18T14:30:00Z
+displayed time: 11:30 on 18 April 2026
+```
+
+Only the presentation changes. Do not replace the stored instant with `"11:30"`, which loses the date and timezone needed for comparisons.
 ````
 
-**Organization lesson:** Titles separate related decisions. The table distinguishes meanings, while the snippet shows one in context. The calendar-date boundary prevents an overbroad application without turning the document into a date-time manual.
+**Organization lesson:** Titles separate preservation from display. The JSON establishes what is stored; the input and display explain what localization changes and what it preserves. The calendar-date scenario explains why the timestamp agreement must not be applied to every date-shaped value. These are information needs within one topic, not a required organization for date conventions.
 
 ### A scoped comparison: command output
 
