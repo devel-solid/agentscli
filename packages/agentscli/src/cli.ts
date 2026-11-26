@@ -29,8 +29,8 @@ Usage:
 
 Common options: --repo-root <directory>, --json.
 
-init creates .agentscli/conventions/ if needed and installs the two product skills.
-update refreshes both skills from this CLI version; it requires at least one
+init creates .agentscli/conventions/ if needed and installs the three product skills.
+update refreshes all product skills from this CLI version; it requires at least one
 installed product SKILL.md with matching name, generator identity and valid version.
 Missing skill files are repaired; ambiguous existing entries require manual recovery.
 Both commands replace managed skill trees and remove obsolete files. Conventions,
@@ -38,6 +38,10 @@ AGENTS.md, local skills, Git state and unrelated files stay preserved. --dry-run
 previews without writes. Repeat init safely to prepare an existing project.
 Use agentscli-write-conventions to create or edit conventions, then
 agentscli-build-agents to validate them and generate/check AGENTS.md.
+Use agentscli-refactor-conventions to audit conventions and propose a reorganization.
+Approval is required for content or structural changes. During review, the skill
+may record or invalidate review metadata; instructions to write no files prevent
+those metadata writes too.
 After partial failure repeat the same authorized operation; there is no rollback.
 Exit codes: 0 success; 2 usage/validation/conflict; 3 operational failure.
 `;

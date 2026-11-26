@@ -51,10 +51,19 @@ export const resources = {
               'scripts/build-agents.mjs': bytes('export const build = true;'),
               'scripts/lib/index.mjs': bytes('export const engine = true;'),
             }
-          : {
-              'scripts/check.mjs': bytes('export const check = true;'),
-              'references/writing-examples.md': bytes('# Writing examples\n'),
-            }),
+          : id === 'agentscli-write-conventions'
+            ? {
+                'scripts/check.mjs': bytes('export const check = true;'),
+                'references/writing-examples.md': bytes('# Writing examples\n'),
+              }
+            : {
+                'scripts/review-conventions.mjs': bytes(
+                  'export const review = true;',
+                ),
+                'references/refactoring-examples.md': bytes(
+                  '# Refactoring examples\n',
+                ),
+              }),
       },
     ]),
   ),
@@ -90,7 +99,7 @@ test('portable paths reject escapes, reserved names and aliases', () => {
   ])
     assert.throws(() => uniquePaths(paths));
 });
-test('conventions require only trigger and exactly one live H1; examples remain literal', () => {
+test('conventions require trigger and exactly one live H1; examples remain literal', () => {
   const text =
     convention() + '\n```md\n# Example\ntrigger: literal example\n```\n';
   assert.equal(validateConvention(text, 'testing.md').title, 'Testing');
@@ -564,7 +573,7 @@ test('regular files cannot occupy packaged skill directories', async () => {
     }
   }
 });
-test('manual root AGENTS and invalid authored input block generation writes', async () => {
+test('manual root AGENTS blocks only sync while invalid authored input also blocks validation', async () => {
   for (const files of [
     { 'AGENTS.md': '# Handwritten\n' },
     {
@@ -581,7 +590,10 @@ test('manual root AGENTS and invalid authored input block generation writes', as
       ['sync', { check: true }],
     ]) {
       const response = await invoke(fs, command, options);
-      assert.equal(response.exitCode, 2);
+      assert.equal(
+        response.exitCode,
+        command === 'validate' && files['AGENTS.md'] ? 0 : 2,
+      );
       assert.equal(fs.writes.length, 0);
       for (const [path, content] of Object.entries(files))
         assert.equal(fs.text(path), content);
@@ -765,6 +777,7 @@ test('skill resource aliases reject local paths, remote URLs, HTML entities, cas
     path: '.agents/skills/review',
     files: {
       'SKILL.md': bytes(Buffer.from(skill('review')).toString() + text),
+      'references/note.md': bytes('Own support.\n'),
     },
   });
   const other = {
@@ -1033,6 +1046,113 @@ test('recognized installation can recover a sibling without an entry, but ambigu
   assert.equal(partial.writes.length, 0);
 });
 
+test('legacy two-skill installations gain the complete refactoring skill without changing authored inputs', async () => {
+  const authored = convention(
+    'Fixture independence',
+    'Read when changing fixtures.',
+  );
+  const fs = client({
+    '.agentscli/conventions/fixture-independence.md': authored,
+    'AGENTS.md': '# Handwritten instructions\r\nKeep this exact content.\r\n',
+    '.agents/skills/custom/SKILL.md': '# Unrelated authored skill',
+  });
+  for (const id of ['agentscli-write-conventions', 'agentscli-build-agents'])
+    for (const [path, content] of Object.entries(resources.skills[id]))
+      fs.put(`.agents/skills/${id}/${path}`, content);
+  const refactor = '.agents/skills/agentscli-refactor-conventions';
+  const preview = await invoke(fs, 'update', { dryRun: true });
+  assert.equal(preview.exitCode, 0);
+  assert.equal(fs.writes.length, 0);
+  assert.ok(
+    preview.result.changes.some((c) => c.path === `${refactor}/SKILL.md`),
+  );
+  assert.ok(
+    preview.result.changes.some(
+      (c) => c.path === `${refactor}/references/refactoring-examples.md`,
+    ),
+  );
+  assert.ok(
+    preview.result.changes.every((c) => c.path.startsWith(refactor + '/')),
+  );
+  const applied = await invoke(fs, 'update');
+  assert.equal(applied.exitCode, 0);
+  assert.deepEqual(
+    applied.result.changes.map(({ status, ...effect }) => effect),
+    preview.result.changes.map(({ status, ...effect }) => effect),
+  );
+  for (const [path, content] of Object.entries(
+    resources.skills['agentscli-refactor-conventions'],
+  ))
+    assert.deepEqual(fs.io.read(join(fs.root, refactor, path)), content);
+  assert.equal(
+    fs.text('.agentscli/conventions/fixture-independence.md'),
+    authored,
+  );
+  assert.equal(
+    fs.text('AGENTS.md'),
+    '# Handwritten instructions\r\nKeep this exact content.\r\n',
+  );
+  assert.equal(
+    fs.text('.agents/skills/custom/SKILL.md'),
+    '# Unrelated authored skill',
+  );
+  assert.equal((await invoke(fs, 'update')).result.changes.length, 0);
+});
+
+test('a foreign refactoring entrypoint blocks legacy updates before any writes', async () => {
+  const path = '.agents/skills/agentscli-refactor-conventions/SKILL.md';
+  const fs = client({
+    '.agents/skills/agentscli-build-agents/SKILL.md':
+      resources.skills['agentscli-build-agents']['SKILL.md'],
+    [path]: '# Locally authored refactoring procedure',
+  });
+  const response = await invoke(fs, 'update');
+  assert.equal(response.exitCode, 2);
+  assert.equal(response.result.diagnostics[0].code, 'SKILL_CONFLICT');
+  assert.equal(fs.writes.length, 0);
+  assert.equal(fs.text(path), '# Locally authored refactoring procedure');
+});
+
+test('index sync reflects an authored split while preserving both replacement documents', async () => {
+  const old = '.agentscli/conventions/testing.md';
+  const fs = client({ [old]: convention() });
+  assert.equal((await invoke(fs)).exitCode, 0);
+  fs.nodes.delete(join(fs.root, old));
+  const replacements = {
+    '.agentscli/conventions/fixture-independence.md': convention(
+      'Fixture independence',
+      'Read when changing fixtures.',
+    ),
+    '.agentscli/conventions/fixed-test-clocks.md': convention(
+      'Fixed test clocks',
+      'Read when testing elapsed time.',
+    ),
+  };
+  for (const [path, content] of Object.entries(replacements))
+    fs.put(path, content);
+  const writes = fs.writes.length;
+  const preview = await invoke(fs, 'sync', { dryRun: true });
+  assert.equal(preview.exitCode, 0);
+  assert.equal(fs.writes.length, writes);
+  assert.deepEqual(
+    preview.result.changes.map((c) => c.path),
+    ['AGENTS.md'],
+  );
+  assert.equal((await invoke(fs)).exitCode, 0);
+  assert.doesNotMatch(fs.text('AGENTS.md'), /\[Testing\]/);
+  assert.match(
+    fs.text('AGENTS.md'),
+    /\[Fixture independence\].*Read when changing fixtures\./,
+  );
+  assert.match(
+    fs.text('AGENTS.md'),
+    /\[Fixed test clocks\].*Read when testing elapsed time\./,
+  );
+  for (const [path, content] of Object.entries(replacements))
+    assert.equal(fs.text(path), content);
+  assert.equal((await invoke(fs, 'sync', { check: true })).exitCode, 0);
+});
+
 test('init adopts empty target directories and update preserves invalid authored content without reading it', async () => {
   const fs = client();
   const base = `.agents/skills/${PRODUCT_SKILLS[0]}`;
@@ -1058,6 +1178,11 @@ test('init validates complete package resources before any directory or file wri
     (r) => delete r.skills[PRODUCT_SKILLS[1]],
     (r) => delete r.skills[PRODUCT_SKILLS[0]]['scripts/check.mjs'],
     (r) => delete r.skills[PRODUCT_SKILLS[0]]['references/writing-examples.md'],
+    (r) => delete r.skills['agentscli-refactor-conventions'],
+    (r) =>
+      delete r.skills['agentscli-refactor-conventions'][
+        'references/refactoring-examples.md'
+      ],
     (r) => {
       r.skills[PRODUCT_SKILLS[1]]['scripts/lib/index.mjs'] = bytes('');
     },

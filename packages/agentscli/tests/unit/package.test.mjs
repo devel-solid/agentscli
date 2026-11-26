@@ -4,6 +4,8 @@ import { resolve, sep } from 'node:path';
 import { collectResources, stampSkill } from '../../scripts/package-assets.mjs';
 import { PRODUCT_SKILLS } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
 import { frontmatter } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/markdown.mjs';
+import { execute } from '../../assets/templates/skills/agentscli-build-agents/scripts/lib/runtime.mjs';
+import { memory } from './memory.mjs';
 import {
   PRODUCT_SUPPORT,
   validateProductResources,
@@ -69,7 +71,7 @@ function resourceIO(overrides = {}) {
 test('whole operational skill trees map to package resources', () => {
   const { root, io } = resourceIO();
   const resources = collectResources(root, io);
-  assert.equal(resources.length, 8);
+  assert.equal(resources.length, 12);
   assert.equal(
     resources
       .find(
@@ -135,7 +137,7 @@ test('packaging rejects linked sources, hardlinks, unsafe aliases and missing sk
     /Equivalent|overlapping|alias/,
   );
 });
-test('packaging rejects sources outside the two operational skills', () => {
+test('packaging rejects sources outside the declared operational skills', () => {
   for (const path of ['notes/guide.md', 'unowned.mjs']) {
     const { root, io, add } = resourceIO();
     add(`assets/templates/${path}`, 'Unexpected package resource\n');
@@ -294,4 +296,111 @@ test('derived operational assets validate identities, provenance, and one releas
       (error) => error.code === 'PACKAGE_RESOURCE' && error.exitCode === 3,
     );
   }
+});
+
+test('packaging validates the transitive example links rather than only the top-level support list', () => {
+  const { root, io, add, writes } = resourceIO();
+  const base = 'assets/templates/skills/agentscli-write-conventions';
+  add(
+    `${base}/references/writing-examples.md`,
+    '# Examples\n\n[Analysis](cases/analysis.md)\n',
+  );
+  add(
+    `${base}/references/cases/analysis.md`,
+    '# Analysis\n\n[Corrected](corrected/example.md)\n',
+  );
+  assert.throws(
+    () => collectResources(root, io),
+    (error) =>
+      error.code === 'PACKAGE_RESOURCE' &&
+      /corrected\/example.md/.test(error.message),
+  );
+  assert.equal(writes.length, 0);
+  add(`${base}/references/cases/corrected/example.md`, '# Complete example\n');
+  assert.doesNotThrow(() => collectResources(root, io));
+});
+
+test('generated resource validation rejects a missing nested example with its referring path', () => {
+  const resources = productResources();
+  const files = resources.skills['agentscli-write-conventions'];
+  files['references/writing-examples.md'] = Buffer.from(
+    '# Examples\n\n[Analysis](cases/analysis.md)\n',
+  );
+  files['references/cases/analysis.md'] = Buffer.from(
+    '# Analysis\n\n[Corrected](corrected/example.md)\n',
+  );
+  assert.throws(
+    () => validateProductResources(resources),
+    (error) =>
+      error.code === 'PACKAGE_RESOURCE' &&
+      error.path.endsWith('cases/analysis.md') &&
+      /corrected\/example.md/.test(error.message),
+  );
+  files['references/cases/corrected/example.md'] = Buffer.from(
+    '# Complete example\n',
+  );
+  assert.doesNotThrow(() => validateProductResources(resources));
+});
+
+test('init and update reject missing transitive support before any project writes', async () => {
+  const resources = productResources();
+  resources.skills['agentscli-write-conventions'][
+    'references/writing-examples.md'
+  ] = Buffer.from('# Examples\n\n[Missing](cases/corrected.md)\n');
+  for (const command of ['init', 'update']) {
+    const state = memory({
+      'AGENTS.md': '# Existing instructions\r\n',
+      '.agentscli/conventions/draft.md': '# Invalid authored draft preserved\n',
+      '.agents/skills/agentscli-build-agents/SKILL.md':
+        resources.skills['agentscli-build-agents']['SKILL.md'],
+    });
+    const response = await execute(
+      command,
+      { repoRoot: state.root },
+      { io: state.io, resources },
+    );
+    assert.equal(response.exitCode, 3);
+    assert.equal(response.result.diagnostics[0].code, 'PACKAGE_RESOURCE');
+    assert.deepEqual(response.result.changes, []);
+    assert.equal(state.writes.length, 0);
+    assert.equal(state.text('AGENTS.md'), '# Existing instructions\r\n');
+    assert.equal(
+      state.text('.agentscli/conventions/draft.md'),
+      '# Invalid authored draft preserved\n',
+    );
+  }
+});
+
+test('installation requires the refactoring filter and preserves existing convention review receipts', async () => {
+  const resources = productResources();
+  const path = '.agentscli/conventions/test-focus.md';
+  const authored = `---\r\ntrigger: Read when defining tests.\r\nreviewedHash: '${'a'.repeat(64)}'\r\nreviewPolicyVersion: '1'\r\n---\r\n# Test focus\r\n\r\nOne behavior per test.\r\n`;
+  const state = memory({ [path]: authored });
+  const response = await execute(
+    'init',
+    { repoRoot: state.root },
+    { io: state.io, resources },
+  );
+  assert.equal(response.exitCode, 0);
+  assert.equal(state.text(path), authored);
+  assert.ok(
+    response.result.changes.some(
+      (change) =>
+        change.path ===
+        '.agents/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs',
+    ),
+  );
+  const broken = structuredClone(resources);
+  delete broken.skills['agentscli-refactor-conventions'][
+    'scripts/review-conventions.mjs'
+  ];
+  const before = state.writes.length;
+  const rejected = await execute(
+    'update',
+    { repoRoot: state.root },
+    { io: state.io, resources: broken },
+  );
+  assert.equal(rejected.exitCode, 3);
+  assert.equal(state.writes.length, before);
+  assert.equal(state.text(path), authored);
 });

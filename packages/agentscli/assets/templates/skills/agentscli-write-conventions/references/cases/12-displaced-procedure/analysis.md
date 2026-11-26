@@ -1,23 +1,21 @@
-# An operational procedure inside an agreement
+# Separate agreements from an operational procedure
 
 ## Hypothetical context
 
-A fictional service already records a recurring migration agreement: SQL migration files use a UTC creation identifier in `YYYYMMDDHHmmss` form, a hyphen, a lowercase hyphenated description, and `.sql`. Once applied to a shared environment, a migration remains unchanged; later changes use a new migration. The service also has an operational runbook that owns environment selection, backups, execution, and deployment verification. The invented `db-step` command below belongs to that runbook, not to this product.
+A fictional service names migration files with a UTC `YYYYMMDDHHmmss` identifier, a hyphen, a lowercase hyphenated description, and `.sql`. It also preserves migrations applied to shared environments. A separate runbook already owns environment selection, backups, execution, and deployment verification. The invented `db-step` command belongs to that runbook.
 
-These assumptions let the revision remove a procedure without inventing a replacement convention.
+Read the complete [inadequate convention](inadequate/migration-history.md) and both complete replacements: [migration identifiers](corrected/migration-identifiers.md) and [migration immutability](corrected/migration-immutability.md).
 
-Compare the complete [inadequate convention](inadequate/migration-history.md) and [corrected convention](corrected/migration-history.md).
+## Before: three independent reading needs
 
-## What remained wrong
+A contributor naming a new file needs the filename agreement. A contributor correcting an applied column needs immutability. An operator deploying needs a procedure and environment authorization. A common database subject does not make these one decision.
 
-The draft combines an enduring file agreement with a deployment session's commands. A contributor changing a migration cannot tell whether following the convention also authorizes operating on a shared database. The command sequence will also age independently of the migration naming rule.
+The draft also implies that adding a migration requires operating a shared environment, without establishing deployment authorization.
 
-The problem is not that numbered steps are inherently inappropriate. Here they answer how to execute a deployment, whereas the convention needs to answer whether to edit an applied file or introduce a new one.
+## After: preserve each agreement and its owner
 
-## What changed and why
+The identifier convention owns filenames and contrasts a compliant UTC identifier with an inadequate name. The immutability convention owns the edit-versus-new-file decision and explains divergent histories. Both have independent triggers and complete bodies.
 
-The corrected file keeps naming and applied-history immutability, and removes the operational sequence. It neither executes nor relocates that sequence. A concrete correction scenario shows that an already applied column addition is followed by a new migration when its definition needs changing. The example names both files so the meaning of preserving history is visible.
+The deployment sequence stays owned by the existing runbook established in this case's context. The correction neither executes it nor creates a skill. In a real project without that established owner, flag the displaced procedure and obtain scope for relocation or removal; do not silently lose its obligations.
 
-The two sections distinguish identifying a file from changing an established history. A short scenario provides the missing revision decision more directly than a command transcript, and does not duplicate the runbook.
-
-**Transferable concept:** Keep the recurring choice and remove execution instructions whose responsibility belongs elsewhere. A useful convention can survive that removal when its agreement was established before the edit.
+Two headings inside Migration history would still couple naming and revision. A new convention containing the deployment transcript would still confuse a procedure with an agreement.

@@ -188,6 +188,57 @@ test(`conventions preserves unrelated authored files during validation`, async (
   assert.equal(state.writes.length, 0);
 });
 
+test('authorship validation preserves handwritten root instructions without reading or planning their replacement', async () => {
+  const handwritten =
+    '# Handwritten instructions\r\nKeep existing policies.\r\n';
+  const state = fixture({ 'AGENTS.md': handwritten });
+  const read = state.io.read;
+  state.io.read = (path) => {
+    assert.notEqual(path, join(state.root, 'AGENTS.md'));
+    return read(path);
+  };
+  const result = await validateWithEngine(state);
+  assert.equal(result.exitCode, 0);
+  assert.deepEqual(result.result.changes, []);
+  assert.equal(state.writes.length, 0);
+  state.io.read = read;
+  assert.equal(state.text('AGENTS.md'), handwritten);
+  for (const options of [{}, { dryRun: true }, { check: true }]) {
+    const blocked = await execute(
+      'sync',
+      { repoRoot: state.root, ...options },
+      { io: state.io },
+    );
+    assert.equal(blocked.exitCode, 2);
+    assert.equal(blocked.result.diagnostics[0].code, 'DOCUMENT_CONFLICT');
+    assert.equal(state.writes.length, 0);
+  }
+});
+
+test('an explicitly scoped filename repair makes strict authorship validation usable again', async () => {
+  const original =
+    '---\r\ntrigger: Read when changing tests.\r\n---\r\n# Test focus\r\n\r\nKeep one behavior per test.\r\n';
+  const old = '.agentscli/conventions/wrong-name.md';
+  const target = '.agentscli/conventions/test-focus.md';
+  const state = fixture({
+    [old]: original,
+    'notes/unrelated.md': 'Preserve this.',
+  });
+  const rejected = await validateWithEngine(state);
+  assert.equal(rejected.exitCode, 2);
+  assert.equal(rejected.result.diagnostics[0].code, 'SOURCE_FILENAME');
+  assert.equal(state.writes.length, 0);
+  // The agent applies the approved minimal repair, not the read-only checker.
+  state.io.rename(join(state.root, old), join(state.root, target));
+  const repaired = await validateWithEngine(state);
+  assert.equal(repaired.exitCode, 0);
+  assert.equal(state.text(target), original);
+  assert.equal(state.text('notes/unrelated.md'), 'Preserve this.');
+  const writes = state.writes.length;
+  assert.equal((await validateWithEngine(state)).exitCode, 0);
+  assert.equal(state.writes.length, writes);
+});
+
 test(`conventions validates the tool workspace through its installed build skill`, async () => {
   const state = fixture({
     'package.json': JSON.stringify({

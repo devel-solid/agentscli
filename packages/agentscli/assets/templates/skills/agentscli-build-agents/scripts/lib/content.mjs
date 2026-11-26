@@ -62,8 +62,7 @@ export function validateSkill(files, path) {
   return { name: f.name, header };
 }
 
-function linkTarget(raw, base) {
-  if (typeof raw !== 'string' || !raw || raw.startsWith('#')) return undefined;
+function decodedLink(raw, base) {
   let value;
   try {
     value = decodeURIComponent(raw);
@@ -72,15 +71,27 @@ function linkTarget(raw, base) {
   }
   if (/%[\da-f]{2}/iu.test(value))
     fail('RESOURCE_LINK', 'Ambiguous repeated URL encoding.', base);
-  value = value.replaceAll('\\', '/');
+  return value.replaceAll('\\', '/');
+}
+
+function linkTarget(raw, base, portable = true) {
+  const key = (value) => (portable ? portableKey(value) : value);
+  if (typeof raw !== 'string' || !raw || raw.startsWith('#')) return undefined;
+  // Validate the complete URL, but split literal URL delimiters before decoding
+  // the path: %23 names a literal # character, not a fragment boundary.
+  decodedLink(raw, base);
+  let value = decodedLink(raw.split(/[?#]/u)[0], base);
   if (/^skill:\/\//iu.test(value))
-    return portableKey(
-      'skills/' + value.slice('skill://'.length).split(/[?#]/u)[0],
-    );
+    return key('skills/' + value.slice('skill://'.length));
   if (/^[a-z][a-z0-9+.-]*:/iu.test(value)) {
     if (/^https?:/iu.test(value)) {
       try {
-        return portableKey(new URL(value).pathname.replace(/^\//u, ''));
+        // Encoded path delimiters have already been decoded above. Re-escape
+        // them for URL parsing so they remain part of the remote pathname.
+        const url = new URL(
+          value.replaceAll('#', '%23').replaceAll('?', '%3F'),
+        );
+        return key(decodeURIComponent(url.pathname).replace(/^\//u, ''));
       } catch {
         return undefined;
       }
@@ -88,8 +99,7 @@ function linkTarget(raw, base) {
     if (!/^(file|skill):/iu.test(value)) return undefined;
     value = value.replace(/^[a-z]+:\/\//iu, '');
   }
-  value = value.split(/[?#]/u)[0];
-  return portableKey(
+  return key(
     posix.normalize(
       value.startsWith('/')
         ? value.slice(1)
@@ -97,10 +107,55 @@ function linkTarget(raw, base) {
     ),
   );
 }
+
+// A text/Markdown/YAML fence is literal teaching data. Executable fences and
+// command-shaped inline or paragraph examples remain workflow instructions.
+function workflowSources(text) {
+  const languages = new Set([
+    'sh',
+    'shell',
+    'bash',
+    'zsh',
+    'fish',
+    'console',
+    'powershell',
+    'pwsh',
+    'ps1',
+    'cmd',
+    'bat',
+    'batch',
+    'js',
+    'javascript',
+    'mjs',
+    'cjs',
+    'ts',
+    'typescript',
+    'python',
+    'py',
+  ]);
+  const command =
+    /^\s*(?:[$>]\s+)?(?:node(?:\.exe)?|npm|npx|pnpm|yarn|bun|deno|python(?:3)?|pwsh|powershell|cmd|bash|sh|zsh|fish)\b/iu;
+  const sources = [];
+  function visit(node) {
+    if (node.type === 'code') {
+      if (languages.has(node.lang?.toLowerCase())) sources.push(node.value);
+      return;
+    }
+    if (node.type === 'inlineCode' || node.type === 'text') {
+      sources.push(
+        ...node.value.split('\n').filter((line) => command.test(line)),
+      );
+      return;
+    }
+    for (const child of node.children ?? []) visit(child);
+  }
+  visit(parseMarkdown(text));
+  return sources;
+}
 export function validateResourceLinks(
   text,
   path,
-  { kind, ownRoot, conventions = [], skillRoots = [] } = {},
+  { kind, ownRoot, ownFiles, conventions = [], skillRoots = [] } = {},
 ) {
   const own = ownRoot && portableKey(ownRoot);
   const conventionTargets = new Set(conventions.map(portableKey));
@@ -163,17 +218,58 @@ export function validateResourceLinks(
         }
     }
   }
-  for (const target of targets)
+  for (const target of targets) {
+    if (
+      kind === 'skill' &&
+      typeof target === 'string' &&
+      /^file:/iu.test(decodedLink(target, path).trimStart())
+    )
+      fail(
+        'RESOURCE_LINK',
+        `File URI links are forbidden in skills: ${target}. Use relative bundled support links.`,
+        path,
+      );
     if (prohibited(linkTarget(target, path)))
       fail(
         'RESOURCE_LINK',
         `Direct cross-resource link is forbidden: ${target}. Use resource identity and project discovery.`,
         path,
       );
+    if (
+      ownRoot &&
+      ownFiles &&
+      target &&
+      !/^(?:[a-z][a-z0-9+.-]*:|#)/iu.test(target)
+    ) {
+      const rawPath = decodedLink(target.split(/[?#]/u)[0], path);
+      const directory = /\/$|(?:^|\/)\.{1,2}$/u.test(rawPath);
+      const resolved = linkTarget(target, path, false)?.replace(/\/$/u, '');
+      if (
+        resolved &&
+        (portableKey(resolved) === own ||
+          portableKey(resolved).startsWith(own + '/'))
+      ) {
+        const relative = resolved.slice(ownRoot.length + 1);
+        const present =
+          resolved === ownRoot ||
+          (resolved.startsWith(ownRoot + '/') &&
+            ((!directory && Object.hasOwn(ownFiles, relative)) ||
+              Object.keys(ownFiles).some((file) =>
+                file.startsWith(relative + '/'),
+              )));
+        if (!present)
+          fail(
+            'RESOURCE_SUPPORT',
+            `Missing bundled support target: ${target}.`,
+            path,
+          );
+      }
+    }
+  }
   if (kind === 'skill') {
-    // Workflow commands are checked even when written as code; prose mentions remain valid.
     const candidates =
-      text
+      workflowSources(text)
+        .join('\n')
         .replace(/<!--[\s\S]*?-->/gu, '')
         .match(
           /(?:\.?\.?\/|\/)?(?:(?:\.agents\/skills|\.agentscli\/conventions)(?:\/[^\s`<>"')]+)?(?=[\s`<>"')]|$)|\.\.\/[^\s`<>"')]+|(?:https?|skill|file):\/\/[^\s`<>"')]+)/giu,
@@ -229,6 +325,7 @@ export function validateResources({ conventions = [], skills = [] }) {
         validateResourceLinks(text, `${s.path}/${relative}`, {
           kind: 'skill',
           ownRoot: s.path,
+          ownFiles: s.files,
           conventions: conventionPaths,
           skillRoots,
         });

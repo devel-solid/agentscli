@@ -1,21 +1,25 @@
-# Mixed decisions: test fixtures and clocks
+# Mixed decisions: fixture independence and fixed clocks
 
 ## Hypothetical context
 
-A fictional parcel-tracking service has two established testing agreements. Reusable fixture factories return fresh mutable objects, including nested collections, for each call. Separately, tests whose result depends on elapsed time supply a fixed clock to the unit under test; tests unrelated to time do not need a clock. Clocks are supplied per test, without changing global time. No particular factory library or clock library has been selected.
+A fictional parcel service requires fresh mutable fixture state, including nested collections, for every factory call. Separately, elapsed-time tests supply a fixed clock to the unit under test, per test without changing global time. Tests unrelated to time need no clock. No fixture or clock library is selected.
 
-Compare the complete [inadequate convention](inadequate/test-fixtures-and-clocks.md) with the [corrected convention](corrected/test-fixtures-and-clocks.md).
+Read the complete [inadequate convention](inadequate/test-fixtures-and-clocks.md), then both complete replacements: [fixture independence](corrected/fixture-independence.md) and [fixed test clocks](corrected/fixed-test-clocks.md).
 
-## Why the draft is difficult to apply
+## Before: a broad topic hides independent decisions
 
-The inadequate text interleaves object isolation with elapsed-time control and concludes that they belong in one shared setup. A reader trying to add a plain formatting test cannot tell whether it needs a fixed clock. A reader fixing a mutation leak is directed toward the same combined reset even though a frozen clock cannot make two shared arrays independent. These are distinct decisions with different activation conditions.
+The draft combines object isolation and elapsed-time control under Testing and invents a common reset. A formatting test cannot tell whether it needs a clock. A mutation-leak fix is directed toward resetting time even though a clock cannot make two shared arrays independent.
 
-## What changes and why
+An intermediate rewrite with separate headings in the same file would still make either task discover and load both agreements. Responsibility is a file/discovery boundary, not just an outline choice.
 
-The corrected version separates the two agreements by the problem they prevent. The fixture example observes an untouched second nested collection after the first is mutated; it demonstrates fresh nested state rather than merely naming a factory. The clock example places the fixed value on the time-dependent unit and explains why the fixture factory is not the owner of global time.
+## After: separate decisions and precise triggers
 
-Sections are useful because the reader may need one decision without the other. The change also removes the unsupported combined-reset requirement instead of preserving it under clearer headings. Two headings alone would not repair the mistaken coupling.
+The fixture convention owns fresh outer and nested objects. Its example mutates one parcel's array and observes an untouched second parcel, exposing why shallow copying fails. The clock convention owns elapsed-time determinism, per-test injection, and the global-time restriction. Its example contrasts an expiry-dependent lease with a time-independent label test.
 
-## Transferable concept
+The unsupported combined-reset instruction is removed because this hypothetical context never required coupling those controls. In a real refactoring proposal, account for every established obligation and surface any policy change before writes.
 
-Group decisions by when they apply and what they control. Shared vocabulary such as “deterministic tests” is not enough to combine independent agreements into one required setup.
+The index replaces one broad entry with two titles and independent reading conditions. Neither replacement routes the reader through the other.
+
+## When to keep content together
+
+Canonical public option spelling and the temporary alias exception for supported callers govern one decision and should stay together; case 08 illustrates that boundary. File length and heading count do not determine responsibility.

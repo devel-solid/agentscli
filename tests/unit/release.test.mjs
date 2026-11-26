@@ -237,7 +237,11 @@ function consumerArchive() {
     { name: 'package/LICENSE', body: 'MIT' },
     { name: 'package/dist/cli.js', body: '#!/usr/bin/env node\n', mode: 0o755 },
   ];
-  for (const id of ['agentscli-write-conventions', 'agentscli-build-agents']) {
+  for (const id of [
+    'agentscli-write-conventions',
+    'agentscli-build-agents',
+    'agentscli-refactor-conventions',
+  ]) {
     entries.push({
       name: `package/dist/assets/skills/${id}/SKILL.md`,
       body: `---\nname: ${id}\ndescription: Perform the operation.\nlicense: MIT\nmetadata:\n  generatedBy: "${pkg.name}"\n  generatorVersion: ${pkg.version}\n---\n# Operation\n`,
@@ -257,6 +261,8 @@ test('release inspection requires complete skill trees and compares every prepar
     'agentscli-write-conventions/references/writing-examples.md',
     'agentscli-build-agents/scripts/build-agents.mjs',
     'agentscli-build-agents/scripts/lib/index.mjs',
+    'agentscli-refactor-conventions/references/refactoring-examples.md',
+    'agentscli-refactor-conventions/scripts/review-conventions.mjs',
   ])
     entries.push({
       name: `package/dist/assets/skills/${path}`,
@@ -272,6 +278,48 @@ test('release inspection requires complete skill trees and compares every prepar
   const artifact = inspectArchive(tar(entries), pkg, prepared);
   assert.equal(artifact.version, '0.4.0');
   assert.match(artifact.integrity, /^sha512-/);
+  assert.throws(
+    () =>
+      inspectArchive(
+        tar(
+          entries.filter(
+            (entry) =>
+              entry.name !==
+              'package/dist/assets/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs',
+          ),
+        ),
+        pkg,
+      ),
+    /Missing runtime closure: agentscli-refactor-conventions\/scripts\/review-conventions\.mjs/,
+  );
+  assert.throws(
+    () =>
+      inspectArchive(
+        tar(
+          entries.filter(
+            (entry) =>
+              entry.name !==
+              'package/dist/assets/skills/agentscli-refactor-conventions/SKILL.md',
+          ),
+        ),
+        pkg,
+      ),
+    /Incorrect operational skill inventory/,
+  );
+  assert.throws(
+    () =>
+      inspectArchive(
+        tar(
+          entries.filter(
+            (entry) =>
+              entry.name !==
+              'package/dist/assets/skills/agentscli-refactor-conventions/references/refactoring-examples.md',
+          ),
+        ),
+        pkg,
+      ),
+    /Missing runtime closure/,
+  );
   assert.throws(
     () =>
       inspectArchive(

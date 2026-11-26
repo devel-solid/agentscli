@@ -15,6 +15,10 @@ export const PRODUCT_SUPPORT = {
     'scripts/build-agents.mjs',
     'scripts/lib/index.mjs',
   ],
+  'agentscli-refactor-conventions': [
+    'scripts/review-conventions.mjs',
+    'references/refactoring-examples.md',
+  ],
 };
 
 export function validateProductResources(resources, { generated = true } = {}) {
@@ -28,7 +32,7 @@ export function validateProductResources(resources, { generated = true } = {}) {
     Object.keys(resources.skills).sort().join('\n') !==
       [...PRODUCT_SKILLS].sort().join('\n')
   )
-    fail('Expected exactly two operational skill assets.');
+    fail('Expected the complete product skill inventory.');
   try {
     const skills = PRODUCT_SKILLS.map((id) => {
       const files = resources.skills[id],

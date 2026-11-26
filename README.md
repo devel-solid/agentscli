@@ -24,6 +24,14 @@ npm run check
 | `.agentscli/conventions/` | Authored rules for working on this repository                         |
 | `.agents/skills/`         | Installed product skills and the repository's local publication skill |
 
+## Convention design
+
+Keep one recurring decision per convention, with a title and trigger that identify when it applies. The product ships separate authorship, refactoring, and index-building skills. Teach difficult decisions with concrete before/after examples, including why a plausible alternative fails. Preserve rule-and-exception pairs when both govern the same choice.
+
+For example, fixture independence and fixed test clocks have independent consumers and belong in separate conventions. Canonical option spelling and its supported-caller alias exception belong together. The package documentation and bundled case studies show complete documents for these decisions.
+
+Refactoring review uses optional `reviewedHash` and `reviewPolicyVersion` metadata to select conventions whose path/content or review criteria changed. Only an actually completed review records those fields; reopening a cached review with unresolved findings invalidates its receipt to keep it pending. Ordinary authoring and index generation do neither. The current review policy is independent of the npm version, and skipped conventions remain context for discovering new overlaps. Read the package documentation for the private selection, recording, and invalidation workflow and explicit no-write behavior.
+
 ## Refresh local project resources
 
 Edit packaged skills in `packages/agentscli/assets/templates/skills`. After changing the CLI, packaged resources, or package metadata:

@@ -35,7 +35,9 @@ declare module '#engine' {
     io?: EngineIO;
     resources?: {
       skills: Record<
-        'agentscli-write-conventions' | 'agentscli-build-agents',
+        | 'agentscli-write-conventions'
+        | 'agentscli-build-agents'
+        | 'agentscli-refactor-conventions',
         Record<string, Uint8Array>
       >;
     };

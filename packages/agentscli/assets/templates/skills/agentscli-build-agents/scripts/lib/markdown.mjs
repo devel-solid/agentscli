@@ -90,7 +90,7 @@ export function frontmatter(input, path) {
 export function activeNodes(text) {
   const result = [];
   function visit(node) {
-    if (['code', 'inlineCode', 'blockquote'].includes(node.type)) return;
+    if (['code', 'inlineCode'].includes(node.type)) return;
     result.push(node);
     for (const child of node.children ?? []) visit(child);
   }
@@ -107,7 +107,12 @@ export function validateConvention(input, path) {
       path,
     );
   }
-  exactKeys(header.fields, ['trigger'], [], path);
+  exactKeys(
+    header.fields,
+    ['trigger'],
+    ['reviewedHash', 'reviewPolicyVersion'],
+    path,
+  );
   if (
     typeof header.fields.trigger !== 'string' ||
     !header.fields.trigger.trim()
@@ -118,6 +123,30 @@ export function validateConvention(input, path) {
       2,
       path,
     );
+  for (const [field, pattern, description] of [
+    [
+      'reviewedHash',
+      /^[0-9a-f]{64}$/u,
+      '64 lowercase SHA-256 hexadecimal characters',
+    ],
+    [
+      'reviewPolicyVersion',
+      /^[1-9][0-9]*$/u,
+      'a positive canonical decimal string',
+    ],
+  ]) {
+    if (
+      Object.hasOwn(header.fields, field) &&
+      (typeof header.fields[field] !== 'string' ||
+        !pattern.test(header.fields[field]))
+    )
+      throw new EngineError(
+        'SOURCE_REVIEW_METADATA',
+        `${path}: ${field} must be ${description}.`,
+        2,
+        path,
+      );
+  }
   if (
     activeNodes('Discovery: ' + inlineTrigger(header.fields.trigger)).some(
       (node) => node.type === 'html' && /<!--/u.test(node.value),

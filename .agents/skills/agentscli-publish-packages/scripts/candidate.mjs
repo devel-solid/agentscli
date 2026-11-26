@@ -5,9 +5,10 @@ import { regular, checkPath } from './lib.mjs';
 import * as nodeFs from 'node:fs';
 import { parseDocument, visit } from 'yaml';
 import { PRODUCT_SUPPORT } from '../../../../packages/agentscli/assets/templates/skills/agentscli-build-agents/scripts/lib/resources.mjs';
+import { PRODUCT_SKILLS } from '../../../../packages/agentscli/assets/templates/skills/agentscli-build-agents/scripts/lib/contracts.mjs';
 
 const names = {
-  agentscli: ['agentscli-write-conventions', 'agentscli-build-agents'],
+  agentscli: PRODUCT_SKILLS,
 };
 export function inspectMetadata(pkg, name) {
   if (

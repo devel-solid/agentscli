@@ -255,6 +255,8 @@ export function plan(io, root, command, resources) {
         },
       });
   validateResources({ conventions, skills });
+  // Input validation does not plan or inspect an index replacement.
+  if (command === 'validate') return effects;
   const documents = render(conventions);
   for (const [path, text] of documents) {
     const existing = inspect(io, root, path, 'file');

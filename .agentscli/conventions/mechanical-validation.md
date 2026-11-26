@@ -1,14 +1,15 @@
 ---
-trigger: Read when defining checks, skill scripts, resource formats, or failure handling.
+trigger: Read when defining deterministic checks or interpreting their proof boundaries.
+reviewedHash: 'c5b6d90c2a8c53e23ed9ac87aef881b7f8d4537b96d5261943607cbde39cd0b2'
+reviewPolicyVersion: '1'
 ---
 
 # Mechanical validation
 
 - Prefer deterministic validation whenever a rule is mechanical: schemas, required fields, duplicate keys, file ownership, paths, links, hashes, executable intent, role guards, and release identities. Apply this equally to the monorepo and consumer projects.
-- Keep agent-facing checks inside the skill responsible for the operation, with its complete custom support. Do not expand the public CLI for agent tasks. The repository uses the same installed product skills as other projects; validate their exact derived contents against canonical package resources. Each skill must state when to run its own checks and how to report failures.
-- Treat validation as read-only preflight. Installation plans use complete canonical package resources and check their integrity and safe destinations independently of authored convention content or root index ownership. Build operations validate authored inputs before index writes. Edited recognized managed copies are drift to replace; authored resources remain authoritative. Ambiguous unmanaged collisions block the affected operation before writes.
+
 - Parse YAML and Markdown structurally. Reject duplicate/unknown keys, aliases, invalid types, unsafe paths, and unsupported active syntax. Inspect inline, reference, image, and HTML links, normalized/encoded targets, fragments, queries, resource path aliases, and resource support ownership. Resolve convention body links from the final convention path and trigger links from root AGENTS.md. Literal invalid examples are data; executable workflow examples cannot conceal foreign-resource paths.
-- Convention checkers reject active links to any other convention or skill. Skill checkers reject direct links and fixed foreign-resource workflow paths, while permitting their own support files and plain identity mentions. Root instruction discovery links remain permitted.
+
 - Keep semantic review distinct. Scripts cannot prove that a convention is self-contained prose, a skill has one useful responsibility, or a release has compatible impact. Agents review those properties and choose impact; scripts compute and verify deterministic consequences.
-- Make failures actionable and preserve evidence: identify the rejected field/path, candidate commit when applicable, and completed/pending effects. Use injected adapters for lightweight unit tests. Never execute downloaded skills, hooks, filters, or scripts to validate them.
-- Keep preview/check write-free. Report actual checks and limitations; passing schema checks or unit tests does not establish a completed publication or absence of bugs.
+
+For example, YAML with two `trigger` keys is mechanically invalid. A valid file titled Testing that mixes fixtures and clocks can pass all structural checks while failing semantic responsibility review. Do not invent a keyword score, maximum paragraph count, or required example count to classify it. Likewise, validation must treat an intentionally invalid YAML block in a teaching example as literal data rather than the resource's active frontmatter.

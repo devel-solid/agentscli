@@ -39,7 +39,7 @@ export function collectResources(root, io = fs) {
     );
   const names = io.readdirSync(resolve(root, 'assets/templates/skills')).sort();
   if (names.join('\n') !== [...PRODUCT_SKILLS].sort().join('\n'))
-    throw new Error('Expected exactly the two operational skill directories.');
+    throw new Error('Expected exactly the declared product skill directories.');
   for (const name of PRODUCT_SKILLS)
     collect(`assets/templates/skills/${name}`, `skills/${name}`);
   uniquePaths(resources.map((r) => r.destination));
@@ -128,7 +128,9 @@ export async function packageAssets(
       fs.writeFileSync(target, stampSkill(content, pkg, destination));
     else if (
       destination === 'skills/agentscli-build-agents/scripts/lib/index.mjs' ||
-      destination === 'skills/agentscli-write-conventions/scripts/check.mjs'
+      destination === 'skills/agentscli-write-conventions/scripts/check.mjs' ||
+      destination ===
+        'skills/agentscli-refactor-conventions/scripts/review-conventions.mjs'
     ) {
       const bundle = await build({
         absWorkingDir: root,

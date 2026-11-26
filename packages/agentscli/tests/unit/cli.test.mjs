@@ -118,7 +118,7 @@ test('help and standalone version use no runtime or project writes', async () =>
     assert.equal(response.exitCode, 0);
     assert.match(response.stdout, /agentscli 0\.1\.0/);
     assert.match(response.stdout, /agentscli init/);
-    assert.match(response.stdout, /two product skills/);
+    assert.match(response.stdout, /three product skills/);
     assert.match(response.stdout, /repeat the same/);
     assert.equal(response.stderr, '');
   }

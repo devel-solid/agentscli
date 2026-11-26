@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="493" viewBox="0 0 1000 493" fill="none" role="img" aria-labelledby="title description">
   <title id="title">Initialize, write conventions, then build the index</title>
-  <desc id="description">Step 1: Run agentscli init to prepare the conventions folder and install two project skills. Step 2: Ask your agent: Create a testing convention: one behavior per test. The agent creates .agentscli/conventions/testing.md. Step 3: Ask your agent: Generate AGENTS.md from our conventions. Step 4: Open AGENTS.md. Its Testing link opens the convention; the full rule remains in testing.md.</desc>
+  <desc id="description">Step 1: Run agentscli init to prepare the conventions folder and install three project skills. Step 2: Ask your agent: Create a test-focus convention: one behavior per test. The agent creates .agentscli/conventions/test-focus.md. Step 3: Ask your agent: Generate AGENTS.md from our conventions. Step 4: Open AGENTS.md. Its Test focus link opens the convention; the full rule remains in test-focus.md.</desc>
   <style>
     .panel { fill: #ffffff; stroke: #d1d9e0; }
     .bar { fill: #eef1f4; }
@@ -37,18 +37,18 @@
   <path class="bar" d="M35 81H461Q471 81 471 91V120H25V91Q25 81 35 81Z"/>
   <text class="ink" x="44" y="107" font-size="18" font-weight="600">2. Ask your agent</text>
   <path id="write-divider" class="line" d="M25 120H471"/>
-  <text id="write-request" class="ink" x="44" y="151.07" font-size="16.5">“Create a testing convention: one behavior per test.”</text>
+  <text id="write-request" class="ink" x="44" y="151.07" font-size="15">“Create a test-focus convention: one behavior per test.”</text>
 
   <g transform="translate(0 -39)">
   <rect class="panel" x="24.5" y="224.5" width="447" height="253" rx="10"/>
   <path class="bar" d="M35 225H461Q471 225 471 235V270H25V235Q25 225 35 225Z"/>
-  <text class="ink mono" x="44" y="253" font-size="14.5">.agentscli/conventions/testing.md</text>
+  <text class="ink mono" x="44" y="253" font-size="14.5">.agentscli/conventions/test-focus.md</text>
   <path class="line" d="M25 270H471"/>
   <g class="mono" font-size="16.5">
     <text class="muted mono" x="44" y="302">---</text>
-    <text class="ink mono" x="44" y="328"><tspan class="blue">trigger:</tspan> Read when changing tests.</text>
+    <text class="ink mono" x="44" y="328"><tspan class="blue">trigger:</tspan> Read when defining test cases.</text>
     <text class="muted mono" x="44" y="354">---</text>
-    <text class="ink mono" x="44" y="396"><tspan class="purple">#</tspan> Testing</text>
+    <text class="ink mono" x="44" y="396"><tspan class="purple">#</tspan> Test focus</text>
     <text class="ink mono" x="44" y="438">- Test one behavior at a time.</text>
   </g>
   </g>
@@ -73,7 +73,7 @@
   <text class="ink" x="548" y="346" font-size="26" font-weight="600">AGENTS.md</text>
   <path class="line" d="M548 362H954"/>
   <circle class="ink" cx="554" cy="396" r="2.5"/>
-  <text class="ink" x="570" y="402" font-size="16.5"><tspan class="blue" text-decoration="underline">Testing</tspan>: Read when changing tests.</text>
+  <text class="ink" x="570" y="402" font-size="16.5"><tspan class="blue" text-decoration="underline">Test focus</tspan>: Read when defining test cases.</text>
   </g>
   </g>
 </svg>

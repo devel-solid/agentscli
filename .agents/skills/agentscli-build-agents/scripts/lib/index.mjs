@@ -7534,7 +7534,8 @@ var EngineError = class extends Error {
 var CONVENTION_ROOT = ".agentscli/conventions";
 var PRODUCT_SKILLS = [
   "agentscli-write-conventions",
-  "agentscli-build-agents"
+  "agentscli-build-agents",
+  "agentscli-refactor-conventions"
 ];
 function parseYaml(text3, path) {
   const document3 = (0, import_yaml.parseDocument)(text3, {
@@ -16416,7 +16417,7 @@ function frontmatter(input, path) {
 function activeNodes(text3) {
   const result = [];
   function visit2(node2) {
-    if (["code", "inlineCode", "blockquote"].includes(node2.type)) return;
+    if (["code", "inlineCode"].includes(node2.type)) return;
     result.push(node2);
     for (const child of node2.children ?? []) visit2(child);
   }
@@ -16433,7 +16434,12 @@ function validateConvention(input, path) {
       path
     );
   }
-  exactKeys(header.fields, ["trigger"], [], path);
+  exactKeys(
+    header.fields,
+    ["trigger"],
+    ["reviewedHash", "reviewPolicyVersion"],
+    path
+  );
   if (typeof header.fields.trigger !== "string" || !header.fields.trigger.trim())
     throw new EngineError(
       "SOURCE_TRIGGER",
@@ -16441,6 +16447,26 @@ function validateConvention(input, path) {
       2,
       path
     );
+  for (const [field, pattern, description] of [
+    [
+      "reviewedHash",
+      /^[0-9a-f]{64}$/u,
+      "64 lowercase SHA-256 hexadecimal characters"
+    ],
+    [
+      "reviewPolicyVersion",
+      /^[1-9][0-9]*$/u,
+      "a positive canonical decimal string"
+    ]
+  ]) {
+    if (Object.hasOwn(header.fields, field) && (typeof header.fields[field] !== "string" || !pattern.test(header.fields[field])))
+      throw new EngineError(
+        "SOURCE_REVIEW_METADATA",
+        `${path}: ${field} must be ${description}.`,
+        2,
+        path
+      );
+  }
   if (activeNodes("Discovery: " + inlineTrigger(header.fields.trigger)).some(
     (node2) => node2.type === "html" && /<!--/u.test(node2.value)
   ))
@@ -16530,8 +16556,7 @@ function validateSkill(files, path) {
       fail("SKILL_FRONTMATTER", `${key} must be a string.`, path);
   return { name: f.name, header };
 }
-function linkTarget(raw, base) {
-  if (typeof raw !== "string" || !raw || raw.startsWith("#")) return void 0;
+function decodedLink(raw, base) {
   let value;
   try {
     value = decodeURIComponent(raw);
@@ -16540,15 +16565,22 @@ function linkTarget(raw, base) {
   }
   if (/%[\da-f]{2}/iu.test(value))
     fail("RESOURCE_LINK", "Ambiguous repeated URL encoding.", base);
-  value = value.replaceAll("\\", "/");
+  return value.replaceAll("\\", "/");
+}
+function linkTarget(raw, base, portable = true) {
+  const key = (value2) => portable ? portableKey(value2) : value2;
+  if (typeof raw !== "string" || !raw || raw.startsWith("#")) return void 0;
+  decodedLink(raw, base);
+  let value = decodedLink(raw.split(/[?#]/u)[0], base);
   if (/^skill:\/\//iu.test(value))
-    return portableKey(
-      "skills/" + value.slice("skill://".length).split(/[?#]/u)[0]
-    );
+    return key("skills/" + value.slice("skill://".length));
   if (/^[a-z][a-z0-9+.-]*:/iu.test(value)) {
     if (/^https?:/iu.test(value)) {
       try {
-        return portableKey(new URL(value).pathname.replace(/^\//u, ""));
+        const url = new URL(
+          value.replaceAll("#", "%23").replaceAll("?", "%3F")
+        );
+        return key(decodeURIComponent(url.pathname).replace(/^\//u, ""));
       } catch {
         return void 0;
       }
@@ -16556,14 +16588,54 @@ function linkTarget(raw, base) {
     if (!/^(file|skill):/iu.test(value)) return void 0;
     value = value.replace(/^[a-z]+:\/\//iu, "");
   }
-  value = value.split(/[?#]/u)[0];
-  return portableKey(
+  return key(
     posix.normalize(
       value.startsWith("/") ? value.slice(1) : posix.join(posix.dirname(base), value)
     )
   );
 }
-function validateResourceLinks(text3, path, { kind, ownRoot, conventions = [], skillRoots = [] } = {}) {
+function workflowSources(text3) {
+  const languages = /* @__PURE__ */ new Set([
+    "sh",
+    "shell",
+    "bash",
+    "zsh",
+    "fish",
+    "console",
+    "powershell",
+    "pwsh",
+    "ps1",
+    "cmd",
+    "bat",
+    "batch",
+    "js",
+    "javascript",
+    "mjs",
+    "cjs",
+    "ts",
+    "typescript",
+    "python",
+    "py"
+  ]);
+  const command = /^\s*(?:[$>]\s+)?(?:node(?:\.exe)?|npm|npx|pnpm|yarn|bun|deno|python(?:3)?|pwsh|powershell|cmd|bash|sh|zsh|fish)\b/iu;
+  const sources = [];
+  function visit2(node2) {
+    if (node2.type === "code") {
+      if (languages.has(node2.lang?.toLowerCase())) sources.push(node2.value);
+      return;
+    }
+    if (node2.type === "inlineCode" || node2.type === "text") {
+      sources.push(
+        ...node2.value.split("\n").filter((line) => command.test(line))
+      );
+      return;
+    }
+    for (const child of node2.children ?? []) visit2(child);
+  }
+  visit2(parseMarkdown(text3));
+  return sources;
+}
+function validateResourceLinks(text3, path, { kind, ownRoot, ownFiles, conventions = [], skillRoots = [] } = {}) {
   const own4 = ownRoot && portableKey(ownRoot);
   const conventionTargets = new Set(conventions.map(portableKey));
   const roots = skillRoots.map(portableKey);
@@ -16615,15 +16687,39 @@ function validateResourceLinks(text3, path, { kind, ownRoot, conventions = [], s
         }
     }
   }
-  for (const target of targets)
+  for (const target of targets) {
+    if (kind === "skill" && typeof target === "string" && /^file:/iu.test(decodedLink(target, path).trimStart()))
+      fail(
+        "RESOURCE_LINK",
+        `File URI links are forbidden in skills: ${target}. Use relative bundled support links.`,
+        path
+      );
     if (prohibited(linkTarget(target, path)))
       fail(
         "RESOURCE_LINK",
         `Direct cross-resource link is forbidden: ${target}. Use resource identity and project discovery.`,
         path
       );
+    if (ownRoot && ownFiles && target && !/^(?:[a-z][a-z0-9+.-]*:|#)/iu.test(target)) {
+      const rawPath = decodedLink(target.split(/[?#]/u)[0], path);
+      const directory = /\/$|(?:^|\/)\.{1,2}$/u.test(rawPath);
+      const resolved = linkTarget(target, path, false)?.replace(/\/$/u, "");
+      if (resolved && (portableKey(resolved) === own4 || portableKey(resolved).startsWith(own4 + "/"))) {
+        const relative2 = resolved.slice(ownRoot.length + 1);
+        const present = resolved === ownRoot || resolved.startsWith(ownRoot + "/") && (!directory && Object.hasOwn(ownFiles, relative2) || Object.keys(ownFiles).some(
+          (file) => file.startsWith(relative2 + "/")
+        ));
+        if (!present)
+          fail(
+            "RESOURCE_SUPPORT",
+            `Missing bundled support target: ${target}.`,
+            path
+          );
+      }
+    }
+  }
   if (kind === "skill") {
-    const candidates = text3.replace(/<!--[\s\S]*?-->/gu, "").match(
+    const candidates = workflowSources(text3).join("\n").replace(/<!--[\s\S]*?-->/gu, "").match(
       /(?:\.?\.?\/|\/)?(?:(?:\.agents\/skills|\.agentscli\/conventions)(?:\/[^\s`<>"')]+)?(?=[\s`<>"')]|$)|\.\.\/[^\s`<>"')]+|(?:https?|skill|file):\/\/[^\s`<>"')]+)/giu
     ) ?? [];
     for (const target of candidates)
@@ -16673,6 +16769,7 @@ function validateResources({ conventions = [], skills = [] }) {
         validateResourceLinks(text3, `${s.path}/${relative2}`, {
           kind: "skill",
           ownRoot: s.path,
+          ownFiles: s.files,
           conventions: conventionPaths,
           skillRoots
         });
@@ -16693,6 +16790,10 @@ var PRODUCT_SUPPORT = {
   "agentscli-build-agents": [
     "scripts/build-agents.mjs",
     "scripts/lib/index.mjs"
+  ],
+  "agentscli-refactor-conventions": [
+    "scripts/review-conventions.mjs",
+    "references/refactoring-examples.md"
   ]
 };
 function validateProductResources(resources, { generated = true } = {}) {
@@ -16700,7 +16801,7 @@ function validateProductResources(resources, { generated = true } = {}) {
     throw new EngineError("PACKAGE_RESOURCE", message, 3, path);
   };
   if (!resources?.skills || typeof resources.skills !== "object" || Array.isArray(resources.skills) || Object.keys(resources.skills).sort().join("\n") !== [...PRODUCT_SKILLS].sort().join("\n"))
-    fail2("Expected exactly two operational skill assets.");
+    fail2("Expected the complete product skill inventory.");
   try {
     const skills = PRODUCT_SKILLS.map((id) => {
       const files = resources.skills[id], path = `.agents/skills/${id}`;
@@ -16953,6 +17054,7 @@ description: Installed operational resource.
         }
       });
   validateResources({ conventions, skills });
+  if (command === "validate") return effects;
   const documents = render(conventions);
   for (const [path, text3] of documents) {
     const existing = inspect(io, root, path, "file");
