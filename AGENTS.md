@@ -26,6 +26,7 @@ generatedBy: "@devel-solid/agentscli"
 - [Skill language](.agentscli/conventions/skill-language.md): Read when writing, translating, or reviewing the language of skill prose and examples.
 - [Skill responsibility](.agentscli/conventions/skill-responsibility.md): Read when defining a skill operation, activation description, or completion criteria.
 - [Skill support](.agentscli/conventions/skill-support.md): Read when writing skill procedures, choosing support files, or removing guidance.
+- [Technology version selection](.agentscli/conventions/technology-version-selection.md): Read before adopting or choosing maintenance lines and updates for packages, language runtimes, or other technologies.
 - [Temporary artifacts](.agentscli/conventions/temporary-artifacts.md): Read when producing temporary files or adding runtime resource dependencies.
 - [Text encoding](.agentscli/conventions/text-encoding.md): Read when implementing text-file reads or writes, or editing textual project files.
 - [Unit test boundaries](.agentscli/conventions/unit-test-boundaries.md): Read when adding or modifying automated tests.
