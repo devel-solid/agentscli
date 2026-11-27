@@ -15,6 +15,26 @@ export function canVerifyPublication(status, output) {
   );
 }
 
+export function registryQueryFailure(error) {
+  let code;
+  try {
+    code = JSON.parse(String(error.stdout)).error?.code;
+  } catch {}
+  return Object.assign(
+    new Error(
+      `Registry query failed (${code ?? 'transport error'}); verify the same version without publishing again.`,
+    ),
+    {
+      retryable: [
+        'E404',
+        'ERR_PNPM_NO_MATCHING_VERSION',
+        'ERR_PNPM_FETCH_404',
+        'ERR_PNPM_PACKAGE_NOT_FOUND',
+      ].includes(code),
+    },
+  );
+}
+
 export async function verifyPublished(pkg, integrity, io, attempts = 6) {
   assert.match(integrity, /^sha512-[A-Za-z0-9+/]{86}==$/u);
   assert.ok(Number.isInteger(attempts) && attempts > 0);
@@ -87,22 +107,7 @@ if (
           ),
         );
       } catch (error) {
-        let code;
-        try {
-          code = JSON.parse(String(error.stdout)).error?.code;
-        } catch {}
-        throw Object.assign(
-          new Error(
-            `Registry query failed (${code ?? 'transport error'}); verify the same version without publishing again.`,
-          ),
-          {
-            retryable: [
-              'E404',
-              'ERR_PNPM_NO_MATCHING_VERSION',
-              'ERR_PNPM_FETCH_404',
-            ].includes(code),
-          },
-        );
+        throw registryQueryFailure(error);
       }
     },
     async download(url) {

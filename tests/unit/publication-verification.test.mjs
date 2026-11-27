@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
   canVerifyPublication,
+  registryQueryFailure,
   verifyPublished,
 } from '../../.agents/skills/agentscli-publish-package/scripts/verify-published.mjs';
 
@@ -21,6 +22,41 @@ const published = {
 };
 const unavailable = () =>
   Object.assign(new Error('not available yet'), { retryable: true });
+
+test('the observed pnpm package-not-found response retries verification while authentication fails immediately', async () => {
+  const response = (code) =>
+    registryQueryFailure({ stdout: JSON.stringify({ error: { code } }) });
+  let calls = 0;
+  let waits = 0;
+  await verifyPublished(pkg, integrity, {
+    view: async () => {
+      if (++calls === 1) throw response('ERR_PNPM_PACKAGE_NOT_FOUND');
+      return published;
+    },
+    download: async () => archive,
+    wait: async () => {
+      waits++;
+    },
+  });
+  assert.equal(calls, 2);
+  assert.equal(waits, 1);
+  for (const error of [
+    response('E403'),
+    response('ERR_PNPM_FETCH_401'),
+    registryQueryFailure({ code: 'ENOENT' }),
+  ]) {
+    await assert.rejects(
+      verifyPublished(pkg, integrity, {
+        view: async () => {
+          throw error;
+        },
+        download: async () => assert.fail('No valid metadata'),
+        wait: async () => assert.fail('Permanent errors must not retry'),
+      }),
+      /Registry query failed/,
+    );
+  }
+});
 
 test('only success or the specific accepted-upload timeout can proceed to registry verification', () => {
   assert.equal(canVerifyPublication(0, ''), true);
