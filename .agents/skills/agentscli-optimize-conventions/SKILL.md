@@ -8,7 +8,7 @@ description: Filter existing conventions by reviewed content and review-policy
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.9.1
+  generatorVersion: 0.9.2
 ---
 
 # Optimize convention responsibilities
