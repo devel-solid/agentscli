@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { monorepo, regular } from './lib.mjs';
+import { packageRoot, regular } from './lib.mjs';
 
 export function parseArgs(args) {
   const options = {};
@@ -27,26 +27,25 @@ import {
 } from './candidate.mjs';
 export { readArchive, inspectArchive, inspectMetadata };
 export function validate(start = process.cwd(), options = {}, io = fs) {
-  const root = monorepo(start, io);
+  const root = packageRoot(start, io);
   const targets = options.package ? [options.package] : ['agentscli'];
   if (targets.some((name) => name !== 'agentscli'))
     throw new Error('Select agentscli.');
   if (options.archive && targets.length !== 1)
     throw new Error('Archive inspection requires one target package.');
   const packages = targets.map((name) => {
-    const folder = resolve(root, 'packages', name),
-      file = resolve(folder, 'package.json');
+    const file = resolve(root, 'package.json');
     regular(file, io);
     const pkg = JSON.parse(io.readFileSync(file, 'utf8'));
     inspectMetadata(pkg, name);
-    regular(resolve(folder, 'README.md'), io);
-    regular(resolve(folder, 'LICENSE'), io);
+    regular(resolve(root, 'README.md'), io);
+    regular(resolve(root, 'LICENSE'), io);
     if (options.archive) {
       regular(resolve(options.archive), io);
       return inspectArchive(
         io.readFileSync(resolve(options.archive)),
         pkg,
-        preparedFiles(folder, io),
+        preparedFiles(root, io),
       );
     }
     return {

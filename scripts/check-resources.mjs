@@ -2,19 +2,19 @@ import * as fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { packageAssets } from '../packages/agentscli/scripts/package-assets.mjs';
+import { packageAssets } from './package-assets.mjs';
 import {
   disk,
   execute,
   PRODUCT_SKILLS,
   walk,
-} from '../packages/agentscli/assets/templates/skills/agentscli-build-agents/scripts/lib/index.mjs';
+} from '../assets/templates/skills/agentscli-build-agents/scripts/lib/index.mjs';
 import { validate } from '../.agents/skills/agentscli-publish-packages/scripts/check.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temporary = fs.mkdtempSync(join(tmpdir(), 'agentscli-resources-'));
 try {
-  await packageAssets(resolve(root, 'packages/agentscli'), {
+  await packageAssets(root, {
     output: temporary,
   });
   const resources = {

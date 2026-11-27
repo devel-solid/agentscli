@@ -1,5 +1,12 @@
 import * as fs from 'node:fs';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 
 const key = (value) => value.normalize('NFC').toLowerCase();
 export function regular(path, io = fs) {
@@ -31,39 +38,35 @@ export function checkPath(root, path, io = fs) {
   }
   return absolute;
 }
-export function monorepo(start, io = fs) {
+export function packageRoot(start, io = fs) {
   let at = resolve(start);
   for (;;) {
     const file = resolve(at, 'package.json');
     if (io.existsSync(file)) {
       regular(file, io);
       const pkg = JSON.parse(io.readFileSync(file, 'utf8'));
-      if (pkg.private === true && Array.isArray(pkg.workspaces)) {
-        const identities = new Map();
-        for (const workspace of pkg.workspaces) {
-          if (typeof workspace !== 'string' || workspace.includes('*'))
-            continue;
-          const path = resolve(at, workspace, 'package.json');
-          if (!io.existsSync(path)) continue;
-          checkPath(at, path, io);
-          regular(path, io);
-          const child = JSON.parse(io.readFileSync(path, 'utf8'));
-          identities.set(child.name, child);
-        }
+      if (pkg.name === '@devel-solid/agentscli') {
+        const parent = dirname(at);
+        const installationParent = basename(parent).startsWith('@')
+          ? dirname(parent)
+          : parent;
         if (
-          pkg.workspaces.length === 1 &&
-          identities.size === 1 &&
-          typeof identities.get('@devel-solid/agentscli')?.bin?.agentscli ===
-            'string'
+          pkg.private !== true &&
+          !Object.hasOwn(pkg, 'workspaces') &&
+          pkg.bin?.agentscli === 'dist/cli.js' &&
+          basename(installationParent).toLowerCase() !== 'node_modules'
         ) {
           return at;
         }
+        throw new Error(
+          'Expected the public agentscli source package without workspaces.',
+        );
       }
     }
     const parent = dirname(at);
     if (parent === at)
       throw new Error(
-        'Expected the private agentscli tool monorepo and verified workspace identity.',
+        'Expected the public agentscli source package and verified executable identity.',
       );
     at = parent;
   }

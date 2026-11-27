@@ -6,7 +6,7 @@ reviewPolicyVersion: '1'
 
 # Mechanical validation
 
-- Prefer deterministic validation whenever a rule is mechanical: schemas, required fields, duplicate keys, file ownership, paths, links, hashes, executable intent, role guards, and release identities. Apply this equally to the monorepo and consumer projects.
+- Prefer deterministic validation whenever a rule is mechanical: schemas, required fields, duplicate keys, file ownership, paths, links, hashes, executable intent, role guards, and release identities. Apply this equally to this repository and consumer projects.
 
 - Parse YAML and Markdown structurally. Reject duplicate/unknown keys, aliases, invalid types, unsafe paths, and unsupported active syntax. Inspect inline, reference, image, and HTML links, normalized/encoded targets, fragments, queries, resource path aliases, and resource support ownership. Resolve convention body links from the final convention path and trigger links from root AGENTS.md. Literal invalid examples are data; executable workflow examples cannot conceal foreign-resource paths.
 

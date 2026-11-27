@@ -42,7 +42,7 @@ jobs:
           import assert from 'node:assert/strict';
           import { readFileSync, appendFileSync } from 'node:fs';
           import { execFileSync } from 'node:child_process';
-          const pkg = JSON.parse(readFileSync('packages/agentscli/package.json', 'utf8'));
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           assert.equal(process.env.GITHUB_EVENT_NAME, 'push');
           assert.equal(process.env.GITHUB_REF_TYPE, 'tag');
           const match = /^agentscli-v((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))$/.exec(process.env.RELEASE_TAG);
@@ -64,10 +64,10 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
-      - name: Pack the public workspace
+      - name: Pack the public package
         run: |
           mkdir -p .tmp/release
-          npm pack --workspace packages/agentscli --ignore-scripts --json --pack-destination .tmp/release > .tmp/release/pack.json
+          npm pack --ignore-scripts --json --pack-destination .tmp/release > .tmp/release/pack.json
       - name: Inspect the archive and match the reviewed integrity
         run: |
           node --input-type=module <<'NODE'
@@ -98,7 +98,7 @@ jobs:
           import assert from 'node:assert/strict';
           import { readFileSync, appendFileSync } from 'node:fs';
           import { execFileSync } from 'node:child_process';
-          const pkg = JSON.parse(readFileSync('packages/agentscli/package.json', 'utf8'));
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           let published;
           for (let attempt = 1; attempt <= 30; attempt++) {
             try {

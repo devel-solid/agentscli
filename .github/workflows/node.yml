@@ -1,4 +1,4 @@
-name: Node workspaces
+name: Node checks
 on: [push, pull_request]
 jobs:
   unit:

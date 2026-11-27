@@ -625,15 +625,10 @@ test('nested convention body links resolve at their final path and trigger links
     assert.equal(rejected.text(path), text);
   }
 });
-test('source workspaces init and synchronize their own authored conventions', async () => {
+test('the public source package initializes and synchronizes its own authored conventions', async () => {
   const authored = convention().replaceAll('\n', '\r\n');
   const files = {
     'package.json': JSON.stringify({
-      name: 'agentscli-monorepo',
-      private: true,
-      workspaces: ['packages/agentscli'],
-    }),
-    'packages/agentscli/package.json': JSON.stringify({
       name: '@devel-solid/agentscli',
       bin: { agentscli: 'dist/cli.js' },
     }),

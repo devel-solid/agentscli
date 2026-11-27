@@ -3,11 +3,14 @@ import assert from 'node:assert/strict';
 import { resolve, dirname } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import {
-  monorepo,
+  packageRoot,
   regular,
   checkPath,
 } from '../../.agents/skills/agentscli-publish-packages/scripts/lib.mjs';
-import { parseArgs } from '../../.agents/skills/agentscli-publish-packages/scripts/check.mjs';
+import {
+  parseArgs,
+  validate,
+} from '../../.agents/skills/agentscli-publish-packages/scripts/check.mjs';
 import {
   inspectArchive,
   inspectMetadata,
@@ -48,45 +51,87 @@ function memory(entries) {
   };
 }
 
-test('release discovery verifies the private root and package executable', () => {
+test('release discovery verifies the public source root and package executable', () => {
   const entries = {
     'package.json': JSON.stringify({
-      private: true,
-      workspaces: ['packages/agentscli'],
-    }),
-    'packages/agentscli/package.json': JSON.stringify({
       name: '@devel-solid/agentscli',
       bin: { agentscli: 'dist/cli.js' },
     }),
     'project-settings.yml': 'unrelated data',
   };
-  assert.equal(
-    monorepo(resolve(root, 'packages/agentscli'), memory(entries)),
+  assert.equal(packageRoot(resolve(root, 'src'), memory(entries)), root);
+  for (const pkg of [
+    { private: true, workspaces: ['legacy-package'] },
+    { name: '@example/other', bin: { agentscli: 'dist/cli.js' } },
+    { name: '@devel-solid/agentscli', bin: { agentscli: {} } },
+    { name: '@devel-solid/agentscli', bin: { agentscli: 'other.js' } },
+    {
+      name: '@devel-solid/agentscli',
+      bin: { agentscli: 'dist/cli.js' },
+      private: true,
+    },
+    {
+      name: '@devel-solid/agentscli',
+      bin: { agentscli: 'dist/cli.js' },
+      workspaces: [],
+    },
+  ])
+    assert.throws(
+      () => packageRoot(root, memory({ 'package.json': JSON.stringify(pkg) })),
+      /Expected/,
+    );
+});
+
+test('release discovery rejects installed packages and aliased metadata', () => {
+  const pkg = JSON.stringify({
+    name: '@devel-solid/agentscli',
+    bin: { agentscli: 'dist/cli.js' },
+  });
+  for (const location of [
+    'node_modules/@devel-solid/agentscli',
+    'node_modules/agentscli',
+  ]) {
+    const io = memory({ [`${location}/package.json`]: pkg });
+    assert.throws(
+      () => packageRoot(resolve(root, location, 'nested'), io),
+      /Expected/,
+    );
+  }
+  const io = memory({ 'package.json': pkg });
+  assert.throws(
+    () =>
+      packageRoot(root, { ...io, realpathSync: () => resolve(root, 'alias') }),
+    /Unsafe/,
+  );
+});
+
+test('candidate validation reads metadata and delivery documents from the public root', () => {
+  const io = memory({
+    'package.json': JSON.stringify({
+      name: '@devel-solid/agentscli',
+      version: '0.4.0',
+      license: 'MIT',
+      bin: { agentscli: 'dist/cli.js' },
+      files: ['dist'],
+      engines: { node: '^22.0.0' },
+    }),
+    'README.md': '# Package',
+    LICENSE: 'MIT',
+  });
+  assert.deepEqual(validate(resolve(root, 'src'), {}, io), {
+    ok: true,
     root,
-  );
+    packages: [
+      {
+        name: '@devel-solid/agentscli',
+        version: '0.4.0',
+        tag: 'agentscli-v0.4.0',
+      },
+    ],
+  });
   assert.throws(
-    () =>
-      monorepo(
-        root,
-        memory({
-          'package.json': JSON.stringify({ private: true, workspaces: [] }),
-        }),
-      ),
-    /Expected/,
-  );
-  assert.throws(
-    () =>
-      monorepo(
-        root,
-        memory({
-          ...entries,
-          'packages/agentscli/package.json': JSON.stringify({
-            name: '@devel-solid/agentscli',
-            bin: { agentscli: {} },
-          }),
-        }),
-      ),
-    /Expected/,
+    () => validate(root, { package: 'other' }, io),
+    /Select agentscli/,
   );
 });
 

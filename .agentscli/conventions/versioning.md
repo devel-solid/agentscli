@@ -10,7 +10,7 @@ reviewPolicyVersion: '1'
 
 - Choose beta releases by completed impact while keeping production promotion a separate release decision.
 
-- Version the CLI package according to its completed impact and current release state. The private workspace root has no aggregate product version and is never published.
+- Version the CLI package at the repository root according to its completed impact and current release state. There is one product version; do not introduce an independent aggregate version.
 
 - Preserve immutable published package versions, tags, and history. Beta status does not permit overwriting an existing release or deleting authored inputs. Choose unused release identities from actual current state.
 

@@ -3,15 +3,15 @@ name: agentscli-publish-packages
 description: Prepare and version the agentscli npm package, publish through GitHub Actions with npm Trusted Publishing, then install the verified release on the host. Use for authorized CLI releases.
 ---
 
-# Release CLI packages
+# Release the CLI package
 
-Discover this monorepo and its workspace through current package metadata and project instructions. Run this skill's [candidate checker](scripts/check.mjs) from its own skill directory with `node scripts/check.mjs --repo-root <root> --package agentscli` for concrete candidate checks. Do not publish the private root.
+Discover this repository's single public package at its root through current package metadata and project instructions. Run this skill's [candidate checker](scripts/check.mjs) from its own skill directory with `node scripts/check.mjs --repo-root <root> --package agentscli` for concrete candidate checks. Reject private roots, workspace orchestration, and installed package targets.
 
 When subagents are available and permitted, delegate substantial independent read-only checks, such as compatibility assessment or archive inventory review. Give each reviewer this skill and the exact candidate diff or commit, package/version, and relevant artifact with its integrity when available. Keep version and lockfile writes, builds, resource refreshes, Git mutations, publication, and host installation with one coordinating agent; a small release may need no delegation. Reconcile findings before the corresponding release gate and repeat affected reviews if candidate inputs change. For example, an archive review applies to the inspected tarball, not a later repack with the same version.
 
 Derive package identity/version, executable, registry, Git remote, and tag from actual metadata and current local/remote/registry state. Tags use agentscli-v<version>. Preserve immutable identities, native authentication, unrelated work, and staging. Never collect/print tokens, rewrite history, force-push, or replace published identities.
 
-Assess completed impact and choose an unused semantic version. Major zero means beta; production starts at 1.0.0. Beta contract changes do not require promotion to production. Account for public contract impact and managed replacement. Prepare metadata with native npm version --no-git-tag-version in the workspace and update the root lockfile.
+Assess completed impact and choose an unused semantic version. Major zero means beta; production starts at 1.0.0. Beta contract changes do not require promotion to production. Account for public contract impact and managed replacement. Prepare metadata with native npm version --no-git-tag-version at the verified package root and update its lockfile.
 
 After completing changes and setting the package and lockfile version, run `npm run dogfood` from the verified root. It builds canonical package sources, runs the compiled checkout CLI's init to refresh this repository's installed skills and generator provenance to the new version, and synchronizes the index through the build skill's canonical support. This preparation does not require an installed host CLI or a published candidate version. Never hand-edit those managed resources. Run focused units and `npm run check`, including the read-only resource and index checks. Rebuild, refresh, and repeat the relevant checks and archive inspection whenever candidate inputs change.
 

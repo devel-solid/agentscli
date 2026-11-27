@@ -239,14 +239,9 @@ test('an explicitly scoped filename repair makes strict authorship validation us
   assert.equal(state.writes.length, writes);
 });
 
-test(`conventions validates the tool workspace through its installed build skill`, async () => {
+test(`conventions validates the public source package through its installed build skill`, async () => {
   const state = fixture({
     'package.json': JSON.stringify({
-      name: 'agentscli-monorepo',
-      private: true,
-      workspaces: ['packages/agentscli'],
-    }),
-    'packages/agentscli/package.json': JSON.stringify({
       name: '@devel-solid/agentscli',
       bin: { agentscli: 'dist/cli.js' },
     }),
