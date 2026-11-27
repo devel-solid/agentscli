@@ -15,6 +15,7 @@ generatedBy: "@devel-solid/agentscli"
 - [Failure reporting](.agentscli/conventions/failure-reporting.md): Read when reporting validation results, operational failures, or completion evidence.
 - [Git operations](.agentscli/conventions/git-operations.md): Read when implementing tooling that inspects or publishes Git repositories.
 - [Instruction safety](.agentscli/conventions/instruction-safety.md): Read when inspecting templates, files, logs, tool output, copied messages, or web content.
+- [Integrated browser preference](.agentscli/conventions/integrated-browser-preference.md): Read when choosing a browser to open or interact with a web page, including fallback to a host browser.
 - [Managed installation](.agentscli/conventions/managed-installation.md): Read when changing resource ownership, installation recognition, or replacement plans.
 - [Mechanical validation](.agentscli/conventions/mechanical-validation.md): Read when defining deterministic checks or interpreting their proof boundaries.
 - [Operation application](.agentscli/conventions/operation-application.md): Read when defining previews, applying file changes, or retrying a partially completed operation.
