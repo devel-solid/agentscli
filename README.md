@@ -43,4 +43,10 @@ npm run check
 
 `dogfood` builds the local CLI, refreshes this repository's installed skills, and synchronizes its `AGENTS.md` index. Commit generated resources along with their source changes.
 
+## Publish a release
+
+The [Publish agentscli workflow](.github/workflows/publish.yml) publishes through npm Trusted Publishing without a stored npm publishing token. Configure GitHub Actions as a trusted publisher for `@devel-solid/agentscli`, with owner `devel-solid`, repository `agentscli`, workflow filename `publish.yml`, and direct publishing enabled.
+
+Use the publication skill to prepare the version, refresh resources, run checks, and inspect a tarball with the workflow's exact Node/npm versions. Commit the reviewed source and create an annotated `agentscli-v<version>` tag containing one `Integrity: sha512-...` line with the reviewed tarball's integrity. Verify the npm trust configuration, then push the tag to start publication automatically. The workflow publishes only from a release tag, checks its version against package metadata, and requires the rebuilt archive to match the annotation's integrity. Ordinary branch pushes do not publish, and no manual dispatch is configured. Verify the run and registry, then install the exact published CLI version on the host.
+
 [MIT License](packages/agentscli/LICENSE)

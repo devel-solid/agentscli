@@ -1,0 +1,109 @@
+name: Publish agentscli
+run-name: Publish ${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - agentscli-v[0-9]*.[0-9]*.[0-9]*
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-agentscli
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'devel-solid/agentscli' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24.15.0
+          registry-url: https://registry.npmjs.org/
+          package-manager-cache: false
+      - name: Use the reviewed npm version
+        run: npm install --global npm@11.13.0
+      - name: Verify the version and immutable source tag
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync, appendFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const pkg = JSON.parse(readFileSync('packages/agentscli/package.json', 'utf8'));
+          assert.equal(process.env.GITHUB_EVENT_NAME, 'push');
+          assert.equal(process.env.GITHUB_REF_TYPE, 'tag');
+          const match = /^agentscli-v((0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))$/.exec(process.env.RELEASE_TAG);
+          assert.ok(match, 'Expected an agentscli-vX.Y.Z release tag');
+          const version = match[1];
+          assert.equal(pkg.name, '@devel-solid/agentscli');
+          assert.equal(pkg.version, version);
+          const tag = `refs/tags/${process.env.RELEASE_TAG}`;
+          assert.equal(execFileSync('git', ['cat-file', '-t', tag], { encoding: 'utf8' }).trim(), 'tag', 'Release tag must be annotated');
+          const commit = execFileSync('git', ['rev-parse', `${tag}^{commit}`], { encoding: 'utf8' }).trim();
+          assert.equal(commit, process.env.GITHUB_SHA, 'Release tag must identify this exact commit');
+          const annotation = execFileSync('git', ['for-each-ref', '--format=%(contents)', tag], { encoding: 'utf8' });
+          const integrityLines = annotation.split('\n').filter(line => line.startsWith('Integrity:'));
+          assert.equal(integrityLines.length, 1, 'Release annotation must contain exactly one Integrity line');
+          const integrity = integrityLines[0].slice('Integrity: '.length);
+          assert.match(integrity, /^sha512-[A-Za-z0-9+/]{86}==$/);
+          appendFileSync(process.env.GITHUB_ENV, `RELEASE_VERSION=${version}\nRELEASE_INTEGRITY=${integrity}\n`);
+          NODE
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - name: Pack the public workspace
+        run: |
+          mkdir -p .tmp/release
+          npm pack --workspace packages/agentscli --ignore-scripts --json --pack-destination .tmp/release > .tmp/release/pack.json
+      - name: Inspect the archive and match the reviewed integrity
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync, appendFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const [packed] = JSON.parse(readFileSync('.tmp/release/pack.json', 'utf8'));
+          const filename = `devel-solid-agentscli-${process.env.RELEASE_VERSION}.tgz`;
+          assert.equal(packed.filename, filename);
+          const archive = `.tmp/release/${filename}`;
+          const integrity = 'sha512-' + createHash('sha512').update(readFileSync(archive)).digest('base64');
+          assert.equal(integrity, process.env.RELEASE_INTEGRITY, 'Archive differs from the reviewed candidate');
+          assert.equal(packed.integrity, integrity);
+          execFileSync(process.execPath, [
+            '.agents/skills/agentscli-publish-packages/scripts/check.mjs',
+            '--repo-root', '.', '--package', 'agentscli', '--archive', archive,
+          ], { stdio: 'inherit' });
+          appendFileSync(process.env.GITHUB_ENV, `RELEASE_ARCHIVE=${archive}\n`);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            `## Reviewed candidate\n\nVersion: ${process.env.RELEASE_VERSION}\n\nCommit: ${process.env.GITHUB_SHA}\n\nIntegrity: ${integrity}\n`);
+          NODE
+      - name: Publish the inspected archive with Trusted Publishing
+        run: npm publish "$RELEASE_ARCHIVE" --access public
+      - name: Verify the published identity and integrity
+        run: |
+          npm view "@devel-solid/agentscli@$RELEASE_VERSION" name version license bin dist.integrity --json --prefer-online > .tmp/release/registry.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync('packages/agentscli/package.json', 'utf8'));
+          const published = JSON.parse(readFileSync('.tmp/release/registry.json', 'utf8'));
+          assert.equal(published.name, pkg.name);
+          assert.equal(published.version, pkg.version);
+          assert.equal(published.license, pkg.license);
+          assert.deepEqual(published.bin, pkg.bin);
+          assert.equal(published['dist.integrity'], process.env.RELEASE_INTEGRITY);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\nRegistry identity and integrity verified.\n');
+          NODE

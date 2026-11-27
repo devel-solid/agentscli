@@ -8,7 +8,7 @@ description: Filter existing conventions by reviewed content and review-policy
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.8.1
+  generatorVersion: 0.8.2
 ---
 
 # Refactor convention responsibilities
@@ -30,6 +30,14 @@ Selection is read-only. It returns candidates, skipped conventions, the current 
 Read candidate bodies and compare them with relevant conventions from the whole collection. Skipped means the same path/content was reviewed under the current criteria, not that it cannot conflict with a new candidate. Keep the full title/trigger inventory available and read skipped bodies as context when checking overlap or conflicts. If that comparison reopens a skipped convention's decision, treat its substantive review as active; do not use the cache to dismiss new evidence. If it remains unresolved, invalidate its existing receipt as described below. Merely omitting a new `record` call cannot make an already matching receipt pending.
 
 Discover agentscli-build-agents by identity through the project's available skills. Run its read-only validation operation before editing. This skill has no semantic scoring script: the build operation checks structural contracts, while the analysis below establishes responsibility boundaries. Validation does not require ownership of root AGENTS.md; index synchronization has a separate ownership gate. If required tools are missing, report the precise impediment; do not initialize or install resources without scope. An invalid convention may still be diagnosed: record the failed baseline and include the exact minimal mechanical repair as a distinct first phase of the proposal.
+
+## Delegate substantial reviews
+
+When subagents are available and permitted, use them for large audits with separable groups or for an independent review of a difficult responsibility boundary. Handle small, closely coupled reviews directly. Complete selection and baseline validation before distributing work. Give each reviewer this skill, its assigned sources, the full title/trigger inventory, and relevant candidate/skipped state; allow reading related bodies across group boundaries. Request read-only findings with source passages, independent-use scenarios, and any proposed preservation mapping.
+
+The main agent compares findings across groups, resolves overlapping recommendations, and presents one concrete plan under the approval rules below. Keep receipt writes, source removals, index synchronization, and final preservation verification with that agent. After approval, delegate drafting through agentscli-write-conventions only to workers with disjoint target paths and the approved contents and mapping; wait for their results before removing sources or validating the combined result. Recheck changed inputs rather than treating a worker's earlier review as evidence for a newer version.
+
+For example, separate reviewers can examine testing and release conventions while both see the complete inventory. If both identify an overlapping validation agreement, the main agent reconciles its ownership before proposing destinations; independent reports alone do not establish a consistent collection.
 
 ## Diagnose decisions, not headings
 

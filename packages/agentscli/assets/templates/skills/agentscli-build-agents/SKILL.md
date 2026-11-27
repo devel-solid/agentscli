@@ -17,6 +17,8 @@ node <this-skill>/scripts/build-agents.mjs sync --repo-root <root> --check --jso
 
 Validate and preview before authorized synchronization; continue to apply an already authorized matching preview without another approval. Review-only requests stop after read-only checking. The engine validates convention frontmatter, skill frontmatter, supported links, safe paths, and collisions. Input `validate` does not inspect or plan replacement of AGENTS.md. The `sync` operation also checks the index destination and ownership, including during previews and freshness checks. An empty convention tree produces only the index frontmatter and title.
 
+Run this mechanical workflow directly; subagents normally add no useful analysis to the script's validation, preview, synchronization, or freshness checks. When invoked within delegated authorship or refactoring, let the coordinating agent synchronize the index after all writers finish so it reflects the combined final inputs.
+
 Each skill carries its own procedure and bundled support. Discover other skills by identity through project instructions when their distinct operation is needed. Conventions are work inputs, not providers of missing execution instructions.
 
 AGENTS.md is a mechanical convention index: frontmatter containing only `generatedBy: "@devel-solid/agentscli"`, `# AGENTS.md`, and deterministically ordered convention links with their titles and triggers. Existing root instructions without that exact generator identity are protected.

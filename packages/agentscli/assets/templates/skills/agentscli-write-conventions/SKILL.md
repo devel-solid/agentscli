@@ -20,6 +20,12 @@ Before creating or reviewing conventions, consult the [writing-problem index](re
 
 Use the language requested by the user or already used in the project's relevant content. Write the final convention files directly under `.agentscli/conventions/`, including subdirectories when useful; if none exist, create the first convention there within the request. These files are authored content: initialization, skill updates, synchronization, and checking preserve their bytes.
 
+## Delegate independent authorship
+
+When subagents are available and permitted, use them for a substantial batch of independent conventions or an independent semantic review whose ambiguity warrants another reader. Handle a small local edit directly. Complete the input check before delegation. Give each worker this skill, exact target paths, verified agreements and exceptions, relevant project context, and any approved refactoring contents and preservation mapping. Assign disjoint write targets; review-only workers return findings without edits. Workers report changed files, unresolved choices, and actual checks without expanding into neighboring responsibilities, receipt management, or index synchronization.
+
+The main agent reviews the combined text for consistency, contradictions, and useful examples, then runs the final checker after all writers finish and coordinates any authorized index update. For example, fixture independence and fixed test clocks can be drafted separately once their boundaries are settled; competing edits to the same alias rule and exception should stay with one writer.
+
 ## Write applicable agreements
 
 Identify the recurring situation and the choice that makes work consistent. State when the agreement applies, what to do, and any boundaries or exceptions needed to distinguish compliant work from plausible alternatives. Replace vague advice with criteria a reader can apply to the actual task. Use the request and verified project facts; surface material unresolved choices instead of inventing agreements, technologies, or exceptions merely to make the text concrete.

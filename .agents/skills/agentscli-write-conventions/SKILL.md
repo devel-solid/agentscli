@@ -7,7 +7,7 @@ description: Create, review, or update a convention governing one recurring
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.8.1
+  generatorVersion: 0.8.2
 ---
 
 # Maintain project conventions
@@ -25,6 +25,12 @@ For example, a valid `# Test focus` body saved as `wrong-name.md` produces SOURC
 Before creating or reviewing conventions, consult the [writing-problem index](references/writing-examples.md). Select cases by the difficulty in the draft, and read their analyses, complete originals, and all resulting conventions to see what information changes the reader's decision. Transfer the concepts to the requested subject without automatically copying structures, topics, technologies, names, or agreements. The library's hypothetical contexts establish its teaching examples only; these are bundled references, not templates, commands, or policies to install in a client project.
 
 Use the language requested by the user or already used in the project's relevant content. Write the final convention files directly under `.agentscli/conventions/`, including subdirectories when useful; if none exist, create the first convention there within the request. These files are authored content: initialization, skill updates, synchronization, and checking preserve their bytes.
+
+## Delegate independent authorship
+
+When subagents are available and permitted, use them for a substantial batch of independent conventions or an independent semantic review whose ambiguity warrants another reader. Handle a small local edit directly. Complete the input check before delegation. Give each worker this skill, exact target paths, verified agreements and exceptions, relevant project context, and any approved refactoring contents and preservation mapping. Assign disjoint write targets; review-only workers return findings without edits. Workers report changed files, unresolved choices, and actual checks without expanding into neighboring responsibilities, receipt management, or index synchronization.
+
+The main agent reviews the combined text for consistency, contradictions, and useful examples, then runs the final checker after all writers finish and coordinates any authorized index update. For example, fixture independence and fixed test clocks can be drafted separately once their boundaries are settled; competing edits to the same alias rule and exception should stay with one writer.
 
 ## Write applicable agreements
 
