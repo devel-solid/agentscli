@@ -94,16 +94,31 @@ jobs:
         run: npm publish "$RELEASE_ARCHIVE" --access public
       - name: Verify the published identity and integrity
         run: |
-          npm view "@devel-solid/agentscli@$RELEASE_VERSION" name version license bin dist.integrity --json --prefer-online > .tmp/release/registry.json
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import { readFileSync, appendFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
           const pkg = JSON.parse(readFileSync('packages/agentscli/package.json', 'utf8'));
-          const published = JSON.parse(readFileSync('.tmp/release/registry.json', 'utf8'));
+          let published;
+          for (let attempt = 1; attempt <= 30; attempt++) {
+            try {
+              published = JSON.parse(execFileSync('npm', [
+                'view', `${pkg.name}@${process.env.RELEASE_VERSION}`, '--json', '--prefer-online',
+                '--fetch-retries=0', '--fetch-timeout=15000',
+              ], { encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'pipe'] }));
+              break;
+            } catch (error) {
+              let code;
+              try { code = JSON.parse(String(error.stdout)).error?.code; } catch {}
+              if (code !== 'E404' || attempt === 30) throw error;
+              console.log(`Registry processing the published version; retry ${attempt}/30 in 10 seconds.`);
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+          }
           assert.equal(published.name, pkg.name);
           assert.equal(published.version, pkg.version);
           assert.equal(published.license, pkg.license);
           assert.deepEqual(published.bin, pkg.bin);
-          assert.equal(published['dist.integrity'], process.env.RELEASE_INTEGRITY);
+          assert.equal(published.dist.integrity, process.env.RELEASE_INTEGRITY);
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\nRegistry identity and integrity verified.\n');
           NODE
