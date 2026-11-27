@@ -10,7 +10,7 @@ import {
 import {
   reviewHash,
   REVIEW_POLICY_VERSION,
-} from '../../assets/templates/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs';
+} from '../../assets/templates/skills/agentscli-optimize-conventions/scripts/review-conventions.mjs';
 
 const cases = new URL(
   '../../assets/templates/skills/agentscli-write-conventions/references/cases/',
@@ -43,7 +43,7 @@ test('complete corrected teaching conventions have valid independent discovery e
 test('the complete before/after review example carries the real matching fingerprint', () => {
   const text = readFileSync(
     new URL(
-      '../../assets/templates/skills/agentscli-refactor-conventions/references/review-filter-examples.md',
+      '../../assets/templates/skills/agentscli-optimize-conventions/references/review-filter-examples.md',
       import.meta.url,
     ),
     'utf8',

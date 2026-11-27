@@ -7535,7 +7535,7 @@ var CONVENTION_ROOT = ".agentscli/conventions";
 var PRODUCT_SKILLS = [
   "agentscli-write-conventions",
   "agentscli-build-agents",
-  "agentscli-refactor-conventions"
+  "agentscli-optimize-conventions"
 ];
 function parseYaml(text3, path) {
   const document3 = (0, import_yaml.parseDocument)(text3, {
@@ -16791,7 +16791,7 @@ var PRODUCT_SUPPORT = {
     "scripts/build-agents.mjs",
     "scripts/lib/index.mjs"
   ],
-  "agentscli-refactor-conventions": [
+  "agentscli-optimize-conventions": [
     "scripts/review-conventions.mjs",
     "references/refactoring-examples.md"
   ]

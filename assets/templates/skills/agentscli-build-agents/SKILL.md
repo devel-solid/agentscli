@@ -31,7 +31,7 @@ Exit 0 means success; 1 means freshness drift under --check; 2 means usage, sour
 
 ## Interpret the evidence
 
-Mechanical validity does not establish one responsibility, useful examples, or semantic preservation. For a structural audit, discover agentscli-refactor-conventions by identity; ordinary drafting belongs to agentscli-write-conventions. Do not make generation depend on an automatic semantic score or rewrite authored files while building the index.
+Mechanical validity does not establish one responsibility, useful examples, or semantic preservation. For a structural audit, discover agentscli-optimize-conventions by identity; ordinary drafting belongs to agentscli-write-conventions. Do not make generation depend on an automatic semantic score or rewrite authored files while building the index.
 
 For example, a valid `Testing` convention can contain both fixture independence and clock control. Validation can return success because its YAML, title, filename, and links are valid. Report that structural success accurately; it does not certify that the two decisions belong together.
 

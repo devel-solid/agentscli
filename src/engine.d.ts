@@ -37,7 +37,7 @@ declare module '#engine' {
       skills: Record<
         | 'agentscli-write-conventions'
         | 'agentscli-build-agents'
-        | 'agentscli-refactor-conventions',
+        | 'agentscli-optimize-conventions',
         Record<string, Uint8Array>
       >;
     };

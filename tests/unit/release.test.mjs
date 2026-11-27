@@ -285,7 +285,7 @@ function consumerArchive() {
   for (const id of [
     'agentscli-write-conventions',
     'agentscli-build-agents',
-    'agentscli-refactor-conventions',
+    'agentscli-optimize-conventions',
   ]) {
     entries.push({
       name: `package/dist/assets/skills/${id}/SKILL.md`,
@@ -306,8 +306,8 @@ test('release inspection requires complete skill trees and compares every prepar
     'agentscli-write-conventions/references/writing-examples.md',
     'agentscli-build-agents/scripts/build-agents.mjs',
     'agentscli-build-agents/scripts/lib/index.mjs',
-    'agentscli-refactor-conventions/references/refactoring-examples.md',
-    'agentscli-refactor-conventions/scripts/review-conventions.mjs',
+    'agentscli-optimize-conventions/references/refactoring-examples.md',
+    'agentscli-optimize-conventions/scripts/review-conventions.mjs',
   ])
     entries.push({
       name: `package/dist/assets/skills/${path}`,
@@ -381,12 +381,12 @@ test('release inspection requires complete skill trees and compares every prepar
           entries.filter(
             (entry) =>
               entry.name !==
-              'package/dist/assets/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs',
+              'package/dist/assets/skills/agentscli-optimize-conventions/scripts/review-conventions.mjs',
           ),
         ),
         pkg,
       ),
-    /Missing runtime closure: agentscli-refactor-conventions\/scripts\/review-conventions\.mjs/,
+    /Missing runtime closure: agentscli-optimize-conventions\/scripts\/review-conventions\.mjs/,
   );
   assert.throws(
     () =>
@@ -395,7 +395,7 @@ test('release inspection requires complete skill trees and compares every prepar
           entries.filter(
             (entry) =>
               entry.name !==
-              'package/dist/assets/skills/agentscli-refactor-conventions/SKILL.md',
+              'package/dist/assets/skills/agentscli-optimize-conventions/SKILL.md',
           ),
         ),
         pkg,
@@ -409,7 +409,7 @@ test('release inspection requires complete skill trees and compares every prepar
           entries.filter(
             (entry) =>
               entry.name !==
-              'package/dist/assets/skills/agentscli-refactor-conventions/references/refactoring-examples.md',
+              'package/dist/assets/skills/agentscli-optimize-conventions/references/refactoring-examples.md',
           ),
         ),
         pkg,

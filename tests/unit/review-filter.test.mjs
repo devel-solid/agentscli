@@ -10,7 +10,7 @@ import {
   REVIEW_POLICY_VERSION,
   run,
   selectConventions,
-} from '../../assets/templates/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs';
+} from '../../assets/templates/skills/agentscli-optimize-conventions/scripts/review-conventions.mjs';
 import {
   frontmatter,
   normalizeText,
@@ -399,7 +399,7 @@ test('invalidation rejects stale expectations, removed files, unsafe targets and
 test('worked documentation receipts match their exact example path and content', () => {
   const example = readFileSync(
     new URL(
-      '../../assets/templates/skills/agentscli-refactor-conventions/references/review-filter-examples.md',
+      '../../assets/templates/skills/agentscli-optimize-conventions/references/review-filter-examples.md',
       import.meta.url,
     ),
     'utf8',

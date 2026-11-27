@@ -12,7 +12,7 @@ export const CONVENTION_ROOT = '.agentscli/conventions';
 export const PRODUCT_SKILLS = [
   'agentscli-write-conventions',
   'agentscli-build-agents',
-  'agentscli-refactor-conventions',
+  'agentscli-optimize-conventions',
 ];
 export function parseYaml(text, path) {
   const document = parseDocument(text, {

@@ -98,7 +98,7 @@ Setup installs three skills under `.agents/skills/`. Each skill gives an agent i
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `agentscli-write-conventions`    | Create, review, or edit convention files                                                                                     |
 | `agentscli-build-agents`         | Validate conventions, preview changes, regenerate the index, or check freshness                                              |
-| `agentscli-refactor-conventions` | Select pending reviews, audit boundaries, record completion, invalidate reopened receipts, and apply approved reorganization |
+| `agentscli-optimize-conventions` | Select pending reviews, audit boundaries, record completion, invalidate reopened receipts, and apply approved reorganization |
 
 For an update, ask your agent:
 
@@ -109,6 +109,8 @@ For a check without edits:
 > Check our conventions and AGENTS.md without changing files.
 
 The installed build skill runs offline using Node.js and versioned project resources. It needs no installed CLI, compiler, Git, or dependency installation.
+
+`agentscli-optimize-conventions` replaces `agentscli-refactor-conventions`. Both `init` and `update` install the new skill and preserve the old tree. After installation, manually remove `.agents/skills/agentscli-refactor-conventions/` if it came from agentscli and you no longer need it. There is no alias or automatic migration.
 
 ## Refactor an existing collection
 

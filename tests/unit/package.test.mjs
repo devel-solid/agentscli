@@ -387,11 +387,11 @@ test('installation requires the refactoring filter and preserves existing conven
     response.result.changes.some(
       (change) =>
         change.path ===
-        '.agents/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs',
+        '.agents/skills/agentscli-optimize-conventions/scripts/review-conventions.mjs',
     ),
   );
   const broken = structuredClone(resources);
-  delete broken.skills['agentscli-refactor-conventions'][
+  delete broken.skills['agentscli-optimize-conventions'][
     'scripts/review-conventions.mjs'
   ];
   const before = state.writes.length;

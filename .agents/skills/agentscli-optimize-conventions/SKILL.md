@@ -1,10 +1,17 @@
 ---
-name: agentscli-refactor-conventions
-description: Filter existing conventions by reviewed content and review-policy version, audit their responsibilities, record completed reviews, and invalidate reopened receipts. Use to propose structural reorganization and apply an approved plan. Use agentscli-write-conventions for ordinary drafting within one responsibility.
+name: agentscli-optimize-conventions
+description: Filter existing conventions by reviewed content and review-policy
+  version, audit their responsibilities, record completed reviews, and
+  invalidate reopened receipts. Use to propose structural reorganization and
+  apply an approved plan. Use agentscli-write-conventions for ordinary drafting
+  within one responsibility.
 license: MIT
+metadata:
+  generatedBy: "@devel-solid/agentscli"
+  generatorVersion: 0.8.3
 ---
 
-# Refactor convention responsibilities
+# Optimize convention responsibilities
 
 Reorganize an existing collection so each convention governs one recurring decision with its own conditions of application. Preserve the established agreements, exceptions, and examples. An audit can correctly recommend no changes.
 

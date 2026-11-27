@@ -36,9 +36,11 @@ Missing skill files are repaired; ambiguous existing entries require manual reco
 Both commands replace managed skill trees and remove obsolete files. Conventions,
 AGENTS.md, local skills, Git state and unrelated files stay preserved. --dry-run
 previews without writes. Repeat init safely to prepare an existing project.
+The former agentscli-refactor-conventions tree is preserved; remove it manually
+after installing agentscli-optimize-conventions with init or update.
 Use agentscli-write-conventions to create or edit conventions, then
 agentscli-build-agents to validate them and generate/check AGENTS.md.
-Use agentscli-refactor-conventions to audit conventions and propose a reorganization.
+Use agentscli-optimize-conventions to audit conventions and propose a reorganization.
 Approval is required for content or structural changes. During review, the skill
 may record or invalidate review metadata; instructions to write no files prevent
 those metadata writes too.

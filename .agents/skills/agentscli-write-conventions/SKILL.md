@@ -2,7 +2,7 @@
 name: agentscli-write-conventions
 description: Create, review, or update a convention governing one recurring
   decision, with precise triggers and concrete decision examples. Use for
-  ordinary convention authorship; use agentscli-refactor-conventions for
+  ordinary convention authorship; use agentscli-optimize-conventions for
   structural audits and reorganization of an existing collection.
 license: MIT
 metadata:
@@ -46,7 +46,7 @@ Testing: factories return fresh nested state; elapsed-time tests supply a clock.
 
 Write separate `Fixture independence` and `Fixed test clocks` conventions: fixing a mutation leak can require the first without the second. Two headings in a single `Testing` file would preserve the discovery problem. Conversely, canonical option spelling and the exception retaining an old spelling for supported callers belong together: both decide whether an alias may exist. See case 09 for complete split files and case 08 for a rule whose exception must remain attached.
 
-During ordinary authorship, keep the requested convention focused and propose destinations for independent material. Discover agentscli-refactor-conventions by identity when an existing collection needs a structural plan; do not silently rename, split, consolidate, or delete neighboring conventions during a local wording edit. An already approved concrete reorganization supplies the target scope for this skill.
+During ordinary authorship, keep the requested convention focused and propose destinations for independent material. Discover agentscli-optimize-conventions by identity when an existing collection needs a structural plan; do not silently rename, split, consolidate, or delete neighboring conventions during a local wording edit. An already approved concrete reorganization supplies the target scope for this skill.
 
 Start from the concrete difficulty in applying the agreement: what question or decision remains ambiguous? Choose an example that resolves it, then choose how to present that information. Input and output can clarify a transformation, annotated code can explain an abstraction, an explained scenario can delimit an exception, and a table can compare alternatives or conditions. These are possible uses, not a mapping from subjects to required formats. Explain the relevant difference in positive and negative examples rather than leaving the reader to infer the rule from code. Keep examples consistent with the established agreement and limited to the detail needed to understand it.
 
@@ -60,7 +60,7 @@ A literal choice such as the lowercase `.snap` extension can stay short when no 
 
 Each convention starts with YAML containing required nonempty string `trigger` and optionally `reviewedHash` and `reviewPolicyVersion`, followed by one H1 outside examples and its body. `reviewedHash` is a 64-character lowercase SHA-256 hexadecimal string; `reviewPolicyVersion` is a positive decimal string such as `'1'`. Either field may be absent: existing trigger-only conventions remain valid and await refactoring review. Other frontmatter keys are rejected. Derive its `.md` basename from the H1: normalize with NFKD, remove combining marks, lowercase, collapse runs other than Unicode letters or numbers to hyphens, trim outer hyphens, then normalize to NFC. For example, `日本語` becomes `日本語.md`. Keep the trigger short and precise about when to read the rule. Keep the body self-contained: no links to conventions or skill entrypoints, directories, or support files. Ordinary non-resource links and own fragments are allowed. Trigger links resolve from root AGENTS; body links resolve from the convention's actual location. Skills have their own activation description: move misplaced procedural content only through a separately authorized skill-authoring request.
 
-Preserve existing review fields when editing content. They describe the version actually reviewed, so changing a trigger, H1, body, example, or path makes the old receipt stale without any manual reset. Do not stamp or invalidate a receipt, advance its policy version, or run the review filter merely because authorship or its checker succeeded. Discover agentscli-refactor-conventions when the user requests that distinct review operation. New conventions can omit both fields; a split source's receipt must not be treated as proof that each new target was reviewed.
+Preserve existing review fields when editing content. They describe the version actually reviewed, so changing a trigger, H1, body, example, or path makes the old receipt stale without any manual reset. Do not stamp or invalidate a receipt, advance its policy version, or run the review filter merely because authorship or its checker succeeded. Discover agentscli-optimize-conventions when the user requests that distinct review operation. New conventions can omit both fields; a split source's receipt must not be treated as proof that each new target was reviewed.
 
 Use verified project facts within the authorized convention. When an authorized title change requires a canonical filename rename, update references within this skill's target scope; the convention index is rebuilt mechanically during authorized generation.
 

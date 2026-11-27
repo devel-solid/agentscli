@@ -15,7 +15,7 @@ export const PRODUCT_SUPPORT = {
     'scripts/build-agents.mjs',
     'scripts/lib/index.mjs',
   ],
-  'agentscli-refactor-conventions': [
+  'agentscli-optimize-conventions': [
     'scripts/review-conventions.mjs',
     'references/refactoring-examples.md',
   ],

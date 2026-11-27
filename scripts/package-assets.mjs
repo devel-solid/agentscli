@@ -130,7 +130,7 @@ export async function packageAssets(
       destination === 'skills/agentscli-build-agents/scripts/lib/index.mjs' ||
       destination === 'skills/agentscli-write-conventions/scripts/check.mjs' ||
       destination ===
-        'skills/agentscli-refactor-conventions/scripts/review-conventions.mjs'
+        'skills/agentscli-optimize-conventions/scripts/review-conventions.mjs'
     ) {
       const bundle = await build({
         absWorkingDir: root,

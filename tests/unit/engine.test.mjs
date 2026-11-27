@@ -1054,7 +1054,7 @@ test('legacy two-skill installations gain the complete refactoring skill without
   for (const id of ['agentscli-write-conventions', 'agentscli-build-agents'])
     for (const [path, content] of Object.entries(resources.skills[id]))
       fs.put(`.agents/skills/${id}/${path}`, content);
-  const refactor = '.agents/skills/agentscli-refactor-conventions';
+  const refactor = '.agents/skills/agentscli-optimize-conventions';
   const preview = await invoke(fs, 'update', { dryRun: true });
   assert.equal(preview.exitCode, 0);
   assert.equal(fs.writes.length, 0);
@@ -1076,7 +1076,7 @@ test('legacy two-skill installations gain the complete refactoring skill without
     preview.result.changes.map(({ status, ...effect }) => effect),
   );
   for (const [path, content] of Object.entries(
-    resources.skills['agentscli-refactor-conventions'],
+    resources.skills['agentscli-optimize-conventions'],
   ))
     assert.deepEqual(fs.io.read(join(fs.root, refactor, path)), content);
   assert.equal(
@@ -1094,8 +1094,55 @@ test('legacy two-skill installations gain the complete refactoring skill without
   assert.equal((await invoke(fs, 'update')).result.changes.length, 0);
 });
 
+test('init and update install the optimization skill while preserving the former skill tree', async () => {
+  const former = '.agents/skills/agentscli-refactor-conventions';
+  const current = '.agents/skills/agentscli-optimize-conventions';
+  const formerFiles = {
+    [`${former}/SKILL.md`]: skill(
+      'agentscli-refactor-conventions',
+      'license: MIT\nmetadata:\n  generatedBy: "@devel-solid/agentscli"\n  generatorVersion: "0.8.3"\n',
+    ),
+    [`${former}/scripts/review-conventions.mjs`]: bytes(
+      'export const oldReview = true;',
+    ),
+    [`${former}/references/local-note.md`]: bytes(
+      'Preserve this local edit.\r\n',
+    ),
+  };
+  for (const command of ['init', 'update']) {
+    const fs = client({
+      ...formerFiles,
+      '.agents/skills/agentscli-build-agents/SKILL.md':
+        resources.skills['agentscli-build-agents']['SKILL.md'],
+    });
+    const preview = await invoke(fs, command, { dryRun: true });
+    assert.equal(preview.exitCode, 0);
+    assert.equal(fs.writes.length, 0);
+    assert.ok(
+      preview.result.changes.some((c) => c.path === `${current}/SKILL.md`),
+    );
+    assert.ok(
+      preview.result.changes.every((c) => !c.path.startsWith(former + '/')),
+    );
+
+    const applied = await invoke(fs, command);
+    assert.equal(applied.exitCode, 0);
+    assert.deepEqual(
+      applied.result.changes.map(({ status, ...effect }) => effect),
+      preview.result.changes.map(({ status, ...effect }) => effect),
+    );
+    for (const [path, content] of Object.entries(formerFiles))
+      assert.deepEqual(fs.io.read(join(fs.root, path)), content);
+    for (const [path, content] of Object.entries(
+      resources.skills['agentscli-optimize-conventions'],
+    ))
+      assert.deepEqual(fs.io.read(join(fs.root, current, path)), content);
+    assert.equal((await invoke(fs, command)).result.changes.length, 0);
+  }
+});
+
 test('a foreign refactoring entrypoint blocks legacy updates before any writes', async () => {
-  const path = '.agents/skills/agentscli-refactor-conventions/SKILL.md';
+  const path = '.agents/skills/agentscli-optimize-conventions/SKILL.md';
   const fs = client({
     '.agents/skills/agentscli-build-agents/SKILL.md':
       resources.skills['agentscli-build-agents']['SKILL.md'],
@@ -1173,9 +1220,9 @@ test('init validates complete package resources before any directory or file wri
     (r) => delete r.skills[PRODUCT_SKILLS[1]],
     (r) => delete r.skills[PRODUCT_SKILLS[0]]['scripts/check.mjs'],
     (r) => delete r.skills[PRODUCT_SKILLS[0]]['references/writing-examples.md'],
-    (r) => delete r.skills['agentscli-refactor-conventions'],
+    (r) => delete r.skills['agentscli-optimize-conventions'],
     (r) =>
-      delete r.skills['agentscli-refactor-conventions'][
+      delete r.skills['agentscli-optimize-conventions'][
         'references/refactoring-examples.md'
       ],
     (r) => {

@@ -7460,7 +7460,7 @@ var require_extend = __commonJS({
   }
 });
 
-// assets/templates/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs
+// assets/templates/skills/agentscli-optimize-conventions/scripts/review-conventions.mjs
 var import_yaml2 = __toESM(require_dist(), 1);
 import { createHash } from "node:crypto";
 import { resolve as resolve3 } from "node:path";
@@ -16732,7 +16732,7 @@ function validateResources({ conventions = [], skills = [] }) {
   }
 }
 
-// assets/templates/skills/agentscli-refactor-conventions/scripts/review-conventions.mjs
+// assets/templates/skills/agentscli-optimize-conventions/scripts/review-conventions.mjs
 var REVIEW_POLICY_VERSION = "1";
 var HASH = /^[0-9a-f]{64}$/u;
 var REVIEW_FIELDS = /* @__PURE__ */ new Set(["reviewedHash", "reviewPolicyVersion"]);
