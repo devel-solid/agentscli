@@ -1,6 +1,6 @@
 ---
 trigger: Read when planning contract changes, assessing compatibility, choosing versions, or preparing releases.
-reviewedHash: '4353825a3717fc22b3611644640a083184e454ec429f86e368b2ded59292d6c5'
+reviewedHash: '2fe0df201f77c000e59b8f5faa127f0f834896682e85a3fd92e5a9e077f1ef3f'
 reviewPolicyVersion: '1'
 ---
 

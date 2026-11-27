@@ -4,6 +4,7 @@ generatedBy: "@devel-solid/agentscli"
 
 # AGENTS.md
 
+- [Checkout preparation](.agentscli/conventions/checkout-preparation.md): Read when preparing a checkout or changing dependency installation and hook setup.
 - [Checkout verification](.agentscli/conventions/checkout-verification.md): Read when preparing local changes for delivery or refreshing checkout resources.
 - [CLI surface](.agentscli/conventions/cli-surface.md): Read when adding commands, flags, or agent operations.
 - [Convention examples](.agentscli/conventions/convention-examples.md): Read when teaching a convention decision or reviewing whether its examples are sufficient.

@@ -1,5 +1,7 @@
 ---
 trigger: Read before adopting or choosing maintenance lines and updates for packages, language runtimes, or other technologies.
+reviewedHash: 'fbbaeb7e612232881b39e3dc01bb1b94f959b2600b83c0d7aa2eef6f110ffacc'
+reviewPolicyVersion: '1'
 ---
 
 # Technology version selection

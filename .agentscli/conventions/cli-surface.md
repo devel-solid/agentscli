@@ -1,6 +1,6 @@
 ---
 trigger: Read when adding commands, flags, or agent operations.
-reviewedHash: 'fa4c0de0f55bba1b4d14aac7844a25caf6f65358af7d07a12c7c42b516ca996e'
+reviewedHash: '06bd124e05a5e259ccb4a1892dddbf5ef7deac1c67ccae64ba6eb223168162b0'
 reviewPolicyVersion: '1'
 ---
 
