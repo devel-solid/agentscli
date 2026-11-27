@@ -7,7 +7,7 @@ description: Create, review, or update a convention governing one recurring
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.8.2
+  generatorVersion: 0.8.3
 ---
 
 # Maintain project conventions

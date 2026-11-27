@@ -6,7 +6,7 @@ description: Validate authored conventions and update the AGENTS.md index in an
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.8.2
+  generatorVersion: 0.8.3
 ---
 
 # Build project instructions

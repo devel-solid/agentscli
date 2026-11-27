@@ -1,6 +1,6 @@
 {
   "name": "@devel-solid/agentscli",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Install skills for authoring and refactoring conventions and generating a project AGENTS.md index.",
   "license": "MIT",
   "repository": {
