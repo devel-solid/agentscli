@@ -7,7 +7,7 @@ description: Create, review, or update a convention governing one recurring
 license: MIT
 metadata:
   generatedBy: "@devel-solid/agentscli"
-  generatorVersion: 0.9.3
+  generatorVersion: 0.9.4
 ---
 
 # Maintain project conventions
@@ -30,7 +30,7 @@ Use the language requested by the user or already used in the project's relevant
 
 When subagents are available and permitted, use them for a substantial batch of independent conventions or an independent semantic review whose ambiguity warrants another reader. Handle a small local edit directly. Complete the input check before delegation. Give each worker this skill, exact target paths, verified agreements and exceptions, relevant project context, and any approved refactoring contents and preservation mapping. Assign disjoint write targets; review-only workers return findings without edits. Workers report changed files, unresolved choices, and actual checks without expanding into neighboring responsibilities, receipt management, or index synchronization.
 
-The main agent reviews the combined text for consistency, contradictions, and useful examples, then runs the final checker after all writers finish and coordinates any authorized index update. For example, fixture independence and fixed test clocks can be drafted separately once their boundaries are settled; competing edits to the same alias rule and exception should stay with one writer.
+The main agent reviews the combined text for consistency, contradictions, and useful examples, then runs the final checker and completes index synchronization after all writers finish, as described below. For example, fixture independence and fixed test clocks can be drafted separately once their boundaries are settled; competing edits to the same alias rule and exception should stay with one writer.
 
 ## Write applicable agreements
 
@@ -62,7 +62,7 @@ Each convention starts with YAML containing required nonempty string `trigger` a
 
 Preserve existing review fields when editing content. They describe the version actually reviewed, so changing a trigger, H1, body, example, or path makes the old receipt stale without any manual reset. Do not stamp or invalidate a receipt, advance its policy version, or run the review filter merely because authorship or its checker succeeded. Discover agentscli-optimize-conventions when the user requests that distinct review operation. New conventions can omit both fields; a split source's receipt must not be treated as proof that each new target was reviewed.
 
-Use verified project facts within the authorized convention. When an authorized title change requires a canonical filename rename, update references within this skill's target scope; the convention index is rebuilt mechanically during authorized generation.
+Use verified project facts within the authorized convention. When an authorized title change requires a canonical filename rename, update references within this skill's target scope; rebuild the convention index mechanically as part of completing the change.
 
 ## Review and validate
 
@@ -70,4 +70,8 @@ Review the prose semantically: does it describe a recurring agreement, use clear
 
 For responsibility, apply the convention to a task needing its main agreement and another needing only a suspected secondary agreement. Split independent decisions within the approved scope; retain conditions necessary to interpret the same rule. Check that examples distinguish actual alternatives and do not introduce unverified policies. Report unresolved contradictions instead of deciding them through wording changes.
 
-After edits rerun the checker. Scripts prove only mechanically decidable checks; do not approximate editorial quality with keyword searches, mandatory sections, or example counts. For an authorized index update, mention agentscli-build-agents and discover its actual project location through project skills; do not assume its path. Authorship alone does not authorize generation. Report edited conventions and actual validation.
+After edits rerun the checker. Scripts prove only mechanically decidable checks; do not approximate editorial quality with keyword searches, mandatory sections, or example counts.
+
+A request to create or update a convention includes synchronizing the generated root AGENTS.md as part of the same delivery, without a separate request or approval. Mention agentscli-build-agents, discover its actual project location through project skills, and follow its validation, preview, synchronization, and freshness-check workflow after the final authored changes. Respect an explicit request to leave the index unchanged; review-only requests remain read-only. Preserve handwritten root instructions if the build skill reports DOCUMENT_CONFLICT, and report the completed convention edits and blocked index update separately.
+
+For example, after creating `Test focus`, the delivery is complete only when the generated AGENTS.md includes its title, trigger, and link and the freshness check passes. Passing the authoring checker alone leaves discovery unfinished. Report edited conventions, index synchronization, actual checks, and any remaining work.
