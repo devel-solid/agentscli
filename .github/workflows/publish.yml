@@ -104,25 +104,18 @@ jobs:
             `## Reviewed candidate\n\nVersion: ${process.env.RELEASE_VERSION}\n\nCommit: ${process.env.GITHUB_SHA}\n\nIntegrity: ${integrity}\n`);
           NODE
       - name: Publish the inspected archive with Trusted Publishing
-        run: pnpm publish "$RELEASE_ARCHIVE" --access public --ignore-scripts --no-git-checks --publish-wait-timeout 300000
-      - name: Verify the published identity and integrity
         run: |
-          node --input-type=module <<'NODE'
-          import assert from 'node:assert/strict';
-          import { readFileSync, appendFileSync } from 'node:fs';
-          import { execFileSync } from 'node:child_process';
-          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-          const published = JSON.parse(execFileSync('pnpm', [
-            'view', `${pkg.name}@${process.env.RELEASE_VERSION}`, '--json',
-            '--registry', process.env.PNPM_CONFIG_REGISTRY,
-          ], {
-            encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'pipe'],
-            env: { ...process.env, PNPM_CONFIG_FETCH_RETRIES: '0', PNPM_CONFIG_FETCH_TIMEOUT: '15000' },
-          }));
-          assert.equal(published.name, pkg.name);
-          assert.equal(published.version, pkg.version);
-          assert.equal(published.license, pkg.license);
-          assert.deepEqual(published.bin, pkg.bin);
-          assert.equal(published.dist.integrity, process.env.RELEASE_INTEGRITY);
-          appendFileSync(process.env.GITHUB_STEP_SUMMARY, '\nRegistry identity and integrity verified.\n');
+          set +e
+          pnpm publish "$RELEASE_ARCHIVE" --access public --ignore-scripts --no-git-checks --publish-wait-timeout 300000 2>&1 | tee .tmp/release/publish.log
+          publish_status=${PIPESTATUS[0]}
+          set -e
+          PUBLISH_STATUS="$publish_status" node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { canVerifyPublication } from './.agents/skills/agentscli-publish-package/scripts/verify-published.mjs';
+          const status = Number(process.env.PUBLISH_STATUS);
+          const output = readFileSync('.tmp/release/publish.log', 'utf8');
+          if (!canVerifyPublication(status, output)) process.exit(status || 1);
+          if (status !== 0) console.log('::warning::Upload accepted, but native availability waiting timed out. Verifying the same version without republishing.');
           NODE
+      - name: Verify the published identity and integrity
+        run: node .agents/skills/agentscli-publish-package/scripts/verify-published.mjs
