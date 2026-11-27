@@ -22,7 +22,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      PNPM_CONFIG_REGISTRY: https://registry.npmjs.org/
       RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -32,10 +32,16 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24.15.0
-          registry-url: https://registry.npmjs.org/
           package-manager-cache: false
-      - name: Use the reviewed npm version
-        run: npm install --global npm@11.13.0
+      - name: Install the pinned standalone pnpm
+        run: |
+          PNPM_VERSION=$(node -p "require('./package.json').packageManager.slice('pnpm@'.length)")
+          export PNPM_VERSION
+          curl --fail --silent --show-error --location https://get.pnpm.io/install.sh --output "$RUNNER_TEMP/install-pnpm.sh"
+          sh "$RUNNER_TEMP/install-pnpm.sh"
+          PNPM_HOME="$HOME/.local/share/pnpm"
+          echo "$PNPM_HOME/bin" >> "$GITHUB_PATH"
+          echo "PNPM_HOME=$PNPM_HOME" >> "$GITHUB_ENV"
       - name: Verify the version and immutable source tag
         run: |
           node --input-type=module <<'NODE'
@@ -49,6 +55,9 @@ jobs:
           assert.ok(match, 'Expected an agentscli-vX.Y.Z release tag');
           const version = match[1];
           assert.equal(pkg.name, '@devel-solid/agentscli');
+          const manager = /^pnpm@(\d+\.\d+\.\d+)$/.exec(pkg.packageManager);
+          assert.ok(manager, 'Expected one exact pnpm version');
+          assert.equal(execFileSync('pnpm', ['--version'], { encoding: 'utf8' }).trim(), manager[1]);
           assert.equal(pkg.version, version);
           const tag = `refs/tags/${process.env.RELEASE_TAG}`;
           assert.equal(execFileSync('git', ['cat-file', '-t', tag], { encoding: 'utf8' }).trim(), 'tag', 'Release tag must be annotated');
@@ -61,24 +70,28 @@ jobs:
           assert.match(integrity, /^sha512-[A-Za-z0-9+/]{86}==$/);
           appendFileSync(process.env.GITHUB_ENV, `RELEASE_VERSION=${version}\nRELEASE_INTEGRITY=${integrity}\n`);
           NODE
-      - run: npm ci
-      - run: npm run check
-      - run: npm run build
+      - run: pnpm ci
+      - run: pnpm run check
+      - run: pnpm run build
       - name: Pack the public package
         run: |
           mkdir -p .tmp/release
-          npm pack --ignore-scripts --json --pack-destination .tmp/release > .tmp/release/pack.json
+          pnpm pack --ignore-scripts --json --out ".tmp/release/devel-solid-agentscli-$RELEASE_VERSION.tgz" > .tmp/release/pack.json
       - name: Inspect the archive and match the reviewed integrity
         run: |
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import { readFileSync, appendFileSync } from 'node:fs';
           import { createHash } from 'node:crypto';
+          import { resolve } from 'node:path';
           import { execFileSync } from 'node:child_process';
-          const [packed] = JSON.parse(readFileSync('.tmp/release/pack.json', 'utf8'));
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+          const packed = JSON.parse(readFileSync('.tmp/release/pack.json', 'utf8'));
           const filename = `devel-solid-agentscli-${process.env.RELEASE_VERSION}.tgz`;
-          assert.equal(packed.filename, filename);
           const archive = `.tmp/release/${filename}`;
+          assert.equal(resolve(packed.filename), resolve(archive));
+          assert.equal(packed.name, pkg.name);
+          assert.equal(packed.version, process.env.RELEASE_VERSION);
           const integrity = 'sha512-' + createHash('sha512').update(readFileSync(archive)).digest('base64');
           assert.equal(integrity, process.env.RELEASE_INTEGRITY, 'Archive differs from the reviewed candidate');
           assert.equal(packed.integrity, integrity);
@@ -91,7 +104,7 @@ jobs:
             `## Reviewed candidate\n\nVersion: ${process.env.RELEASE_VERSION}\n\nCommit: ${process.env.GITHUB_SHA}\n\nIntegrity: ${integrity}\n`);
           NODE
       - name: Publish the inspected archive with Trusted Publishing
-        run: npm publish "$RELEASE_ARCHIVE" --access public
+        run: pnpm publish "$RELEASE_ARCHIVE" --access public --ignore-scripts --no-git-checks --publish-wait-timeout 300000
       - name: Verify the published identity and integrity
         run: |
           node --input-type=module <<'NODE'
@@ -99,22 +112,13 @@ jobs:
           import { readFileSync, appendFileSync } from 'node:fs';
           import { execFileSync } from 'node:child_process';
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-          let published;
-          for (let attempt = 1; attempt <= 30; attempt++) {
-            try {
-              published = JSON.parse(execFileSync('npm', [
-                'view', `${pkg.name}@${process.env.RELEASE_VERSION}`, '--json', '--prefer-online',
-                '--fetch-retries=0', '--fetch-timeout=15000',
-              ], { encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'pipe'] }));
-              break;
-            } catch (error) {
-              let code;
-              try { code = JSON.parse(String(error.stdout)).error?.code; } catch {}
-              if (code !== 'E404' || attempt === 30) throw error;
-              console.log(`Registry processing the published version; retry ${attempt}/30 in 10 seconds.`);
-              await new Promise(resolve => setTimeout(resolve, 10000));
-            }
-          }
+          const published = JSON.parse(execFileSync('pnpm', [
+            'view', `${pkg.name}@${process.env.RELEASE_VERSION}`, '--json',
+            '--registry', process.env.PNPM_CONFIG_REGISTRY,
+          ], {
+            encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'pipe'],
+            env: { ...process.env, PNPM_CONFIG_FETCH_RETRIES: '0', PNPM_CONFIG_FETCH_TIMEOUT: '15000' },
+          }));
           assert.equal(published.name, pkg.name);
           assert.equal(published.version, pkg.version);
           assert.equal(published.license, pkg.license);

@@ -1,0 +1,6 @@
+engineStrict: true
+saveExact: true
+verifyDepsBeforeRun: error
+
+allowBuilds:
+  esbuild: true

@@ -1,2 +1,2 @@
 #!/bin/sh
-exec npm run check
+exec pnpm run check

@@ -156,6 +156,18 @@ export function inspectArchive(bytes, expected, prepared) {
   inspectMetadata(pkg, name);
   if (pkg.name !== expected.name || pkg.version !== expected.version)
     throw new Error('Archive identity does not match the reviewed candidate.');
+  // pnpm's default packed manifest removes development package-manager metadata
+  // and publication hooks, while retaining ordinary and install-time scripts.
+  const publishedScripts = expected.scripts && { ...expected.scripts };
+  for (const hook of [
+    'prepublishOnly',
+    'prepack',
+    'prepare',
+    'postpack',
+    'publish',
+    'postpublish',
+  ])
+    if (publishedScripts) delete publishedScripts[hook];
   const stable = (value) =>
     JSON.stringify(value, function (_key, item) {
       return item && typeof item === 'object' && !Array.isArray(item)
@@ -182,9 +194,17 @@ export function inspectArchive(bytes, expected, prepared) {
     'publishConfig',
     'license',
     'scripts',
+    'packageManager',
+    'pnpm',
     'private',
   ]) {
-    if (stable(pkg[field]) !== stable(expected[field]))
+    const published =
+      field === 'scripts'
+        ? publishedScripts
+        : ['packageManager', 'pnpm'].includes(field)
+          ? undefined
+          : expected[field];
+    if (stable(pkg[field]) !== stable(published))
       throw new Error(`Archive runtime/publication metadata differs: ${field}`);
   }
   for (const file of [
@@ -202,8 +222,7 @@ export function inspectArchive(bytes, expected, prepared) {
     throw new Error(
       'Executable shebang/readability or safe archive mode is invalid.',
     );
-  // npm bin-links supplies executable permissions and platform shims at install.
-  // A native Windows npm tarball may record 0644 even for a declared bin.
+  // Package managers supply executable permissions and platform shims at install.
   const prefix = 'package/dist/assets/skills/';
   for (const path of files.keys()) {
     if (

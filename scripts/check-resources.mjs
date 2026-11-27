@@ -42,7 +42,7 @@ try {
   if (exitCode || result.changes.length) {
     if (result.changes.length)
       console.error(
-        'Managed resources differ. Run npm run dogfood and review the diff.',
+        'Managed resources differ. Run pnpm run dogfood and review the diff.',
       );
     process.exitCode = exitCode || 1;
   }
@@ -52,7 +52,7 @@ try {
     process.exitCode = Math.max(process.exitCode ?? 0, index.exitCode);
     if (index.exitCode === 1)
       console.error(
-        'Generated index differs. Run npm run dogfood and review the diff.',
+        'Generated index differs. Run pnpm run dogfood and review the diff.',
       );
   }
   console.log(JSON.stringify(validate(root)));

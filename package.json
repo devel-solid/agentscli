@@ -10,6 +10,7 @@
   "homepage": "https://github.com/devel-solid/agentscli#readme",
   "bugs": "https://github.com/devel-solid/agentscli/issues",
   "type": "module",
+  "packageManager": "pnpm@12.23.0",
   "bin": {
     "agentscli": "dist/cli.js"
   },
@@ -24,15 +25,15 @@
   },
   "scripts": {
     "build": "node scripts/clean-dist.mjs && tsc && node scripts/package-assets.mjs",
-    "dogfood": "npm run build && node dist/cli.js init --repo-root . && node .agents/skills/agentscli-build-agents/scripts/build-agents.mjs sync --repo-root .",
+    "dogfood": "pnpm run build && node dist/cli.js init --repo-root . && node .agents/skills/agentscli-build-agents/scripts/build-agents.mjs sync --repo-root .",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write src assets/templates/skills scripts tests/unit package.json package-lock.json tsconfig.json .agentscli/conventions README.md \".github/workflows/*.yml\" \".agents/skills/agentscli-publish-packages/**/*\"",
-    "format:check": "prettier --check src assets/templates/skills scripts tests/unit package.json package-lock.json tsconfig.json .agentscli/conventions README.md \".github/workflows/*.yml\" \".agents/skills/agentscli-publish-packages/**/*\"",
+    "format": "prettier --write src assets/templates/skills scripts tests/unit package.json pnpm-workspace.yaml tsconfig.json .agentscli/conventions README.md \".github/workflows/*.yml\" \".agents/skills/agentscli-publish-packages/**/*\"",
+    "format:check": "prettier --check src assets/templates/skills scripts tests/unit package.json pnpm-workspace.yaml tsconfig.json .agentscli/conventions README.md \".github/workflows/*.yml\" \".agents/skills/agentscli-publish-packages/**/*\"",
     "test": "tsc && node scripts/test.mjs",
     "check:resources": "node scripts/check-resources.mjs",
-    "check": "npm run typecheck && npm run format:check && npm test && npm run check:resources",
+    "check": "pnpm run typecheck && pnpm run format:check && pnpm test && pnpm run check:resources",
     "setup": "node scripts/setup.mjs",
-    "prepack": "npm run build"
+    "prepack": "pnpm run build"
   },
   "engines": {
     "node": "^22.0.0 || ^24.0.0 || ^26.0.0"

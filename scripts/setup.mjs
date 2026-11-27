@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 const major = Number(process.versions.node.split('.')[0]);
 if (![22, 24, 26].includes(major)) {
-  console.error('Install Node.js 22, 24, or 26, then run npm run setup.');
+  console.error('Install Node.js 22, 24, or 26, then run pnpm run setup.');
   process.exit(2);
 }
 if (spawnSync('git', ['--version'], { stdio: 'inherit' }).status !== 0) {

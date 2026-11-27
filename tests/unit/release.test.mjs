@@ -323,6 +323,57 @@ test('release inspection requires complete skill trees and compares every prepar
   const artifact = inspectArchive(tar(entries), pkg, prepared);
   assert.equal(artifact.version, '0.4.0');
   assert.match(artifact.integrity, /^sha512-/);
+  const source = {
+    ...pkg,
+    packageManager: 'pnpm@12.23.0',
+    scripts: {
+      build: 'node build.mjs',
+      prepublish: 'node legacy-build.mjs',
+      prepublishOnly: 'node publication-check.mjs',
+      prepack: 'pnpm run build',
+      prepare: 'node prepare.mjs',
+      postpack: 'node packed.mjs',
+      publish: 'node published.mjs',
+      postpublish: 'node postpublish.mjs',
+    },
+  };
+  const published = {
+    ...pkg,
+    scripts: {
+      build: source.scripts.build,
+      prepublish: source.scripts.prepublish,
+    },
+  };
+  const manifestArchive = (manifest) =>
+    tar(
+      entries.map((entry) =>
+        entry.name === 'package/package.json'
+          ? { ...entry, body: JSON.stringify(manifest) }
+          : entry,
+      ),
+    );
+  assert.equal(
+    inspectArchive(manifestArchive(published), source, prepared).version,
+    pkg.version,
+  );
+  for (const unexpected of [
+    {
+      ...published,
+      scripts: { ...published.scripts, prepack: source.scripts.prepack },
+    },
+    { ...published, scripts: { build: 'node changed.mjs' } },
+    { ...published, scripts: { build: source.scripts.build } },
+    {
+      ...published,
+      scripts: { ...published.scripts, postinstall: 'node unreviewed.mjs' },
+    },
+    { ...published, packageManager: source.packageManager },
+    { ...published, pnpm: { overrides: { dependency: 'other' } } },
+  ])
+    assert.throws(
+      () => inspectArchive(manifestArchive(unexpected), source, prepared),
+      /Archive runtime\/publication metadata differs/,
+    );
   assert.throws(
     () =>
       inspectArchive(

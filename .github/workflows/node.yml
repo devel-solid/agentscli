@@ -5,9 +5,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+      - name: Install the pinned pnpm standalone
+        run: |
+          PNPM_VERSION=$(node -p "require('./package.json').packageManager.slice('pnpm@'.length)")
+          export PNPM_VERSION
+          curl --fail --silent --show-error --location https://get.pnpm.io/install.sh --output "$RUNNER_TEMP/install-pnpm.sh"
+          sh "$RUNNER_TEMP/install-pnpm.sh"
+          echo "PNPM_HOME=$HOME/.local/share/pnpm" >> "$GITHUB_ENV"
+          echo "$HOME/.local/share/pnpm/bin" >> "$GITHUB_PATH"
       - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run check
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Verify the pinned package manager
+        run: test "$(pnpm --version)" = "$(node -p "require('./package.json').packageManager.slice('pnpm@'.length)")"
+      - run: pnpm ci
+      - run: pnpm run check
