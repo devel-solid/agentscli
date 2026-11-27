@@ -633,8 +633,8 @@ test('the public source package initializes and synchronizes its own authored co
       bin: { agentscli: 'dist/cli.js' },
     }),
     '.agentscli/conventions/testing.md': authored,
-    '.agents/skills/agentscli-publish-packages/SKILL.md': skill(
-      'agentscli-publish-packages',
+    '.agents/skills/agentscli-publish-package/SKILL.md': skill(
+      'agentscli-publish-package',
     ),
   };
   const fs = client(files);

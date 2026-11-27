@@ -96,7 +96,7 @@ jobs:
           assert.equal(integrity, process.env.RELEASE_INTEGRITY, 'Archive differs from the reviewed candidate');
           assert.equal(packed.integrity, integrity);
           execFileSync(process.execPath, [
-            '.agents/skills/agentscli-publish-packages/scripts/check.mjs',
+            '.agents/skills/agentscli-publish-package/scripts/check.mjs',
             '--repo-root', '.', '--package', 'agentscli', '--archive', archive,
           ], { stdio: 'inherit' });
           appendFileSync(process.env.GITHUB_ENV, `RELEASE_ARCHIVE=${archive}\n`);

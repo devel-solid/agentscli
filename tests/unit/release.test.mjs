@@ -6,16 +6,16 @@ import {
   packageRoot,
   regular,
   checkPath,
-} from '../../.agents/skills/agentscli-publish-packages/scripts/lib.mjs';
+} from '../../.agents/skills/agentscli-publish-package/scripts/lib.mjs';
 import {
   parseArgs,
   validate,
-} from '../../.agents/skills/agentscli-publish-packages/scripts/check.mjs';
+} from '../../.agents/skills/agentscli-publish-package/scripts/check.mjs';
 import {
   inspectArchive,
   inspectMetadata,
   readArchive,
-} from '../../.agents/skills/agentscli-publish-packages/scripts/candidate.mjs';
+} from '../../.agents/skills/agentscli-publish-package/scripts/candidate.mjs';
 
 const root = resolve('fixture');
 function memory(entries) {

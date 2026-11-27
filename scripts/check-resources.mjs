@@ -9,7 +9,7 @@ import {
   PRODUCT_SKILLS,
   walk,
 } from '../assets/templates/skills/agentscli-build-agents/scripts/lib/index.mjs';
-import { validate } from '../.agents/skills/agentscli-publish-packages/scripts/check.mjs';
+import { validate } from '../.agents/skills/agentscli-publish-package/scripts/check.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const temporary = fs.mkdtempSync(join(tmpdir(), 'agentscli-resources-'));
